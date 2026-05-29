@@ -48,3 +48,17 @@ export async function markNotificationRead(id: string): Promise<void> {
 export async function markAllNotificationsRead(): Promise<void> {
   return api.put(`${Endpoints.USER_NOTIFICATIONS}/read-all`);
 }
+
+/** Upload avatar — multipart/form-data, field: "avatar" */
+export async function uploadAvatar(
+  file: File,
+): Promise<{ avatar: string; user: User }> {
+  const formData = new FormData();
+  formData.append('avatar', file);
+  return api.upload<{ avatar: string; user: User }>(Endpoints.USER_AVATAR, formData);
+}
+
+/** Xoa avatar */
+export async function deleteAvatar(): Promise<User> {
+  return api.delete<User>(Endpoints.USER_AVATAR);
+}
