@@ -1,0 +1,27 @@
+'use strict';
+
+const express = require('express');
+const meetingController = require('../controllers/meetingController');
+const { requireAuth } = require('../middlewares/auth');
+const { validate, validators } = require('../validators');
+
+const router = express.Router({ mergeParams: true });
+
+router.get('/', requireAuth, meetingController.list);
+router.get('/:meetingId', requireAuth, meetingController.getById);
+router.post(
+  '/',
+  requireAuth,
+  validate(validators.createMeeting),
+  meetingController.create,
+);
+router.put('/:meetingId', requireAuth, meetingController.update);
+router.delete('/:meetingId', requireAuth, meetingController.delete);
+router.put(
+  '/:meetingId/rsvp',
+  requireAuth,
+  validate(validators.rsvp),
+  meetingController.rsvp,
+);
+
+module.exports = router;

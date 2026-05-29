@@ -1,0 +1,45 @@
+'use strict';
+
+require('dotenv/config');
+
+const config = {
+  env: process.env.NODE_ENV || 'development',
+  isProd: process.env.NODE_ENV === 'production',
+  isDev: process.env.NODE_ENV !== 'production',
+
+  port: parseInt(process.env.PORT || '3000', 10),
+
+  jwt: {
+    secret: process.env.JWT_SECRET || 'dev-jwt-secret',
+    refreshSecret: process.env.JWT_REFRESH_SECRET || 'dev-refresh-secret',
+    accessExpires: process.env.JWT_EXPIRES_IN || '15m',
+    refreshExpires: process.env.JWT_REFRESH_EXPIRES_IN || '7d',
+  },
+
+  db: {
+    uri: process.env.MONGO_URI || 'mongodb://localhost:27017/ezproject',
+    cluster: (() => {
+      try {
+        return new URL(process.env.MONGO_URI || '').hostname;
+      } catch {
+        return 'localhost';
+      }
+    })(),
+  },
+
+  upload: {
+    dir: process.env.UPLOAD_DIR || './uploads',
+    maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10),
+  },
+
+  cors: {
+    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
+  },
+
+  rateLimit: {
+    windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
+    max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
+  },
+};
+
+module.exports = config;
