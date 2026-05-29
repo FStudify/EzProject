@@ -77,4 +77,24 @@ export const Endpoints = {
 
   // ── Upload ──────────────────────────────────────────────
   UPLOAD_FILE: `${BASE}/upload`,
+
+  // ── User Avatar ─────────────────────────────────────────
+  USER_AVATAR: `${BASE}/users/me/avatar`,
+
+  // ── Join by Invite ──────────────────────────────────────
+  JOIN_PROJECT: `${BASE}/join`,
+
+  // ── Chat Room Detail ────────────────────────────────────
+  CHAT_ROOM_DETAIL: (projectId: string, roomId: string) =>
+    `${BASE}/projects/${projectId}/chat/rooms/${roomId}`,
+  CHAT_SEND_MESSAGE: (projectId: string, roomId: string) =>
+    `${BASE}/projects/${projectId}/chat/rooms/${roomId}/messages`,
+
+  // ── Admin ───────────────────────────────────────────────
+  ADMIN_STATS: `${BASE}/admin/stats`,
+  ADMIN_USERS: `${BASE}/admin/users`,
+  ADMIN_USER_DETAIL: (userId: string) => `${BASE}/admin/users/${userId}`,
+  ADMIN_USER_ROLE: (userId: string) => `${BASE}/admin/users/${userId}/role`,
+  ADMIN_PROJECTS: `${BASE}/admin/projects`,
+  ADMIN_PROJECT_DETAIL: (projectId: string) => `${BASE}/admin/projects/${projectId}`,
 } as const;

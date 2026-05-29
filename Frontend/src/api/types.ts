@@ -31,6 +31,7 @@ export interface User {
   department: string | null;
   position: string | null;
   bio: string | null;
+  role: 'ADMIN' | 'CUSTOMER';
   language: 'VI' | 'EN';
   theme: 'LIGHT' | 'DARK';
   createdAt: string;

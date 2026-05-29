@@ -60,7 +60,7 @@ export async function renameChatRoom(
   name: string,
 ): Promise<ChatRoom> {
   return api.put<ChatRoom>(
-    `${Endpoints.CHAT_ROOMS(projectId)}/${roomId}`,
+    Endpoints.CHAT_ROOM_DETAIL(projectId, roomId),
     { name },
   );
 }
@@ -70,7 +70,7 @@ export async function deleteChatRoom(
   projectId: string,
   roomId: string,
 ): Promise<void> {
-  return api.delete(`${Endpoints.CHAT_ROOMS(projectId)}/${roomId}`);
+  return api.delete(Endpoints.CHAT_ROOM_DETAIL(projectId, roomId));
 }
 
 /** Gui tin nhan vao phong */
@@ -79,5 +79,5 @@ export async function sendMessage(
   roomId: string,
   data: { content: string; channel?: string },
 ): Promise<ChatMessage> {
-  return api.post<ChatMessage>(Endpoints.CHAT_MESSAGES(projectId, roomId), data);
+  return api.post<ChatMessage>(Endpoints.CHAT_SEND_MESSAGE(projectId, roomId), data);
 }

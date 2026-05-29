@@ -16,6 +16,7 @@ export * from './document.api';
 export * from './meeting.api';
 export * from './chat.api';
 export * from './member.api';
+export * from './admin.api';
 
 export { Endpoints } from './endpoints';
 export type * from './types';

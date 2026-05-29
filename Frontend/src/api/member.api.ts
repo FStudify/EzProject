@@ -37,8 +37,15 @@ export async function removeMember(projectId: string, userId: string): Promise<v
 /** Tao link moi thanh vien */
 export async function createInviteLink(
   projectId: string,
-): Promise<{ inviteLink: string; expiresAt: string }> {
+): Promise<{ inviteLink: string; token: string; expiresAt: string }> {
   return api.post(`${Endpoints.MEMBER_INVITE(projectId)}`);
+}
+
+/** Join project bang invite token */
+export async function joinByInvite(
+  token: string,
+): Promise<{ projectId: string; projectName?: string; alreadyMember?: boolean }> {
+  return api.post(Endpoints.JOIN_PROJECT, { token });
 }
 
 /** ── Performance ─────────────────────────────────────────── */
