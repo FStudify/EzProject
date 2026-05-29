@@ -30,13 +30,23 @@ const userSchema = new mongoose.Schema({
     required: true,
     trim: true,
   },
+  // ── System-level role ────────────────────────────────
+  role: {
+    type: String,
+    enum: ['ADMIN', 'CUSTOMER'],
+    default: 'CUSTOMER',
+  },
+  // ── Profile ──────────────────────────────────────────
   avatar: { type: String, default: null },
   phone: { type: String, default: null },
   department: { type: String, default: null },
   position: { type: String, default: null },
   bio: { type: String, default: null },
+  // ── Preferences ──────────────────────────────────────
   language: { type: String, enum: ['VI', 'EN'], default: 'VI' },
   theme: { type: String, enum: ['LIGHT', 'DARK'], default: 'LIGHT' },
 }, { timestamps: true });
+
+userSchema.index({ role: 1 });
 
 module.exports = mongoose.model('User', userSchema);

@@ -124,6 +124,16 @@ const validators = {
     role: z.enum(['LEADER', 'SUPERVISOR', 'MEMBER']),
   }),
 
+  // ── Join by invite ────────────────────────────────────────
+  joinProject: z.object({
+    token: z.string().min(1, 'Invite token is required'),
+  }),
+
+  // ── Admin ─────────────────────────────────────────────────
+  setSystemRole: z.object({
+    role: z.enum(['ADMIN', 'CUSTOMER']),
+  }),
+
   // ── Performance ─────────────────────────────────────────
   evaluate: z.object({
     memberId: z.string(),
