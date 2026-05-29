@@ -37,8 +37,10 @@ if (config.isDev) {
   app.use(morgan('combined'));
 }
 
-// ── Static Files ───────────────────────────────────────────
+// ── Static Files ───────────────────────────────────────
 app.use('/public', express.static(path.join(__dirname, 'public')));
+// Serve uploaded files (avatars, documents)
+app.use('/public/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ── Health Check ───────────────────────────────────────────
 app.get('/health', (req, res) => {

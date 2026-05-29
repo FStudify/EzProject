@@ -7,6 +7,8 @@ const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
 
+// ── Helpers ───────────────────────────────────────────────────────────────────
+
 async function checkMember(projectId, userId) {
   const project = await Project.findOne({
     _id: new ObjectId(projectId),
@@ -16,6 +18,15 @@ async function checkMember(projectId, userId) {
   return project.members.find((m) => m.userId.toString() === userId);
 }
 
+/**
+ * Gap 6 fix: LEADER, SUPERVISOR, và isOwner đều có elevated permissions.
+ * MEMBER chỉ được thao tác với task của chính mình.
+ */
+function isElevated(member) {
+  return member.isOwner || member.role === 'LEADER' || member.role === 'SUPERVISOR';
+}
+
+// ── GET /projects/:projectId/tasks ────────────────────────────────────────────
 exports.list = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
@@ -41,10 +52,6 @@ exports.list = async (req, res, next) => {
         $addFields: {
           'assignee.passwordHash': '***',
           'creator.passwordHash': '***',
-        },
-      },
-      {
-        $addFields: {
           commentsCount: { $size: { $ifNull: ['$comments', []] } },
         },
       },
@@ -57,6 +64,7 @@ exports.list = async (req, res, next) => {
   }
 };
 
+// ── GET /projects/:projectId/tasks/:taskId ────────────────────────────────────
 exports.getById = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
@@ -76,6 +84,8 @@ exports.getById = async (req, res, next) => {
   }
 };
 
+// ── POST /projects/:projectId/tasks ───────────────────────────────────────────
+// Bất kỳ member nào đều tạo được task
 exports.create = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
@@ -84,6 +94,7 @@ exports.create = async (req, res, next) => {
       projectId: new ObjectId(req.params.projectId),
       ...req.body,
       deadline: req.body.deadline ? new Date(req.body.deadline) : undefined,
+      assigneeId: req.body.assigneeId ? new ObjectId(req.body.assigneeId) : undefined,
       creatorId: new ObjectId(req.user.id),
     });
 
@@ -98,6 +109,8 @@ exports.create = async (req, res, next) => {
   }
 };
 
+// ── PUT /projects/:projectId/tasks/:taskId ────────────────────────────────────
+// Gap 6: LEADER ✅ | SUPERVISOR ✅ | MEMBER → chỉ task của mình
 exports.update = async (req, res, next) => {
   try {
     const member = await checkMember(req.params.projectId, req.user.id);
@@ -107,20 +120,24 @@ exports.update = async (req, res, next) => {
     });
     if (!task) throw errors.NotFound('Task');
 
-    if (member.role === 'MEMBER' &&
-        task.assigneeId?.toString() !== req.user.id &&
-        task.creatorId.toString() !== req.user.id) {
-      throw errors.Forbidden('You can only edit your own tasks');
+    if (!isElevated(member)) {
+      const isAssignee = task.assigneeId?.toString() === req.user.id;
+      const isCreator  = task.creatorId.toString() === req.user.id;
+      if (!isAssignee && !isCreator) {
+        throw errors.Forbidden('You can only edit tasks assigned to or created by you');
+      }
     }
 
     const update = { ...req.body };
     if (update.deadline) update.deadline = new Date(update.deadline);
+    if (update.assigneeId) update.assigneeId = new ObjectId(update.assigneeId);
 
     const updated = await Task.findByIdAndUpdate(
       req.params.taskId,
       { $set: update },
       { new: true, runValidators: true },
-    ).populate('assigneeId', 'id fullName avatar')
+    )
+      .populate('assigneeId', 'id fullName avatar')
       .populate('creatorId', 'id fullName avatar');
 
     res.json({ success: true, data: updated });
@@ -129,6 +146,8 @@ exports.update = async (req, res, next) => {
   }
 };
 
+// ── DELETE /projects/:projectId/tasks/:taskId ─────────────────────────────────
+// Gap 6: LEADER ✅ | SUPERVISOR ✅ | MEMBER → chỉ task do mình tạo
 exports.delete = async (req, res, next) => {
   try {
     const member = await checkMember(req.params.projectId, req.user.id);
@@ -138,8 +157,8 @@ exports.delete = async (req, res, next) => {
     });
     if (!task) throw errors.NotFound('Task');
 
-    if (member.role === 'MEMBER' && task.creatorId.toString() !== req.user.id) {
-      throw errors.Forbidden('Only the creator or leader can delete this task');
+    if (!isElevated(member) && task.creatorId.toString() !== req.user.id) {
+      throw errors.Forbidden('Only the creator, leader, or supervisor can delete this task');
     }
 
     await Task.findByIdAndDelete(req.params.taskId);
@@ -149,6 +168,7 @@ exports.delete = async (req, res, next) => {
   }
 };
 
+// ── PUT /projects/:projectId/tasks/:taskId/comments ───────────────────────────
 exports.addComment = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);

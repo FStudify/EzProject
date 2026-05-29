@@ -1,6 +1,5 @@
 'use strict';
 
-const mongoose = require('mongoose');
 const User = require('./User');
 const RefreshToken = require('./RefreshToken');
 const Project = require('./Project');
@@ -9,6 +8,7 @@ const { Folder, Document } = require('./Document');
 const Meeting = require('./Meeting');
 const { ChatRoom, ChatMessage } = require('./Chat');
 const { Activity, Notification, MemberEvaluation } = require('./Activity');
+const InviteLink = require('./InviteLink');
 
 module.exports = {
   User,
@@ -23,4 +23,5 @@ module.exports = {
   Activity,
   Notification,
   MemberEvaluation,
+  InviteLink,
 };
