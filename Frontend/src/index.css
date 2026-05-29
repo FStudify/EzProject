@@ -1,0 +1,370 @@
+@import "tailwindcss";
+
+@theme {
+  /* Brand — xanh dương sạch */
+  --color-primary: #2563EB;
+  --color-primary-light: #3B82F6;
+  --color-primary-dark: #1D4ED8;
+  --color-primary-50: #EFF6FF;
+  --color-primary-100: #DBEAFE;
+  --color-secondary: #6366F1;
+  --color-accent: #0EA5E9;
+  --color-success: #16A34A;
+  --color-warning: #D97706;
+  --color-danger: #DC2626;
+
+  /* Sidebar — navy (chỉ thanh bên) */
+  --color-sidebar: #132a42;
+  --color-sidebar-hover: #1e3a54;
+  --color-sidebar-active: #2d5578;
+  --color-sidebar-border: #1f3a50;
+  --color-on-sidebar: #FFFFFF;
+  --color-on-sidebar-muted: #E8F0F8;
+
+  /* Vùng nội dung — trắng + nền xám nhạt */
+  --color-canvas: #E2E8F0;
+  --color-surface: #FFFFFF;
+  --color-surface-muted: #F8FAFC;
+  --color-border: #E2E8F0;
+  --color-border-strong: #CBD5E1;
+
+  /* Chữ trên nền sáng */
+  --color-ink: #1E293B;
+  --color-ink-secondary: #334155;
+  --color-ink-muted: #64748B;
+
+  /* Alias tương thích */
+  --color-surface-alt: #F8FAFC;
+  --color-text-primary: #1E293B;
+  --color-text-secondary: #334155;
+  --color-text-muted: #64748B;
+}
+
+/* ── Dark mode ───────────────────────────────────────────────────────────── */
+html.dark {
+  --color-canvas: #0f172a;
+  --color-surface: #1e293b;
+  --color-surface-muted: #1e293b;
+  --color-border: #334155;
+  --color-border-strong: #475569;
+  --color-ink: #f1f5f9;
+  --color-ink-secondary: #cbd5e1;
+  --color-ink-muted: #94a3b8;
+  --color-surface-alt: #1e293b;
+  --color-text-primary: #f1f5f9;
+  --color-text-secondary: #cbd5e1;
+  --color-text-muted: #94a3b8;
+}
+
+html.dark body {
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+}
+
+html.dark .ez-input {
+  background-color: var(--color-surface);
+  color: var(--color-ink);
+  border-color: var(--color-border);
+}
+
+html.dark .ez-card,
+html.dark .ez-stat-card {
+  background-color: var(--color-surface);
+  border-color: var(--color-border);
+}
+
+html.dark .kanban-scroll::-webkit-scrollbar-track,
+html.dark .ez-task-scrollbar::-webkit-scrollbar-track {
+  background: #1e293b;
+}
+
+html.dark .ez-login-shell {
+  background-color: #0f172a;
+}
+
+html.dark .docx-container {
+  background: #1e293b !important;
+}
+
+html.dark .docx-container .docx-wrapper,
+html.dark .docx-container .docx-viewer-wrapper,
+html.dark .docx-container .docx,
+html.dark .docx-container .docx-viewer {
+  background: #1e293b !important;
+}
+
+html.dark .ez-task-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%);
+  border: 2px solid #1e293b;
+}
+
+body {
+  margin: 0;
+  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+  background-color: var(--color-canvas);
+  color: var(--color-ink);
+  font-weight: 400;
+}
+
+@layer components {
+  .ez-label {
+    @apply mb-1 block text-xs font-semibold uppercase tracking-wider text-ink-secondary;
+  }
+
+  .ez-input {
+    @apply w-full rounded-xl border border-border bg-surface px-3 py-2.5 text-sm text-ink shadow-sm transition-all placeholder:text-ink-muted focus:border-primary focus:outline-none focus:ring-4 focus:ring-primary/10;
+  }
+
+  .ez-card {
+    @apply rounded-2xl border border-border bg-surface shadow-sm;
+  }
+
+  .ez-card-hover {
+    @apply transition-shadow duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)];
+  }
+
+  .ez-stat-card {
+    @apply rounded-xl border border-border bg-surface p-5 shadow-sm transition-shadow duration-200 hover:shadow-[0_4px_12px_rgba(0,0,0,0.08)];
+  }
+
+  .ez-nav-active {
+    @apply border-l-[3px] border-accent bg-sidebar-active pl-[9px] text-on-sidebar;
+  }
+}
+
+* {
+  box-sizing: border-box;
+}
+
+/* Minimal typography - reduce font weights */
+h1, h2, h3, h4, h5, h6 {
+  font-weight: 500;
+}
+
+.font-semibold {
+  font-weight: 500 !important;
+}
+
+.font-bold {
+  font-weight: 600 !important;
+}
+
+.font-extrabold {
+  font-weight: 600 !important;
+}
+
+/* Kanban: cuộn ngang phía dưới */
+.kanban-scroll {
+  -webkit-overflow-scrolling: touch;
+  scrollbar-width: auto;
+  scrollbar-color: #2563EB #E2E8F0;
+}
+.kanban-scroll::-webkit-scrollbar {
+  height: 12px;
+}
+.kanban-scroll::-webkit-scrollbar-track {
+  background: #E2E8F0;
+  border-radius: 6px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb {
+  background: #2563EB;
+  border-radius: 6px;
+}
+.kanban-scroll::-webkit-scrollbar-thumb:hover {
+  background: #1D4ED8;
+}
+
+.ez-task-scrollbar {
+  scrollbar-width: thin;
+  scrollbar-color: #2563EB #E2E8F0;
+}
+
+.ez-task-scrollbar::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+
+.ez-task-scrollbar::-webkit-scrollbar-track {
+  background: #E2E8F0;
+  border-radius: 999px;
+}
+
+.ez-task-scrollbar::-webkit-scrollbar-thumb {
+  background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  border-radius: 999px;
+  border: 2px solid #E2E8F0;
+}
+
+.ez-task-scrollbar::-webkit-scrollbar-thumb:hover {
+  background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+}
+
+/* Hide scrollbar but keep scroll */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}
+
+/* docx-preview: isolate CSS, scroll trong khung, không tràn ra ngoài */
+.docx-preview-wrapper {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+.docx-container {
+  display: flex !important;
+  flex-direction: column !important;
+  align-items: center !important;
+  background: #f1f5f9 !important;
+  padding: 2rem !important;
+  width: 100%;
+  min-height: min-content;
+}
+
+/* Reset DOCX styles - prevent overflow, isolate from app CSS */
+.docx-container * {
+  max-width: 100% !important;
+  box-sizing: border-box !important;
+}
+
+.docx-container .docx-wrapper,
+.docx-container .docx-viewer-wrapper {
+  background: white !important;
+  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+  margin: 0 auto !important;
+  max-width: 100% !important;
+}
+
+.docx-container .docx,
+.docx-container .docx-viewer {
+  background: white !important;
+  padding: 2rem 2.5rem !important;
+}
+
+/* PDF viewer container - scroll trong khung, không tràn ra ngoài */
+.pdf-preview-wrapper {
+  width: 100%;
+  min-width: 0;
+  height: 100%;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* PDF canvas - tách layer GPU, tránh blur */
+.pdf-preview-wrapper canvas {
+  transform: translateZ(0);
+}
+
+/* Viewer container chuẩn - khóa kích thước, không bao giờ phá layout */
+.viewer-container {
+  width: 100%;
+  height: 100%;
+  min-width: 0;
+  overflow: auto;
+  -webkit-overflow-scrolling: touch;
+}
+
+/* Chặn div phá layout - KHÔNG áp cho canvas (PDF bị vỡ net) */
+.viewer-container .docx-wrapper,
+.viewer-container .docx-viewer-wrapper {
+  max-width: 100%;
+}
+
+.ez-login-shell {
+  font-family: 'Be Vietnam Pro', 'Inter', system-ui, -apple-system, sans-serif;
+  height: 100dvh;
+  background-color: #E2E8F0;
+  background-image: radial-gradient(circle at 82% 16%, rgba(37, 99, 235, 0.08), transparent 28%);
+}
+
+@supports not (height: 100dvh) {
+  .ez-login-shell {
+    height: 100vh;
+  }
+}
+
+.ez-login-shell input:-webkit-autofill,
+.ez-login-shell input:-webkit-autofill:hover,
+.ez-login-shell input:-webkit-autofill:focus,
+.ez-login-shell input:-webkit-autofill:active {
+  -webkit-box-shadow: 0 0 0 1000px #F8FAFC inset !important;
+  box-shadow: 0 0 0 1000px #F8FAFC inset !important;
+  -webkit-text-fill-color: #1E293B !important;
+  caret-color: #1E293B;
+  border: 1px solid #E2E8F0 !important;
+}
+
+@keyframes ez-fade-up {
+  from {
+    opacity: 0;
+    transform: translateY(20px) scale(0.98);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+
+@keyframes ez-float {
+  0%,
+  100% {
+    transform: translateY(0);
+  }
+  50% {
+    transform: translateY(-7px);
+  }
+}
+
+.animate-ez-fade-up {
+  animation: ez-fade-up 0.55s cubic-bezier(0.22, 1, 0.36, 1) both;
+}
+
+.animate-ez-float {
+  animation: ez-float 7.2s ease-in-out infinite;
+}
+
+@keyframes ez-green-pulse {
+  0%,
+  100% {
+    opacity: 0.72;
+    box-shadow: 0 0 0 0 rgba(137, 211, 100, 0.52);
+  }
+  50% {
+    opacity: 1;
+    box-shadow: 0 0 0 10px rgba(137, 211, 100, 0);
+  }
+}
+
+@keyframes ez-green-shimmer {
+  0% {
+    transform: translateX(-125%);
+  }
+  100% {
+    transform: translateX(165%);
+  }
+}
+
+.animate-ez-green-pulse {
+  animation: ez-green-pulse 1.9s ease-in-out infinite;
+}
+
+.animate-ez-green-shimmer {
+  animation: ez-green-shimmer 2.6s ease-in-out infinite;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .animate-ez-fade-up,
+  .animate-ez-float,
+  .animate-ez-green-pulse,
+  .animate-ez-green-shimmer {
+    animation: none !important;
+  }
+}

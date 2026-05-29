@@ -1,0 +1,237 @@
+import { useState, useEffect, useMemo } from 'react';
+import { useParams, Link } from 'react-router-dom';
+import {
+  Calendar,
+  Users,
+  CheckSquare,
+  Clock,
+  ArrowRight,
+  AlertTriangle,
+  TrendingUp,
+} from 'lucide-react';
+import { getProject } from '@/api/project.api';
+import { getTasks } from '@/api/task.api';
+import { getActivities } from '@/api/member.api';
+import { Card, ProgressBar, MemberAvatar } from '@/components/ui';
+import { getRoleLabel } from '@/components/ui/RoleIcons';
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(h / 24);
+  if (m < 1) return 'Vừa xong';
+  if (m < 60) return `${m} phút trước`;
+  if (h < 24) return `${h} giờ trước`;
+  if (d < 7) return `${d} ngày trước`;
+  return new Date(ts).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
+}
+
+export default function ProjectOverview() {
+  const { projectId } = useParams<{ projectId: string }>();
+  const [project, setProject] = useState(null);
+  const [tasks, setTasks] = useState([]);
+  const [activities, setActivities] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!projectId) return;
+    setLoading(true);
+    Promise.all([
+      getProject(projectId),
+      getTasks(projectId),
+      getActivities(projectId),
+    ]).then(([projectData, tasksData, activitiesData]) => {
+      setProject(projectData);
+      setTasks(tasksData);
+      setActivities(activitiesData);
+    }).catch(() => {
+      setProject(null);
+      setTasks([]);
+      setActivities([]);
+    }).finally(() => {
+      setLoading(false);
+    });
+  }, [projectId]);
+
+  const stats = useMemo(() => {
+    const now = Date.now();
+    return {
+      total: tasks.length,
+      done: tasks.filter(t => t.status === 'DONE').length,
+      inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
+      overdue: tasks.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED' && new Date(t.deadline).getTime() < now).length,
+    };
+  }, [tasks]);
+
+  const recent = useMemo(
+    () => [...activities]
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
+      .slice(0, 4),
+    [activities],
+  );
+
+  if (loading) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-ink-muted">Đang tải...</p>
+      </div>
+    );
+  }
+
+  if (!project) {
+    return (
+      <div className="py-16 text-center">
+        <p className="text-ink-muted">Không tìm thấy dự án.</p>
+      </div>
+    );
+  }
+
+  const daysLeft = Math.ceil((new Date(project.deadline).getTime() - Date.now()) / 86400000);
+  const deadlineColor = daysLeft < 0 ? 'text-danger' : daysLeft <= 3 ? 'text-warning' : 'text-success';
+
+  const quickLinks = [
+    { to: 'tasks', icon: CheckSquare, label: 'Công việc', count: stats.total },
+    { to: 'documents', icon: Clock, label: 'Tài liệu', count: null },
+    { to: 'members', icon: Users, label: 'Thành viên', count: project.members.length },
+    { to: 'meetings', icon: Calendar, label: 'Cuộc họp', count: null },
+  ];
+
+  return (
+    <div className="space-y-5">
+      {/* Header */}
+      <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
+        <div>
+          <h1 className="text-xl font-bold text-ink">{project.name}</h1>
+          <p className="mt-1 text-sm text-ink-muted">{project.description}</p>
+        </div>
+        <div className="shrink-0 text-center rounded-xl border border-border bg-surface px-4 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Hạn chót</p>
+          <p className={`mt-0.5 text-lg font-bold ${deadlineColor}`}>
+            {daysLeft < 0
+              ? `Quá ${Math.abs(daysLeft)} ngày`
+              : daysLeft === 0 ? 'Hôm nay' : `Còn ${daysLeft} ngày`}
+          </p>
+        </div>
+      </div>
+
+      {/* Progress */}
+      <Card>
+        <div className="mb-2 flex items-center justify-between">
+          <span className="text-sm font-medium text-ink-secondary">Tiến độ tổng thể</span>
+          <span className="text-sm font-bold text-ink">{project.progress}%</span>
+        </div>
+        <ProgressBar value={project.progress} size="sm" />
+      </Card>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-4 gap-3">
+        {[
+          { label: 'Tổng', value: stats.total, color: 'text-ink' },
+          { label: 'Hoàn thành', value: stats.done, color: 'text-success' },
+          { label: 'Đang làm', value: stats.inProgress, color: 'text-primary' },
+          { label: 'Quá hạn', value: stats.overdue, color: stats.overdue > 0 ? 'text-danger' : 'text-ink-muted' },
+        ].map(s => (
+          <div key={s.label} className="rounded-xl border border-border bg-surface px-3 py-2.5 text-center">
+            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
+            <p className="mt-0.5 text-xs text-ink-muted">{s.label}</p>
+          </div>
+        ))}
+      </div>
+
+      {/* Alert */}
+      {stats.overdue > 0 && (
+        <div className="flex items-center gap-2 rounded-xl border border-danger/20 bg-rose-50 px-4 py-2.5 text-sm text-rose-800">
+          <AlertTriangle className="h-4 w-4 shrink-0 text-danger" />
+          <span className="font-medium">{stats.overdue} công việc đang quá hạn</span>
+          <Link to="tasks" className="ml-auto text-xs font-medium text-danger hover:underline flex items-center gap-0.5">
+            Xem ngay <ArrowRight className="h-3 w-3" />
+          </Link>
+        </div>
+      )}
+
+      {/* Quick links + Activity */}
+      <div className="grid grid-cols-1 gap-4 md:grid-cols-2 lg:grid-cols-3">
+        {/* Quick links */}
+        <Card>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
+            <TrendingUp className="h-4 w-4 text-primary" />
+            Truy cập nhanh
+          </h3>
+          <ul className="space-y-1">
+            {quickLinks.map(link => (
+              <li key={link.to}>
+                <Link
+                  to={link.to}
+                  className="flex items-center justify-between rounded-lg px-3 py-2 text-sm text-ink-secondary hover:bg-primary-50 hover:text-primary transition-colors"
+                >
+                  <span className="flex items-center gap-2">
+                    <link.icon className="h-4 w-4" />
+                    {link.label}
+                  </span>
+                  <div className="flex items-center gap-1.5">
+                    {link.count !== null && (
+                      <span className="rounded-full bg-surface-muted px-2 py-0.5 text-xs text-ink-muted">{link.count}</span>
+                    )}
+                    <ArrowRight className="h-3.5 w-3.5 opacity-40" />
+                  </div>
+                </Link>
+              </li>
+            ))}
+          </ul>
+        </Card>
+
+        {/* Team */}
+        <Card>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
+            <Users className="h-4 w-4 text-primary" />
+            Thành viên
+          </h3>
+          <ul className="space-y-2">
+            {project.members.slice(0, 5).map(({ user, role, isOwner }) => {
+              const active = tasks.filter(t => t.assignee?.id === user.id && t.status !== 'DONE').length;
+              return (
+                <li key={user.id} className="flex items-center gap-2.5">
+                  <MemberAvatar src={user.avatar} name={user.fullName} isOwner={isOwner} role={role} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="truncate text-sm font-medium text-ink">{user.fullName}</p>
+                    <p className="text-xs text-ink-muted">{getRoleLabel(role, isOwner)}</p>
+                  </div>
+                  {active > 0 && (
+                    <span className="rounded-full bg-primary-50 px-2 py-0.5 text-xs font-medium text-primary">{active}</span>
+                  )}
+                </li>
+              );
+            })}
+          </ul>
+        </Card>
+
+        {/* Activity */}
+        <Card>
+          <h3 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
+            <Clock className="h-4 w-4 text-primary" />
+            Hoạt động gần đây
+          </h3>
+          {recent.length === 0 ? (
+            <p className="text-sm text-ink-muted">Chưa có hoạt động.</p>
+          ) : (
+            <ul className="space-y-3">
+              {recent.map(act => (
+                <li key={act.id} className="flex items-start gap-2">
+                  <MemberAvatar src={act.user.avatar} name={act.user.fullName} size="sm" />
+                  <div className="min-w-0 flex-1">
+                    <p className="text-xs text-ink-secondary">
+                      <span className="font-semibold text-ink">{act.user.fullName}</span> {act.action}{' '}
+                      <span className="font-medium text-ink">{act.target}</span>
+                    </p>
+                    <p className="text-[11px] text-ink-muted">{timeAgo(act.timestamp)}</p>
+                  </div>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Card>
+      </div>
+    </div>
+  );
+}
