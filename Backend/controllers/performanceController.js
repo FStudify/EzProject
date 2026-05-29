@@ -3,7 +3,7 @@
 const mongoose = require('mongoose');
 const { Activity, MemberEvaluation } = require('../models/Activity');
 const Task = require('../models/Task');
-const Document = require('../models/Document');
+const { Document } = require('../models/Document');
 const Project = require('../models/Project');
 const { errors } = require('../middlewares/errorHandler');
 
