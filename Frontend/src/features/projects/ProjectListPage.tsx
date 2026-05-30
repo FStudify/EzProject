@@ -56,7 +56,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
     category: 'Môn học',
     description: 'Quy trình phát triển phần mềm từ setup đến deploy, phù hợp đồ án lập trình.',
     icon: Code2,
-    color: 'bg-blue-50 text-blue-600 border-blue-200',
+    color: 'bg-orange-50 text-orange-600 border-orange-200',
     stages: ['Setup', 'Phát triển', 'Kiểm thử', 'Deploy'],
     tasks: [
       'Thiết kế kiến trúc hệ thống',
@@ -74,7 +74,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
     category: 'Môn học',
     description: 'Quy trình viết tiểu luận nhóm cho các môn Triết học, Xã hội học, Văn học.',
     icon: BookOpen,
-    color: 'bg-purple-50 text-purple-600 border-purple-200',
+    color: 'bg-amber-50 text-amber-600 border-amber-200',
     stages: ['Đề cương', 'Nghiên cứu', 'Viết', 'Chỉnh sửa'],
     tasks: [
       'Xác định chủ đề và câu hỏi nghiên cứu',
@@ -91,7 +91,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
     category: 'Môn học',
     description: 'Quy trình phân tích kinh tế từ thu thập dữ liệu đến báo cáo kết quả.',
     icon: BarChart,
-    color: 'bg-emerald-50 text-emerald-600 border-emerald-200',
+    color: 'bg-orange-50 text-orange-600 border-orange-200',
     stages: ['Phân tích', 'Mô hình', 'Báo cáo'],
     tasks: [
       'Xác định vấn đề kinh tế cần nghiên cứu',
@@ -126,7 +126,7 @@ const PROJECT_TEMPLATES: ProjectTemplate[] = [
     category: 'Loại bài',
     description: 'Quy trình chuẩn bị bài thuyết trình nhóm từ phân công đến luyện tập.',
     icon: Presentation,
-    color: 'bg-sky-50 text-sky-600 border-sky-200',
+    color: 'bg-amber-50 text-amber-600 border-amber-200',
     stages: ['Chuẩn bị', 'Thiết kế', 'Luyện tập'],
     tasks: [
       'Phân công nội dung từng người',

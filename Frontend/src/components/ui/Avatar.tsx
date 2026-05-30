@@ -36,7 +36,7 @@ export default function Avatar({
 }: AvatarProps) {
   const sizeClass = sizeStyles[size];
   const ringClass =
-    online === undefined ? '' : online ? 'ring-2 ring-emerald-500' : 'ring-2 ring-slate-300';
+    online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
 
   const content = (
     <div className={`rounded-full overflow-hidden ${sizeClass} ${ringClass}`.trim()}>

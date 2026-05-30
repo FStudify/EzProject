@@ -273,21 +273,21 @@ export default function DashboardPage() {
             label: t('my_tasks'),
             value: myTasksCount,
             sub: `${t('completed_tasks')}: ${doneTasks}`,
-            iconBg: 'bg-amber-50 text-warning',
+            iconBg: 'bg-primary-50 text-primary-dark',
           },
           {
             icon: AlertTriangle,
             label: t('overdue_tasks'),
             value: overdueCount,
             sub: overdueCount > 0 ? t('need_attention') : t('no'),
-            iconBg: 'bg-rose-50 text-danger',
+            iconBg: 'bg-primary-50 text-primary-dark',
           },
           {
             icon: CalendarCheck,
             label: t('of_total').replace(':total', ''),
             value: '88%',
             sub: t('this_month'),
-            iconBg: 'bg-emerald-50 text-success',
+            iconBg: 'bg-primary-50 text-primary',
           },
         ].map(({ icon: Icon, label, value, sub, iconBg }) => (
           <div key={label} className="ez-stat-card">

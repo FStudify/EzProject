@@ -1,26 +1,27 @@
 @import "tailwindcss";
 
 @theme {
-  /* Brand — xanh dương sạch */
-  --color-primary: #2563EB;
-  --color-primary-light: #3B82F6;
-  --color-primary-dark: #1D4ED8;
-  --color-primary-50: #EFF6FF;
-  --color-primary-100: #DBEAFE;
-  --color-secondary: #6366F1;
-  --color-accent: #0EA5E9;
+  /* Brand — cam */
+  --color-primary: #F97316;
+  --color-primary-light: #FB923C;
+  --color-primary-dark: #EA580C;
+  --color-primary-50: #FFF7ED;
+  --color-primary-100: #FFEDD5;
+  --color-secondary: #FB923C;
+  --color-accent: #FB923C;
   --color-success: #16A34A;
   --color-warning: #D97706;
   --color-danger: #DC2626;
 
-  /* Sidebar — navy (chỉ thanh bên) */
-  --color-sidebar: #132a42;
-  --color-sidebar-hover: #1e3a54;
-  --color-sidebar-active: #2d5578;
-  --color-sidebar-border: #1f3a50;
+  /* Sidebar — nâu cam (chỉ thanh bên) */
+  --color-sidebar: #B56E4D;
+  --color-sidebar-hover: #C88963;
+  --color-sidebar-active: rgba(255,255,255,0.06);
+  --color-sidebar-border: #A55A3A;
+  --color-sidebar-start: #E6C39F;
+  --color-sidebar-end: #B56E4D;
+  --color-sidebar-text: #3E2A25;
   --color-on-sidebar: #FFFFFF;
-  --color-on-sidebar-muted: #E8F0F8;
-
   /* Vùng nội dung — trắng + nền xám nhạt */
   --color-canvas: #E2E8F0;
   --color-surface: #FFFFFF;
@@ -38,6 +39,18 @@
   --color-text-primary: #1E293B;
   --color-text-secondary: #334155;
   --color-text-muted: #64748B;
+}
+
+/* Utility for sidebar background gradient to match provided design */
+.bg-sidebar {
+  background: linear-gradient(180deg, var(--color-sidebar-start), var(--color-sidebar-end));
+  color: var(--color-on-sidebar);
+}
+
+/* Active/selected pill inside sidebar: nearly white for contrast on light-brown background */
+.sidebar-item-active {
+  background: var(--color-sidebar-active);
+  color: var(--color-on-sidebar);
 }
 
 /* ── Dark mode ───────────────────────────────────────────────────────────── */
@@ -94,7 +107,7 @@ html.dark .docx-container .docx-viewer {
 }
 
 html.dark .ez-task-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3B82F6 0%, #1D4ED8 100%);
+  background: linear-gradient(180deg, #FB923C 0%, #EA580C 100%);
   border: 2px solid #1e293b;
 }
 
@@ -130,7 +143,22 @@ body {
   }
 
   .ez-nav-active {
-    @apply border-l-[3px] border-accent bg-sidebar-active pl-[9px] text-on-sidebar;
+    @apply border-l-[3px] border-accent pl-[9px];
+    background: var(--color-sidebar-active) !important;
+    color: var(--color-on-sidebar) !important;
+  }
+
+  /* Ensure icons and nested text inside active nav are visible on subtle active background */
+  .ez-nav-active,
+  .ez-nav-active * {
+    color: var(--color-on-sidebar) !important;
+    opacity: 1 !important;
+  }
+
+  .ez-nav-active svg,
+  .ez-nav-active path,
+  .ez-nav-active .icon {
+    fill: var(--color-on-sidebar) !important;
   }
 }
 
@@ -164,7 +192,7 @@ h6 {
 .kanban-scroll {
   -webkit-overflow-scrolling: touch;
   scrollbar-width: auto;
-  scrollbar-color: #2563EB #E2E8F0;
+  scrollbar-color: #F97316 #E2E8F0;
 }
 
 .kanban-scroll::-webkit-scrollbar {
@@ -177,17 +205,17 @@ h6 {
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb {
-  background: #2563EB;
+  background: #F97316;
   border-radius: 6px;
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:hover {
-  background: #1D4ED8;
+  background: #EA580C;
 }
 
 .ez-task-scrollbar {
   scrollbar-width: thin;
-  scrollbar-color: #2563EB #E2E8F0;
+  scrollbar-color: #F97316 #E2E8F0;
 }
 
 .ez-task-scrollbar::-webkit-scrollbar {
@@ -201,13 +229,13 @@ h6 {
 }
 
 .ez-task-scrollbar::-webkit-scrollbar-thumb {
-  background: linear-gradient(180deg, #3B82F6 0%, #2563EB 100%);
+  background: linear-gradient(180deg, #FB923C 0%, #F97316 100%);
   border-radius: 999px;
   border: 2px solid #E2E8F0;
 }
 
 .ez-task-scrollbar::-webkit-scrollbar-thumb:hover {
-  background: linear-gradient(180deg, #2563EB 0%, #1D4ED8 100%);
+  background: linear-gradient(180deg, #F97316 0%, #EA580C 100%);
 }
 
 /* Hide scrollbar but keep scroll */

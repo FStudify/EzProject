@@ -212,7 +212,7 @@ export default function ProfilePage() {
                         className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner"
                       />
                     ) : (
-                      <div className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold uppercase">
+                      <div className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white text-4xl font-bold uppercase">
                         {user?.fullName?.charAt(0) || 'U'}
                       </div>
                     )}
@@ -284,7 +284,7 @@ export default function ProfilePage() {
               <div className="stat-glass flex flex-col items-center group cursor-pointer">
                 <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Đúng hạn</span>
                 <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center shadow-inner">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center shadow-inner">
                     <span className="material-symbols-outlined text-emerald-600 text-[28px]" style={{ filter: 'drop-shadow(0 2px 4px rgba(5,150,105,0.3))' }}>trending_up</span>
                   </div>
                   <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{onTimeRate}%</span>

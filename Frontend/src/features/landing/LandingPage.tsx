@@ -21,37 +21,37 @@ const features = [
     icon: CheckSquare,
     titleKey: 'landing_feature_tasks_title',
     descKey: 'landing_feature_tasks_desc',
-    color: 'from-blue-500 to-indigo-600',
+    color: 'from-orange-500 to-amber-600',
   },
   {
     icon: Users,
     titleKey: 'landing_feature_team_title',
     descKey: 'landing_feature_team_desc',
-    color: 'from-violet-500 to-purple-600',
+    color: 'from-orange-400 to-orange-600',
   },
   {
     icon: TrendingUp,
     titleKey: 'landing_feature_progress_title',
     descKey: 'landing_feature_progress_desc',
-    color: 'from-emerald-500 to-teal-600',
+    color: 'from-amber-500 to-orange-500',
   },
   {
     icon: Video,
     titleKey: 'landing_feature_meeting_title',
     descKey: 'landing_feature_meeting_desc',
-    color: 'from-orange-500 to-rose-600',
+    color: 'from-orange-500 to-red-500',
   },
   {
     icon: FileText,
     titleKey: 'landing_feature_docs_title',
     descKey: 'landing_feature_docs_desc',
-    color: 'from-cyan-500 to-blue-600',
+    color: 'from-amber-400 to-orange-500',
   },
   {
     icon: MessageCircle,
     titleKey: 'landing_feature_chat_title',
     descKey: 'landing_feature_chat_desc',
-    color: 'from-pink-500 to-rose-600',
+    color: 'from-orange-400 to-amber-600',
   },
 ];
 
@@ -69,7 +69,7 @@ export default function LandingPage() {
   return (
     <div className="relative min-h-screen overflow-hidden bg-surface">
       {/* Background gradient */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-secondary/[0.06]" />
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.08] via-transparent to-secondary/[0.08]" />
 
       {/* Top bar */}
       <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-md">
@@ -124,7 +124,7 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative z-10 mx-auto max-w-5xl px-6 pt-16 pb-14 text-center">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[28rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[28rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative">
           <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-4 py-1.5">
             <LayoutDashboard className="h-3.5 w-3.5 text-primary" />
