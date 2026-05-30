@@ -3,11 +3,12 @@ import { Link } from 'react-router-dom';
 import { Bell, CheckSquare, FileText, MessageCircle, Video } from 'lucide-react';
 import { Drawer } from '@/components/ui';
 import { getNotifications } from '@/api/user.api';
-import type { AppNotification, NotificationType } from '@/types';
+import type { NotificationType } from '@/api/types';
+import type { AppNotification } from '@/types';
 
 type FilterTab = 'all' | 'unread' | Lowercase<NotificationType>;
 
-const TYPE_ICONS: Record<Lowercase<NotificationType>, typeof Bell> = {
+const TYPE_ICONS: Record<string, typeof Bell> = {
   task: CheckSquare,
   meeting: Video,
   chat: MessageCircle,
@@ -37,7 +38,10 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
   const fetchNotifications = async () => {
     try {
       const data = await getNotifications();
-      setItems(data.notifications);
+      setItems(data.notifications.map(n => ({
+        ...n,
+        type: (n.type.charAt(0) + n.type.slice(1).toLowerCase()) as AppNotification['type'],
+      })));
     } catch (err) {
       console.error('Failed to fetch notifications:', err);
     } finally {
@@ -129,11 +133,11 @@ function NotificationRow({
   onRead,
   onNavigate,
 }: {
-  item: AppNotification;
+  item: ApiAppNotification;
   onRead: () => void;
   onNavigate: () => void;
 }) {
-  const Icon = TYPE_ICONS[item.type.toLowerCase() as Lowercase<NotificationType>];
+  const Icon = TYPE_ICONS[item.type.charAt(0).toLowerCase() + item.type.slice(1).toLowerCase() as Lowercase<NotificationType>];
   const content = (
     <div className="flex gap-3 py-3">
       <span

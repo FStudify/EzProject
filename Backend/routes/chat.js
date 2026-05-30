@@ -8,6 +8,7 @@ const { validate, validators } = require('../validators');
 const router = express.Router({ mergeParams: true });
 
 router.get('/rooms', requireAuth, chatController.getRooms);
+router.get('/rooms/:roomId', requireAuth, chatController.getRoomMembers);
 router.get('/rooms/:roomId/messages', requireAuth, chatController.getMessages);
 router.post(
   '/rooms',
@@ -16,6 +17,9 @@ router.post(
   chatController.createRoom,
 );
 router.put('/rooms/:roomId', requireAuth, chatController.renameRoom);
+router.post('/rooms/:roomId/members', requireAuth, chatController.addMembers);
+router.delete('/rooms/:roomId/members/:userId', requireAuth, chatController.removeMember);
+router.patch('/rooms/:roomId/settings', requireAuth, chatController.updateRoomSettings);
 router.delete('/rooms/:roomId', requireAuth, chatController.deleteRoom);
 router.post(
   '/rooms/:roomId/messages',

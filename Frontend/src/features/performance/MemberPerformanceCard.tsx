@@ -31,7 +31,8 @@ export default function MemberPerformanceCard({
   const [feedback, setFeedback] = useState(evaluation?.feedback ?? '');
   const [saved, setSaved] = useState(false);
 
-  const { member, tasksCompleted, tasksInProgress, documentsUploaded, commentsCount, contributions, score } = performance;
+  const { member: perfMember, tasksCompleted, tasksInProgress, documentsUploaded, commentsCount, contributions, score } = performance;
+  const member = { id: perfMember.id, name: perfMember.fullName, email: perfMember.email, avatar: perfMember.avatar };
   const scoreVariant = getScoreVariant(score);
 
   const openModal = () => {
@@ -51,7 +52,6 @@ export default function MemberPerformanceCard({
   return (
     <>
       <article className="rounded-xl border border-border bg-surface p-4">
-        {/* Header */}
         <div className="mb-4 flex items-center gap-2.5">
           <ProjectMemberAvatar member={member} projectMembers={projectMembers} size="sm" />
           <div>
@@ -60,7 +60,6 @@ export default function MemberPerformanceCard({
           </div>
         </div>
 
-        {/* Stats */}
         <div className="mb-4 grid grid-cols-4 gap-2">
           {[
             { icon: CheckCircle, label: 'Xong', value: tasksCompleted, color: 'text-success' },
@@ -76,13 +75,11 @@ export default function MemberPerformanceCard({
           ))}
         </div>
 
-        {/* Contribution graph */}
         <ContributionGraph contributions={contributions} />
 
-        {/* Evaluation summary */}
         {evaluation?.feedback && (
           <div className="mt-4 rounded-xl border border-primary/20 bg-primary-50 px-4 py-3">
-            <div className="flex items-start justify-between gap-2 mb-2">
+            <div className="mb-2 flex items-start justify-between gap-2">
               <p className="text-xs font-semibold text-primary">Nhận xét đã đánh giá</p>
               {evaluation.rating > 0 && (
                 <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-white">
@@ -90,11 +87,10 @@ export default function MemberPerformanceCard({
                 </span>
               )}
             </div>
-            <p className="text-sm text-ink-secondary leading-relaxed">{evaluation.feedback}</p>
+            <p className="text-sm leading-relaxed text-ink-secondary">{evaluation.feedback}</p>
           </div>
         )}
 
-        {/* Evaluate button */}
         {onSaveEvaluation && (
           <Button
             variant={evaluation ? 'secondary' : 'primary'}
@@ -102,13 +98,12 @@ export default function MemberPerformanceCard({
             className="mt-3 w-full justify-center text-xs"
             onClick={openModal}
           >
-            <MessageSquarePlus className="h-3.5 w-3.5 mr-1.5" />
+            <MessageSquarePlus className="mr-1.5 h-3.5 w-3.5" />
             {evaluation ? 'Cập nhật đánh giá' : 'Đánh giá thành viên'}
           </Button>
         )}
       </article>
 
-      {/* Evaluation modal */}
       {onSaveEvaluation && (
         <Modal
           isOpen={modalOpen}
@@ -144,7 +139,7 @@ export default function MemberPerformanceCard({
                 placeholder="Nhập điểm..."
                 className="ez-input w-full"
               />
-              <div className="flex gap-1 mt-1">
+              <div className="mt-1 flex gap-1">
                 {[5, 6, 7, 8, 9, 10].map(n => (
                   <button
                     key={n}

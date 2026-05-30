@@ -1,5 +1,5 @@
-import type { Activity } from '@/types';
-import { Avatar } from '@/components/ui';
+import type { Activity } from '@/api/types';
+import Avatar from '@/components/ui/Avatar';
 
 function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp);
@@ -22,16 +22,16 @@ interface ActivityItemProps {
 
 export default function ActivityItem({ activity }: ActivityItemProps) {
   return (
-    <div className="flex items-start gap-3 py-3 px-2 rounded-lg hover:bg-slate-50 transition-colors">
-      <Avatar src={activity.user.avatar} name={activity.user.name} size="sm" />
-      <div className="flex-1 min-w-0">
+    <div className="flex items-start gap-3 rounded-lg px-2 py-3 transition-colors hover:bg-slate-50">
+      <Avatar src={activity.user.avatar ?? undefined} name={activity.user.fullName} size="sm" />
+      <div className="min-w-0 flex-1">
         <p className="text-sm text-slate-700">
-          <span className="font-medium text-slate-900">{activity.user.name}</span>{' '}
+          <span className="font-medium text-slate-900">{activity.user.fullName}</span>{' '}
           {activity.action}{' '}
           <span className="font-medium text-slate-800">{activity.target}</span>
         </p>
       </div>
-      <span className="text-xs text-slate-500 shrink-0 tabular-nums">
+      <span className="shrink-0 text-xs text-slate-500 tabular-nums">
         {formatRelativeTime(activity.timestamp)}
       </span>
     </div>

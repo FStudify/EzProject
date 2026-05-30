@@ -19,7 +19,7 @@ import {
 } from 'react';
 import { login as apiLogin, register as apiRegister, logout as apiLogout } from '@/api/auth.api';
 import { getMe } from '@/api/user.api';
-import { getAccessToken, setTokens, clearTokens } from '@/api/config';
+import { getAccessToken, clearTokens } from '@/api/config';
 import type { User } from '@/api/types';
 
 const USER_STORAGE_KEY = 'ez_user';

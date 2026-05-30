@@ -10,7 +10,8 @@ import {
   normalizePerformanceList,
   normalizeActivityList,
 } from './normalize';
-import type { ProjectMemberDetail, MemberPerformance, Activity } from './types';
+import type { Activity } from '@/types';
+import type { ProjectMemberDetail, MemberPerformance } from './types';
 
 /** ── Members ─────────────────────────────────────────────── */
 

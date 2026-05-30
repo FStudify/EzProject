@@ -2,9 +2,9 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { getProjects } from '@/api/project.api';
 import type { ProjectStatus } from '@/api/types';
-import type { Project } from '@/api/types';
 import { Button, Modal } from '@/components/ui';
 import ProjectCard from './ProjectCard';
+import type { Project } from '@/types';
 import {
   BarChart3,
   Clock3,

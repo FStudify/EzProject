@@ -166,6 +166,9 @@ exports.delete = async (req, res, next) => {
 
 exports.rsvp = async (req, res, next) => {
   try {
+    if (typeof req.body.willAttend !== 'boolean') {
+      throw errors.BadRequest('willAttend must be a boolean');
+    }
     await checkMember(req.params.projectId, req.user.id);
     await Meeting.findOneAndUpdate(
       {

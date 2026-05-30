@@ -6,7 +6,6 @@ import Button from '@/components/ui/Button';
 
 const WELCOME_MESSAGE: ChatMessage = {
   id: 'Xin Chào',
-  projectId: '',
   roomId: 'ai',
   sender: 'ai',
   content:
@@ -88,7 +87,6 @@ export default function AIChatDialog() {
 
     const userMessage: ChatMessage = {
       id: `ai-user-${Date.now()}`,
-      projectId: '',
       roomId: 'ai',
       sender: null,
       content: trimmed,
@@ -101,7 +99,6 @@ export default function AIChatDialog() {
     setTimeout(() => {
       const aiResponse: ChatMessage = {
         id: `ai-resp-${Date.now()}`,
-        projectId: '',
         roomId: 'ai',
         sender: 'ai',
         content: "Tôi không chắc về điều đó. Hãy thử hỏi về nhiệm vụ, thời hạn, tiến độ hoặc ưu tiên!",
@@ -178,7 +175,7 @@ export default function AIChatDialog() {
                 <ChatMessageBubble
                   key={msg.id}
                   message={msg}
-                  isOwn={msg.sender !== 'ai' && msg.sender !== null && msg.sender.id === 'mem-1'}
+                  isOwn={msg.sender !== 'ai' && msg.sender !== null && (msg.sender as { id: string }).id === 'mem-1'}
                 />
               ))}
           </div>

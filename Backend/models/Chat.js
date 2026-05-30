@@ -16,6 +16,9 @@ const chatRoomSchema = new mongoose.Schema({
   },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  settings: {
+    inviteLocked: { type: Boolean, default: false },
+  },
 }, { timestamps: true });
 
 const chatMessageSchema = new mongoose.Schema({

@@ -1,6 +1,6 @@
 import { Sparkles } from 'lucide-react';
-import type { ChatMessage as ChatMessageType } from '@/types';
-import { ProjectMemberAvatar } from '@/components/ui';
+import type { ChatMessage as ChatMessageType, Member } from '@/types';
+import Avatar from '@/components/ui/Avatar';
 
 function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp);
@@ -21,13 +21,13 @@ function formatRelativeTime(timestamp: string): string {
 interface ChatMessageProps {
   message: ChatMessageType;
   isOwn: boolean;
-  projectMembers?: import('@/types').ProjectMember[];
 }
 
-export default function ChatMessage({ message, isOwn, projectMembers = [] }: ChatMessageProps) {
+export default function ChatMessage({ message, isOwn }: ChatMessageProps) {
   const sender = message.sender;
   const isAI = sender === 'ai';
-  const senderName = isAI ? 'Chatbot AI' : sender.name;
+  const senderObj = !isAI && sender ? (sender as Member) : null;
+  const senderName = isAI ? 'Chatbot AI' : (senderObj?.name ?? senderObj?.fullName ?? 'Unknown');
 
   return (
     <div className={`flex gap-2 ${isOwn ? 'flex-row-reverse' : ''}`}>
@@ -36,8 +36,12 @@ export default function ChatMessage({ message, isOwn, projectMembers = [] }: Cha
           <div className="flex h-8 w-8 items-center justify-center rounded-full bg-violet-100 text-violet-600">
             <Sparkles className="h-4 w-4" aria-hidden />
           </div>
+        ) : senderObj ? (
+          <Avatar name={senderObj.name ?? senderObj.fullName ?? 'User'} src={senderObj.avatar ?? undefined} size="sm" />
         ) : (
-          <ProjectMemberAvatar member={message.sender as import('@/types').Member} projectMembers={projectMembers} size="sm" />
+          <div className="flex h-8 w-8 items-center justify-center rounded-full bg-slate-200 text-slate-500">
+            ?
+          </div>
         )}
       </div>
       <div className={`flex min-w-0 max-w-[85%] flex-col ${isOwn ? 'items-end' : 'items-start'}`}>
@@ -51,7 +55,7 @@ export default function ChatMessage({ message, isOwn, projectMembers = [] }: Cha
                 : 'bg-slate-100 text-slate-900'
           }`}
         >
-          <p className="text-sm leading-relaxed break-words">{message.content}</p>
+          <p className="break-words text-sm leading-relaxed">{message.content}</p>
         </div>
         <span className="mt-0.5 text-xs text-slate-500">{formatRelativeTime(message.timestamp)}</span>
       </div>

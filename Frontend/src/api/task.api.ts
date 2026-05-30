@@ -6,7 +6,7 @@
 import { api } from './config';
 import { Endpoints } from './endpoints';
 import { normalizeTaskList } from './normalize';
-import type { Task } from './types';
+import type { Task } from '@/types';
 
 interface TaskFilters {
   status?: Task['status'];

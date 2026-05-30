@@ -93,7 +93,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
 
       <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
         <div className="flex -space-x-2.5">
-          {project.members.slice(0, 4).map(({ user: member, isOwner, role }, index) => (
+          {project.members.slice(0, 4).map(({ member, isOwner, role }, index) => (
             <div key={member.id} className="rounded-full ring-2 ring-surface" title={member.fullName}>
               <MemberAvatar
                 src={member.avatar}

@@ -8,10 +8,12 @@ import {
   ArrowRight,
   AlertTriangle,
   TrendingUp,
+  Loader2,
 } from 'lucide-react';
 import { getProject } from '@/api/project.api';
 import { getTasks } from '@/api/task.api';
 import { getActivities } from '@/api/member.api';
+import type { Project, Task, Activity } from '@/api/types';
 import { Card, ProgressBar, MemberAvatar } from '@/components/ui';
 import { getRoleLabel } from '@/components/ui/RoleIcons';
 
@@ -29,9 +31,9 @@ function timeAgo(ts: string) {
 
 export default function ProjectOverview() {
   const { projectId } = useParams<{ projectId: string }>();
-  const [project, setProject] = useState(null);
-  const [tasks, setTasks] = useState([]);
-  const [activities, setActivities] = useState([]);
+  const [project, setProject] = useState<Project | null>(null);
+  const [tasks, setTasks] = useState<Task[]>([]);
+  const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -60,7 +62,7 @@ export default function ProjectOverview() {
       total: tasks.length,
       done: tasks.filter(t => t.status === 'DONE').length,
       inProgress: tasks.filter(t => t.status === 'IN_PROGRESS').length,
-      overdue: tasks.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED' && new Date(t.deadline).getTime() < now).length,
+      overdue: tasks.filter(t => t.status !== 'DONE' && t.status !== 'CANCELLED' && t.deadline != null && new Date(t.deadline).getTime() < now).length,
     };
   }, [tasks]);
 
@@ -73,8 +75,9 @@ export default function ProjectOverview() {
 
   if (loading) {
     return (
-      <div className="py-16 text-center">
-        <p className="text-ink-muted">Đang tải...</p>
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-ink-muted">Đang tải...</span>
       </div>
     );
   }
@@ -188,13 +191,13 @@ export default function ProjectOverview() {
             Thành viên
           </h3>
           <ul className="space-y-2">
-            {project.members.slice(0, 5).map(({ user, role, isOwner }) => {
-              const active = tasks.filter(t => t.assignee?.id === user.id && t.status !== 'DONE').length;
+            {project.members.slice(0, 5).map(({ member, role, isOwner }) => {
+              const active = tasks.filter(t => t.assignee?.id === member.id && t.status !== 'DONE').length;
               return (
-                <li key={user.id} className="flex items-center gap-2.5">
-                  <MemberAvatar src={user.avatar} name={user.fullName} isOwner={isOwner} role={role} size="sm" />
+                <li key={member.id} className="flex items-center gap-2.5">
+                  <MemberAvatar src={member.avatar} name={member.fullName} isOwner={isOwner} role={role} size="sm" />
                   <div className="min-w-0 flex-1">
-                    <p className="truncate text-sm font-medium text-ink">{user.fullName}</p>
+                    <p className="truncate text-sm font-medium text-ink">{member.fullName}</p>
                     <p className="text-xs text-ink-muted">{getRoleLabel(role, isOwner)}</p>
                   </div>
                   {active > 0 && (

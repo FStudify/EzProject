@@ -26,7 +26,7 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
     setLoading(true);
     const roomId = channel === 'task' ? 'task-panel' : 'doc-panel';
     getChatMessages(projectId, roomId)
-      .then((data) => setMessages(data.messages))
+      .then((data) => setMessages(data.messages as ChatMessage[]))
       .catch(() => {})
       .finally(() => setLoading(false));
   }, [isOpen, projectId, channel]);
@@ -43,12 +43,11 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
 
     const newMessage: ChatMessage = {
       id: `msg-new-${Date.now()}`,
-      projectId,
       roomId: channel === 'task' ? 'task-panel' : 'doc-panel',
       sender: null,
       content: trimmed,
       timestamp: new Date().toISOString(),
-      channel,
+      channel: channel === 'task' ? 'task' : 'document',
     };
     setMessages((prev) => [...prev, newMessage]);
     setInput('');
@@ -108,7 +107,7 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
                 <ChatMessageBubble
                   key={msg.id}
                   message={msg}
-                  isOwn={msg.sender !== 'ai' && msg.sender !== null && msg.sender.id === 'mem-1'}
+                  isOwn={msg.sender !== 'ai' && msg.sender !== null && (msg.sender as { id: string }).id === 'mem-1'}
                 />
               ))}
             </div>

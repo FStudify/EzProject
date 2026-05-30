@@ -348,7 +348,7 @@ function TaskModalContent({
                       <div className="shrink-0"><ProjectMemberAvatar member={commentItem.author} projectMembers={projectMembers} size="sm" /></div>
                       <div className="min-w-0 flex-1">
                         <div className="flex items-center gap-2">
-                          <span className="font-medium text-[#1F1F1F]">{commentItem.author.name}</span>
+                          <span className="font-medium text-[#1F1A1F]">{commentItem.author.name}</span>
                           <span className="text-xs text-[#8A7B70]">
                             {new Date(commentItem.createdAt).toLocaleString(undefined, {
                               month: 'short',

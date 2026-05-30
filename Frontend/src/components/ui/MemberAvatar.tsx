@@ -3,10 +3,10 @@ import type { ProjectRole } from '@/types';
 import Avatar from './Avatar';
 
 interface MemberAvatarProps {
-  src?: string;
+  src?: string | null;
   name: string;
   isOwner?: boolean;
-  role?: ProjectRole;
+  role?: 'LEADER' | 'SUPERVISOR' | 'MEMBER' | 'leader' | 'supervisor' | 'member';
   size?: 'sm' | 'md' | 'lg';
   /** Gray ring when offline, green when online */
   online?: boolean;
@@ -15,10 +15,10 @@ interface MemberAvatarProps {
 const sizePx = { sm: 32, md: 40, lg: 48 };
 const iconSizes = { sm: 'h-3 w-3', md: 'h-4 w-4', lg: 'h-5 w-5' };
 
-const ROLE_ICONS: Record<ProjectRole, { Icon: typeof Flame; label: string }> = {
-  leader: { Icon: Flame, label: 'Trưởng nhóm' },
-  supervisor: { Icon: BookOpen, label: 'Giám sát' },
-  member: { Icon: Pickaxe, label: 'Thành viên' },
+const ROLE_ICONS: Record<string, { Icon: typeof Flame; label: string }> = {
+  LEADER: { Icon: Flame, label: 'Trưởng nhóm' },
+  SUPERVISOR: { Icon: BookOpen, label: 'Giám sát' },
+  MEMBER: { Icon: Pickaxe, label: 'Thành viên' },
 };
 
 export default function MemberAvatar({
@@ -31,11 +31,12 @@ export default function MemberAvatar({
 }: MemberAvatarProps) {
   const px = sizePx[size];
   const iconSz = iconSizes[size];
-  const normalizedRole = (role?.toLowerCase() as ProjectRole | undefined) ?? 'member';
-  const roleEntry = ROLE_ICONS[normalizedRole] ?? ROLE_ICONS.member;
+  const upperRole = role?.toUpperCase() ?? 'MEMBER';
+  const roleEntry = ROLE_ICONS[upperRole] ?? ROLE_ICONS.MEMBER;
   const { Icon, label } = roleEntry;
   const ringClass = online ? 'ring-2 ring-emerald-500' : 'ring-2 ring-slate-300';
   const tooltipLines = [name, isOwner && 'Chủ sở hữu', label].filter(Boolean).join('\n');
+  const avatarSrc = src ?? undefined;
 
   return (
     <div className="relative inline-block group" title={tooltipLines}>
@@ -43,7 +44,7 @@ export default function MemberAvatar({
         className={`rounded-full overflow-hidden ${ringClass}`}
         style={{ width: px, height: px }}
       >
-        <Avatar src={src} name={name} size={size} />
+        <Avatar src={avatarSrc} name={name} size={size} />
       </div>
 
       {isOwner && (
@@ -61,9 +62,9 @@ export default function MemberAvatar({
       >
         <Icon
           className={`${iconSz} ${
-            role === 'leader'
+            upperRole === 'LEADER'
               ? 'text-orange-500'
-              : role === 'supervisor'
+              : upperRole === 'SUPERVISOR'
                 ? 'text-blue-600'
                 : 'text-slate-600'
           }`}

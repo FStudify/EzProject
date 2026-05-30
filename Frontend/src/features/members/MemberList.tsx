@@ -4,11 +4,10 @@ import { Button, Modal, MemberAvatar, Badge, useToast } from '@/components/ui';
 import { UserPlus, Pencil, LogOut, Link2 } from 'lucide-react';
 import type { ProjectRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import type { DictKey } from '@/i18n/dict';
 import { getProjectMembers, updateMemberRole, removeMember } from '@/api/member.api';
 import type { ProjectMemberDetail } from '@/api/types';
-
-const CURRENT_MEMBER_ID = 'user-1'; // TODO: replace with auth context
 
 const ROLE_OPTIONS: { value: ProjectRole; labelKey: DictKey }[] = [
   { value: 'member', labelKey: 'role_member' },
@@ -38,6 +37,7 @@ export default function MemberList() {
   const { projectId } = useParams<{ projectId: string }>();
   const { toast } = useToast();
   const { t } = useLanguage();
+  const { user: authUser } = useAuth();
 
   const [members, setMembers] = useState<ProjectMemberDetail[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,7 +64,7 @@ export default function MemberList() {
     void fetchMembers();
   }, [projectId, t, toast]);
 
-  const currentMembership = members.find((pm) => pm.user.id === CURRENT_MEMBER_ID);
+  const currentMembership = members.find((pm) => pm.user.id === authUser?.id);
   const canManage =
     currentMembership?.role === 'LEADER' ||
     currentMembership?.role === 'SUPERVISOR' ||
@@ -209,8 +209,8 @@ export default function MemberList() {
               <tbody>
                 {members.map(({ user, role, isOwner }) => {
                   const uiRole = apiRoleToUiRole(role);
-                  const activeTasks = members.find((pm) => pm.user.id === user.id)?.tasksAssigned ?? 0;
-                  const isSelf = user.id === CURRENT_MEMBER_ID;
+                  const activeTasks = user.tasksAssigned ?? 0;
+                  const isSelf = user.id === authUser?.id;
 
                   return (
                     <tr

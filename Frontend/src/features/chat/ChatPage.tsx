@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useMemo } from 'react';
+import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Hash,
@@ -11,35 +11,37 @@ import {
   MoreVertical,
   LogOut,
   Pencil,
-  Check,
   Trash2,
+  Check,
 } from 'lucide-react';
 import { getChatRooms, getChatMessages } from '@/api/chat.api';
 import { getProjectMembers } from '@/api/member.api';
-import type { ChatMessage, ChatRoom, Member } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import type { ChatMessage, ChatRoom, Member, ProjectMember } from '@/types';
 import ChatMessageBubble from './ChatMessage';
 import { ProjectMemberAvatar, Button, Badge } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
 
-const CURRENT_USER_ID = 'mem-1';
+function makeGeneralRoomId(projectId: string) {
+  return `room-general-${projectId}`;
+}
 
 export default function ChatPage() {
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useLanguage();
+  const { user } = useAuth();
+  const currentUserId = user?.id ?? '';
 
   const [loadingRooms, setLoadingRooms] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
-  const [activeRoomId, setActiveRoomId] = useState<string>(() =>
-    `room-general-${projectId ?? ''}`,
-  );
+  const [activeRoomId, setActiveRoomId] = useState<string>('');
   const [allMessages, setAllMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [searchQuery, setSearchQuery] = useState('');
   const [showCreateModal, setShowCreateModal] = useState(false);
   const [dropdownRoomId, setDropdownRoomId] = useState<string | null>(null);
   const [renameRoomId, setRenameRoomId] = useState<string | null>(null);
-
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const dropdownRef = useRef<HTMLDivElement>(null);
@@ -47,11 +49,14 @@ export default function ChatPage() {
   const activeRoom = rooms.find((r) => r.id === activeRoomId);
   const roomMessages = allMessages.filter((m) => m.roomId === activeRoomId);
 
-  const channels = rooms.filter((r) => r.type === 'general' || r.type === 'channel');
+  const channels = useMemo(
+    () => rooms.filter((r) => r.type === 'general' || r.type === 'channel'),
+    [rooms],
+  );
 
   const dmMembers = useMemo(
-    () => allMembers.filter((m) => m.id !== CURRENT_USER_ID),
-    [allMembers],
+    () => allMembers.filter((m) => m.id !== currentUserId),
+    [allMembers, currentUserId],
   );
 
   const filteredChannels = searchQuery
@@ -65,32 +70,34 @@ export default function ChatPage() {
   useEffect(() => {
     if (!projectId) return;
     setLoadingRooms(true);
+    const defaultRoomId = makeGeneralRoomId(projectId);
+
     Promise.all([getChatRooms(projectId), getProjectMembers(projectId)])
       .then(([roomsData, membersData]) => {
         const all = [...roomsData.general, ...roomsData.channels, ...roomsData.direct];
         const hasGeneral = roomsData.general.length > 0;
         if (!hasGeneral && membersData.length > 0) {
           const generalRoom: ChatRoom = {
-            id: `room-general-${projectId}`,
+            id: defaultRoomId,
             projectId,
-            name: t('general_channel'),
-            type: 'general',
-            members: membersData.map((m) => m.user as unknown as Member),
+            name: t('general_channel') ?? 'General',
+            type: 'GENERAL',
+            members: membersData.map((m) => ({ id: m.user.id, name: m.user.fullName, fullName: m.user.fullName, avatar: m.user.avatar ?? null, email: m.user.email ?? '' })),
             createdAt: new Date().toISOString(),
           };
-          setRooms([generalRoom, ...all]);
+          setRooms([generalRoom, ...(all as ChatRoom[])]);
         } else {
-          setRooms(all);
+          setRooms(all as ChatRoom[]);
         }
         setAllMembers(
           membersData.map((m) => ({
             id: m.user.id,
             name: m.user.fullName,
             email: m.user.email ?? '',
-            avatar: m.user.avatar ?? '',
+            avatar: m.user.avatar ?? null,
           })),
         );
-        setActiveRoomId(`room-general-${projectId}`);
+        setActiveRoomId(defaultRoomId);
       })
       .catch(() => {})
       .finally(() => setLoadingRooms(false));
@@ -101,7 +108,7 @@ export default function ChatPage() {
     if (!projectId || !activeRoomId) return;
     setLoadingMessages(true);
     getChatMessages(projectId, activeRoomId)
-      .then((data) => setAllMessages(data.messages))
+      .then((data) => setAllMessages(data.messages as ChatMessage[]))
       .catch(() => {})
       .finally(() => setLoadingMessages(false));
   }, [projectId, activeRoomId]);
@@ -123,29 +130,34 @@ export default function ChatPage() {
     }
   }, [roomMessages.length, activeRoomId]);
 
-  const handleSend = () => {
+  const handleSend = useCallback(() => {
     const trimmed = input.trim();
-    if (!trimmed || !projectId) return;
+    if (!trimmed || !projectId || !activeRoomId) return;
 
-    const currentUser = allMembers.find((m) => m.id === CURRENT_USER_ID) ?? allMembers[0];
+    const currentUser: Member = allMembers.find((m) => m.id === currentUserId) ?? {
+      id: currentUserId,
+      name: user?.fullName ?? 'User',
+      fullName: user?.fullName ?? 'User',
+      email: user?.email ?? '',
+      avatar: user?.avatar ?? null,
+    };
     const newMessage: ChatMessage = {
       id: `msg-${Date.now()}`,
-      projectId,
       roomId: activeRoomId,
-      sender: currentUser,
+      sender: { id: currentUser.id, name: currentUser.name, fullName: currentUser.fullName, avatar: currentUser.avatar, email: currentUser.email },
       content: trimmed,
-      timestamp: new Date().toISOString(),
       channel: 'group',
+      timestamp: new Date().toISOString(),
     };
     setAllMessages((prev) => [...prev, newMessage]);
     setInput('');
-  };
+  }, [input, projectId, activeRoomId, allMembers, currentUserId, user]);
 
-  const handleCreateChannel = (name: string, memberIds: string[]) => {
+  const handleCreateChannel = useCallback((name: string, memberIds: string[]) => {
     if (!projectId) return;
     const selectedMembers = allMembers.filter((m) => memberIds.includes(m.id));
-    if (!selectedMembers.some((m) => m.id === CURRENT_USER_ID)) {
-      const currentUser = allMembers.find((m) => m.id === CURRENT_USER_ID) ?? allMembers[0];
+    const currentUser = allMembers.find((m) => m.id === currentUserId) ?? allMembers[0];
+    if (!selectedMembers.some((m) => m.id === currentUserId) && currentUser) {
       selectedMembers.unshift(currentUser);
     }
     const newRoom: ChatRoom = {
@@ -159,60 +171,66 @@ export default function ChatPage() {
     setRooms((prev) => [...prev, newRoom]);
     setActiveRoomId(newRoom.id);
     setShowCreateModal(false);
-  };
+  }, [projectId, allMembers, currentUserId]);
 
-  const handleRenameRoom = (roomId: string, newName: string) => {
-    setRooms((prev) =>
-      prev.map((r) => (r.id === roomId ? { ...r, name: newName.trim() } : r)),
-    );
+  const handleRenameRoom = useCallback((roomId: string, newName: string) => {
+    setRooms((prev) => prev.map((r) => (r.id === roomId ? { ...r, name: newName.trim() } : r)));
     setRenameRoomId(null);
-  };
+  }, []);
 
-  const handleLeaveRoom = (roomId: string) => {
+  const handleLeaveRoom = useCallback((roomId: string) => {
     setRooms((prev) => prev.filter((r) => r.id !== roomId));
-    if (activeRoomId === roomId) {
-      setActiveRoomId(`room-general-${projectId ?? ''}`);
+    if (activeRoomId === roomId && projectId) {
+      setActiveRoomId(makeGeneralRoomId(projectId));
     }
     setDropdownRoomId(null);
-  };
+  }, [activeRoomId, projectId]);
 
-  const handleDeleteRoom = (roomId: string) => {
+  const handleDeleteRoom = useCallback((roomId: string) => {
     setRooms((prev) => prev.filter((r) => r.id !== roomId));
-    if (activeRoomId === roomId) {
-      setActiveRoomId(`room-general-${projectId ?? ''}`);
+    if (activeRoomId === roomId && projectId) {
+      setActiveRoomId(makeGeneralRoomId(projectId));
     }
     setDropdownRoomId(null);
-  };
+  }, [activeRoomId, projectId]);
 
-  const handleOpenDM = (member: Member) => {
+  const handleOpenDM = useCallback((member: Member) => {
     const dmId = `dm-${member.id}`;
     const existing = rooms.find((r) => r.id === dmId);
     if (existing) {
       setActiveRoomId(dmId);
       return;
     }
-    const currentUser = allMembers.find((m) => m.id === CURRENT_USER_ID) ?? allMembers[0];
+    const currentUser: Member = allMembers.find((m) => m.id === currentUserId) ?? {
+      id: currentUserId,
+      name: user?.fullName ?? 'User',
+      email: user?.email ?? '',
+      avatar: user?.avatar ?? null,
+    };
     const newRoom: ChatRoom = {
       id: dmId,
       projectId: projectId!,
       name: member.name,
       type: 'direct',
-      members: [currentUser, member],
+      members: [
+        { id: currentUser.id, name: currentUser.name, fullName: currentUser.name, avatar: currentUser.avatar, email: currentUser.email },
+        { id: member.id, name: member.name, fullName: member.name, avatar: member.avatar, email: member.email },
+      ],
       createdAt: new Date().toISOString(),
     };
     setRooms((prev) => [...prev, newRoom]);
     setActiveRoomId(dmId);
-  };
+  }, [rooms, allMembers, currentUserId, projectId, user]);
 
-  const onlineIds = new Set(allMembers.slice(0, 3).map((m) => m.id));
-  const projectMembers = allMembers;
+  const onlineIds = useMemo(() => new Set(allMembers.slice(0, 3).map((m) => m.id)), [allMembers]);
+  const projectMembers: ProjectMember[] = allMembers.map((m) => ({ member: m, isOwner: false, role: 'MEMBER' }));
 
   const getRoomIcon = (room: ChatRoom) => {
     if (room.type === 'direct') {
-      const other = room.members.find((m) => m.id !== CURRENT_USER_ID) ?? room.members[0];
+      const other = room.members.find((m) => m.id !== currentUserId) ?? room.members[0];
       return (
         <ProjectMemberAvatar
-          member={other}
+          member={{ id: other.id, name: other.name, fullName: other.fullName, avatar: other.avatar, email: other.email }}
           projectMembers={projectMembers}
           size="sm"
           online={onlineIds.has(other.id)}
@@ -239,17 +257,17 @@ export default function ChatPage() {
   };
 
   const getDmRoomForMember = (member: Member) =>
-    rooms.find((r) => r.type === 'direct' && r.members.some((m) => m.id === member.id));
+    rooms.find((r) => r.type === 'DIRECT' && r.members.some((m) => m.id === member.id));
 
   const getRoomDropdown = (room: ChatRoom) => {
-    if (room.type === 'direct') return null;
+    if (room.type === 'DIRECT') return null;
     if (dropdownRoomId !== room.id) return null;
     return (
       <div
         ref={dropdownRef}
         className="absolute right-0 top-full z-50 mt-1 w-48 rounded-xl border border-border bg-surface p-1 shadow-xl"
       >
-        {room.type === 'general' ? (
+        {room.type === 'GENERAL' ? (
           <p className="px-3 py-2 text-xs text-ink-muted">{t('channel_general_cant_edit')}</p>
         ) : (
           <>
@@ -424,9 +442,11 @@ export default function ChatPage() {
               <div className="min-w-0 flex-1">
                 <h3 className="text-sm font-bold text-slate-900">{activeRoom.name}</h3>
                 <p className="text-xs text-slate-500">
-                  {activeRoom.type === 'direct'
-                    ? t('direct_message')
-                    : `${activeRoom.members.length} ${t('members').toLowerCase()}`}
+        {activeRoom.type === 'direct'
+          ? activeRoom.members.find((m) => m.id !== currentUserId)
+              ? `${activeRoom.members.find((m) => m.id !== currentUserId)?.name}`
+              : t('direct_message')
+          : `${activeRoom.members.length} ${t('members').toLowerCase()}`}
                 </p>
               </div>
 
@@ -462,8 +482,7 @@ export default function ChatPage() {
                 <ChatMessageBubble
                   key={msg.id}
                   message={msg}
-                  isOwn={msg.sender !== 'ai' && msg.sender !== null && msg.sender.id === CURRENT_USER_ID}
-                  projectMembers={projectMembers}
+                  isOwn={msg.sender != null && msg.sender !== 'ai' && (msg.sender as Member).id === currentUserId}
                 />
               ))}
             </div>
@@ -497,6 +516,7 @@ export default function ChatPage() {
         <CreateChannelModal
           members={allMembers}
           projectMembers={projectMembers}
+          currentUserId={currentUserId}
           onClose={() => setShowCreateModal(false)}
           onCreate={handleCreateChannel}
         />
@@ -517,16 +537,17 @@ export default function ChatPage() {
 interface CreateChannelModalProps {
   members: Member[];
   projectMembers?: Member[];
+  currentUserId: string;
   onClose: () => void;
   onCreate: (name: string, memberIds: string[]) => void;
 }
 
-function CreateChannelModal({ members, projectMembers = [], onClose, onCreate }: CreateChannelModalProps) {
+function CreateChannelModal({ members, projectMembers = [], currentUserId, onClose, onCreate }: CreateChannelModalProps) {
   const { t } = useLanguage();
   const [name, setName] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
 
-  const otherMembers = members.filter((m) => m.id !== CURRENT_USER_ID);
+  const otherMembers = members.filter((m) => m.id !== currentUserId);
 
   const toggleMember = (id: string) => {
     setSelectedIds((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));

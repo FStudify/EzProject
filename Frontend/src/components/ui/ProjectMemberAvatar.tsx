@@ -2,7 +2,7 @@ import type { Member, ProjectMember } from '@/types';
 import Avatar from './Avatar';
 import MemberAvatar from './MemberAvatar';
 
-function getRoleInfo(projectMembers: ProjectMember[], memberId: string): { isOwner: boolean; role: 'leader' | 'supervisor' | 'member' } | null {
+function getRoleInfo(projectMembers: ProjectMember[], memberId: string): { isOwner: boolean; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER' | 'leader' | 'supervisor' | 'member' } | null {
   const pm = projectMembers.find((p) => p.member.id === memberId);
   return pm ? { isOwner: pm.isOwner, role: pm.role } : null;
 }
@@ -37,5 +37,6 @@ export default function ProjectMemberAvatar({
     );
   }
 
-  return <Avatar src={member.avatar} name={member.name} size={size} online={online} />;
+  const avatarSrc = member.avatar ?? undefined;
+  return <Avatar src={avatarSrc} name={member.name} size={size} online={online} />;
 }

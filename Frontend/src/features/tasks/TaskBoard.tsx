@@ -4,7 +4,8 @@ import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock } from 'lucide-rea
 import { projectService } from '@/services';
 import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
 import type { Task, TaskStatus, TaskPriority } from '@/api/types';
-import { Button, ProjectMemberAvatar } from '@/components/ui';
+import { Button } from '@/components/ui';
+import Avatar from '@/components/ui/Avatar';
 import { ChatPanel } from '@/features/chat';
 import TaskColumn from './TaskColumn';
 import TaskTimeline from './TaskTimeline';
@@ -44,7 +45,7 @@ export default function TaskBoard() {
   const { projectId } = useParams<{ projectId: string }>();
 
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [project, setProject] = useState<Awaited<ReturnType<typeof projectService.getProject>>>(null);
+  const [project, setProject] = useState<Awaited<ReturnType<typeof projectService.getById>>>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -55,7 +56,7 @@ export default function TaskBoard() {
   const [now, setNow] = useState(() => Date.now());
   const filterRef = useRef<HTMLDivElement>(null);
 
-  const members = project?.members.map((pm) => pm.user) ?? [];
+  const members = project?.members.map((pm) => pm.member) ?? [];
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== '');
 
@@ -195,7 +196,7 @@ export default function TaskBoard() {
     setIsLoading(true);
     Promise.all([
       getTasks(projectId),
-      projectService.getProject(projectId),
+      projectService.getById(projectId),
     ])
       .then(([tasksData, projectData]) => {
         setTasks(tasksData);
@@ -425,7 +426,7 @@ export default function TaskBoard() {
                             <div className="flex items-center gap-2">
                               {task.assignee && (
                                 <>
-                                  <ProjectMemberAvatar member={task.assignee} projectMembers={project?.members ?? []} size="sm" />
+                                  <Avatar name={task.assignee.fullName} src={task.assignee.avatar ?? undefined} size="sm" />
                                   <span className="text-slate-600">{task.assignee.fullName}</span>
                                 </>
                               )}
@@ -470,7 +471,7 @@ export default function TaskBoard() {
                             <div className="flex items-center gap-2">
                               {task.assignee && (
                                 <>
-                                  <ProjectMemberAvatar member={task.assignee} projectMembers={project?.members ?? []} size="sm" />
+                                  <Avatar name={task.assignee.fullName} src={task.assignee.avatar ?? undefined} size="sm" />
                                   <span className="text-slate-600">{task.assignee.fullName}</span>
                                 </>
                               )}

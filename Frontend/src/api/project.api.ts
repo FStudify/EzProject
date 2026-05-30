@@ -9,7 +9,7 @@ import {
   normalizeProjectList,
   normalizeProjectDetail,
 } from './normalize';
-import type { Project, PaginatedResponse } from './types';
+import type { Project, PaginatedResponse } from '@/types';
 
 interface ProjectFilters {
   status?: 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';

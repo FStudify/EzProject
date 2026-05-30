@@ -16,7 +16,6 @@
  */
 
 import { ApiError, NetworkError, UnauthorizedError } from './errors';
-import type { ApiResponse, PaginatedResponse } from './types';
 
 // ── Storage Keys ─────────────────────────────────────────────
 const ACCESS_TOKEN_KEY = 'ez_access_token';
@@ -189,9 +188,14 @@ function handleResponse<T>(response: Response): Promise<T> {
 }
 
 function normalizeError(status: number, body: unknown): ApiError {
+  const raw = body as Record<string, unknown> | null;
   const msg =
-    typeof body === 'object' && body !== null && 'error' in body
-      ? (body as Record<string, unknown>).error?.message || JSON.stringify(body)
+    raw && 'error' in raw
+      ? typeof raw.error === 'string'
+        ? raw.error
+        : typeof raw.error === 'object' && raw.error !== null && 'message' in raw.error
+          ? String((raw.error as Record<string, unknown>).message)
+          : JSON.stringify(body)
       : typeof body === 'string'
         ? body
         : `HTTP ${status}`;

@@ -131,7 +131,7 @@ export default function Topbar({ title }: TopbarProps) {
               aria-expanded={isMenuOpen}
               aria-label="Menu"
             >
-              <Avatar name={user?.displayName ?? 'User'} size="sm" />
+              <Avatar name={user?.fullName ?? 'User'} size="sm" />
             </button>
 
             {isMenuOpen && (

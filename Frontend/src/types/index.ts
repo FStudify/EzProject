@@ -1,24 +1,144 @@
-export type TaskStatus = 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'ON_HOLD' | 'CANCELLED';
-export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
-export type FileType = 'DOC' | 'PDF' | 'PPT' | 'ZIP' | 'IMG' | 'OTHER';
+/**
+ * ============================================================
+ * Frontend Types — Unified via @/api/types
+ * ============================================================
+ *
+ * Strategy:
+ * - Shared scalar types (TaskStatus, ProjectStatus, etc.) → re-export from @/api/types
+ * - Complex object types → define LOCALLY so all components use the same shape
+ *   (components expect `name`, not `fullName`; `avatar: null`, not `avatar: string`)
+ * - Types with no UI-specific field mismatches → re-export from @/api/types
+ */
 
-export type ProjectRole = 'leader' | 'supervisor' | 'member';
+export type {
+  TaskStatus,
+  TaskPriority,
+  FileType,
+  MeetingStatus,
+  MeetingType,
+  ChatRoomType,
+  MessageChannel,
+  NotificationType,
+} from '@/api/types';
 
+export type ProjectStatus = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
+export type ProjectRole = 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+export type WorkloadLevel = 'LOW' | 'MEDIUM' | 'HIGH';
+
+// ── Scalar & scalar-like types ─────────────────────────────────
+
+export type { User } from '@/api/types';
+export type { ApiResponse, PaginatedResponse, AuthTokens, AuthResponse } from '@/api/types';
+export type { RequestType } from '@/api/types';
+export type { ContributionDay, MemberEvaluation, MemberPerformance } from '@/api/types';
+
+// ── Local types (shape must match component expectations) ─────────
+
+/** Local Member — UI expects `.name`, not `.fullName` */
 export interface Member {
   id: string;
   name: string;
+  /** Alias so API shapes with fullName also work */
+  fullName?: string;
   email: string;
-  avatar: string;
+  avatar: string | null;
   role?: ProjectRole;
 }
 
+export function userToMember(user: { id: string; fullName: string; email?: string; avatar?: string | null }): Member {
+  return { id: user.id, name: user.fullName, fullName: user.fullName, email: user.email ?? '', avatar: user.avatar ?? null };
+}
+
+/** Local Task — assignee uses local Member */
+export interface Task {
+  id: string;
+  projectId: string;
+  title: string;
+  description: string | null;
+  status: 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'ON_HOLD' | 'CANCELLED';
+  priority: 'LOW' | 'MEDIUM' | 'HIGH';
+  assignee: Member | null;
+  creator: Member;
+  deadline: string | null;
+  requestType: string | null;
+  requestNote: string | null;
+  comments: TaskComment[];
+  commentsCount?: number;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+/** Local TaskComment — author uses local Member (with `.name`) */
+export interface TaskComment {
+  id: string;
+  content: string;
+  author: Member;
+  mentions?: string[];
+  createdAt: string;
+}
+
+/** Local Meeting — attendees use local Member (with `.name`) */
+export type MeetingStatus2 = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+export type MeetingType2 = 'online' | 'offline';
+
+export interface Meeting {
+  id: string;
+  projectId: string;
+  title: string;
+  description?: string;
+  startTime: string;
+  endTime: string;
+  type: MeetingType2;
+  location?: string;
+  meetingLink?: string;
+  status: MeetingStatus2;
+  organizer: Member;
+  attendees: Member[];
+  attendeeResponses?: Record<string, { willAttend: boolean | null; declineReason?: string | null }>;
+  createdAt: string;
+}
+
+/** Local ChatRoom — members use local Member (with `.name`) */
+export interface ChatRoom {
+  id: string;
+  projectId: string;
+  name: string;
+  type: 'general' | 'channel' | 'direct';
+  members: Member[];
+  createdBy: Member;
+  settings: {
+    inviteLocked: boolean;
+  };
+  createdAt: string;
+}
+
+/** Local ChatMessage — sender uses local Member (with `.name`) */
+export interface ChatMessage {
+  id: string;
+  roomId: string;
+  sender: Member | 'ai' | null;
+  content: string;
+  channel: 'group' | 'task' | 'document' | 'ai';
+  timestamp: string;
+}
+
+/** Local Activity — user uses local Member (with `.name`) */
+export interface Activity {
+  id: string;
+  user: Member;
+  action: string;
+  target: string;
+  targetType?: string | null;
+  targetId?: string | null;
+  timestamp: string;
+}
+
+/** Local Project — members use local ProjectMember (with `.name`) */
 export interface ProjectMember {
   member: Member;
   isOwner: boolean;
   role: ProjectRole;
 }
-
-export type ProjectStatus = 'active' | 'completed' | 'archived';
 
 export interface Project {
   id: string;
@@ -28,17 +148,41 @@ export interface Project {
   status?: ProjectStatus;
   progress: number;
   members: ProjectMember[];
-  createdAt: string;
   deadline: string;
   totalTasks: number;
   completedTasks: number;
+  createdAt?: string;
 }
 
-export type NotificationType = 'task' | 'meeting' | 'chat' | 'document';
+// ── Document types ────────────────────────────────────────────────
+
+export interface Document {
+  id: string;
+  projectId: string;
+  name: string;
+  fileType: 'DOC' | 'PDF' | 'PPT' | 'ZIP' | 'IMG' | 'OTHER';
+  size: string;
+  uploadedBy: Member;
+  uploadDate: string;
+  fileUrl?: string;
+  folderId?: string | null;
+}
+
+export interface Folder {
+  id: string;
+  projectId: string;
+  name: string;
+  parentId?: string | null;
+  createdAt: string;
+}
+
+// ── Notification ────────────────────────────────────────────────
+
+export type NotificationType2 = 'task' | 'meeting' | 'chat' | 'document';
 
 export interface AppNotification {
   id: string;
-  type: NotificationType;
+  type: NotificationType2;
   title: string;
   body: string;
   read: boolean;
@@ -46,7 +190,33 @@ export interface AppNotification {
   link?: string;
 }
 
-export type WorkloadLevel = 'light' | 'medium' | 'heavy';
+// ── Performance ────────────────────────────────────────────────
+
+export interface MemberPerformanceDetail {
+  member: Member;
+  role: 'leader' | 'supervisor' | 'member';
+  isOwner: boolean;
+  tasksCompleted: number;
+  tasksInProgress: number;
+  tasksTodo: number;
+  documentsUploaded: number;
+  commentsCount: number;
+  score: number;
+  contributions: { date: string; count: number }[];
+  evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null;
+}
+
+// ── Member types ────────────────────────────────────────────────
+
+export interface ProjectMemberDetail {
+  user: { id: string; fullName: string; avatar?: string | null };
+  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+  isOwner: boolean;
+  tasksAssigned: number;
+  tasksCompleted: number;
+}
+
+// ── Local-only helpers ─────────────────────────────────────────
 
 export interface TeamHealthWeek {
   weekLabel: string;
@@ -54,29 +224,6 @@ export interface TeamHealthWeek {
   stressAvg: number;
   moraleAvg: number;
   responseCount: number;
-}
-
-export interface TaskComment {
-  id: string;
-  content: string;
-  author: Member;
-  createdAt: string;
-  mentions?: string[];
-}
-
-export interface Task {
-  id: string;
-  projectId: string;
-  title: string;
-  description: string;
-  status: TaskStatus;
-  priority: TaskPriority;
-  assignee: Member;
-  deadline: string;
-  createdAt: string;
-  requestType?: 'review' | 'pause';
-  requestNote?: string;
-  comments?: TaskComment[];
 }
 
 export interface DocumentComment {
@@ -93,102 +240,3 @@ export interface DocumentAuditEntry {
   user: Member;
   timestamp: string;
 }
-
-export type MeetingStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
-export type MeetingType = 'online' | 'offline';
-
-export interface MeetingAttendeeResponse {
-  willAttend: boolean;
-  declineReason?: string;
-}
-
-export interface Meeting {
-  id: string;
-  projectId: string;
-  title: string;
-  description?: string;
-  startTime: string;
-  endTime: string;
-  type: MeetingType;
-  /** For offline: meeting address */
-  location?: string;
-  /** For online: meeting link (Zoom, Meet, etc.) */
-  meetingLink?: string;
-  status: MeetingStatus;
-  organizer: Member;
-  attendees: Member[];
-  /** memberId -> response. willAttend true = attending, false = declined with optional reason */
-  attendeeResponses?: Record<string, MeetingAttendeeResponse>;
-  createdAt: string;
-}
-
-export interface Document {
-  id: string;
-  projectId: string;
-  name: string;
-  fileType: FileType;
-  size: string;
-  uploadedBy: Member;
-  uploadDate: string;
-  /** URL for preview (e.g. /sample.docx) */
-  fileUrl?: string;
-  /** Folder this document belongs to (null = root) */
-  folderId?: string | null;
-}
-
-export interface Activity {
-  id: string;
-  projectId: string;
-  user: Member;
-  action: string;
-  target: string;
-  timestamp: string;
-}
-
-export type ChatRoomType = 'general' | 'channel' | 'direct';
-
-export interface ChatRoom {
-  id: string;
-  projectId: string;
-  name: string;
-  type: ChatRoomType;
-  members: Member[];
-  createdAt: string;
-}
-
-export interface ChatMessage {
-  id: string;
-  projectId: string;
-  roomId: string;
-  sender: (Member & { avatar: string | null }) | 'ai' | null;
-  content: string;
-  timestamp: string;
-  channel: 'group' | 'task' | 'document' | 'ai';
-}
-
-export interface ContributionDay {
-  date: string;
-  count: number;
-}
-
-export interface MemberPerformance {
-  member: Pick<Member, 'id'> & { name: string; fullName: string; email: string; avatar: string };
-  role: 'leader' | 'supervisor' | 'member';
-  isOwner: boolean;
-  tasksCompleted: number;
-  tasksInProgress: number;
-  tasksTodo: number;
-  documentsUploaded: number;
-  commentsCount: number;
-  contributions: ContributionDay[];
-  score: number;
-  evaluation: MemberEvaluation | null;
-}
-
-export interface MemberEvaluation {
-  memberId: string;
-  rating: number;
-  feedback: string;
-  evaluatedAt: string;
-}
-

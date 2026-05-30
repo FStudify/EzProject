@@ -3,9 +3,9 @@
  * Auth API Module
  * ============================================================
  */
-import { api, getAccessToken, getRefreshToken, setTokens, clearTokens } from './config';
+import { api, getRefreshToken, setTokens, clearTokens } from './config';
 import { Endpoints } from './endpoints';
-import type { AuthResponse, User } from './types';
+import type { AuthResponse } from './types';
 
 /** Login — tra ve user + tokens */
 export async function login(

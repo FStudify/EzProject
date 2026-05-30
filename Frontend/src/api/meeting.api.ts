@@ -6,7 +6,7 @@
 import { api } from './config';
 import { Endpoints } from './endpoints';
 import { normalizeMeetingList } from './normalize';
-import type { Meeting } from './types';
+import type { Meeting } from '@/types';
 
 /** Lay danh sach cuoc hop */
 export async function getMeetings(

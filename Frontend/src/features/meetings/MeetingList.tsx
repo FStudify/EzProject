@@ -209,20 +209,21 @@ export default function MeetingList() {
     setIsLoading(true);
     Promise.all([
       getMeetings(projectId),
-      projectService.getProject(projectId),
+      projectService.getById(projectId),
     ])
       .then(([meetingsData, projectData]) => {
         setMeetings(meetingsData.map(apiMeetingToLocal));
         setProjectMembers(
           projectData.members.map((pm) => ({
             member: {
-              id: pm.user.id,
-              name: pm.user.fullName,
-              email: '',
-              avatar: pm.user.avatar ?? '',
+              id: pm.member.id,
+              name: pm.member.fullName,
+              fullName: pm.member.fullName,
+              email: pm.member.email,
+              avatar: pm.member.avatar,
             },
             isOwner: pm.isOwner,
-            role: pm.role.toLowerCase() as import('@/types').ProjectRole,
+            role: pm.role,
           })),
         );
       })

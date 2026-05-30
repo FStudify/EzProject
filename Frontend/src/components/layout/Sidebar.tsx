@@ -227,11 +227,11 @@ export default function Sidebar() {
             `flex items-center gap-2.5 rounded-lg px-2 py-1.5 transition-colors ${isActive ? 'bg-sidebar-active' : 'hover:bg-sidebar-hover'}`
           }
         >
-          <Avatar name={user?.displayName ?? 'User'} size="sm" />
+          <Avatar name={user?.fullName ?? 'User'} size="sm" />
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-medium text-on-sidebar">
-                {user?.displayName ?? user?.username ?? 'User'}
+                {user?.fullName ?? user?.username ?? 'User'}
               </p>
               <p className="truncate text-xs text-on-sidebar-muted">{t('role_student')}</p>
             </div>

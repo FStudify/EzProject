@@ -1,11 +1,11 @@
 import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Award, FolderKanban, ListTodo, Settings, TrendingUp } from 'lucide-react';
+import { Award, FolderKanban, ListTodo, Settings, TrendingUp, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, Avatar, Button } from '@/components/ui';
 import ProjectCard from '@/features/projects/ProjectCard';
 import { getProjects } from '@/api/project.api';
-import type { Project, MemberPerformance } from '@/types';
+import type { Project } from '@/types';
 
 const BADGES = [
   { id: 'b1', title: 'Đúng hạn liên tiếp 7 task', earned: true },
@@ -23,7 +23,7 @@ export default function ProfilePage() {
   const [description, setDescription] = useState(user?.bio ?? '');
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [performance, setPerformance] = useState<MemberPerformance[]>([]);
+  const [performance] = useState<MemberPerformance[]>([]);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [isLoading, setIsLoading] = useState(true);
 
@@ -36,27 +36,23 @@ export default function ProfilePage() {
   }, [user?.username, user?.fullName, user?.email, user?.phone, user?.bio]);
 
   useEffect(() => {
-    const fetchData = async () => {
-      if (!user?.id) return;
-      setIsLoading(true);
-      try {
-        const [projectsRes, perfRes] = await Promise.all([
-          getProjects({ limit: 50 }),
-          Promise.all([]),
-        ]);
-        setProjects(projectsRes.data.filter((p) => p.members.some((m) => m.user.id === user.id)));
-        const totalTasks = projectsRes.data
-          .filter((p) => p.members.some((m) => m.user.id === user.id))
-          .reduce((acc, p) => acc + p.completedTasks, 0);
-        setTasksCompleted(totalTasks);
-        setPerformance([]);
-      } catch (err) {
+    if (!user?.id) return;
+    setIsLoading(true);
+    getProjects({ limit: 50 })
+      .then((res) => {
+        const myProjects = res.data
+          .filter((p) => p.members.some((m) => m.member.id === user.id));
+        setProjects(myProjects);
+        const total = myProjects.reduce((acc, p) => acc + p.completedTasks, 0);
+        setTasksCompleted(total);
+      })
+      .catch((err) => {
         console.error('Failed to load profile data:', err);
-      } finally {
+        setProjects([]);
+      })
+      .finally(() => {
         setIsLoading(false);
-      }
-    };
-    fetchData();
+      });
   }, [user?.id]);
 
   const canSaveProfile =
@@ -65,8 +61,6 @@ export default function ProfilePage() {
         username.trim() &&
         displayName.trim() &&
         email.trim() &&
-        phone.trim() &&
-        description.trim() &&
         (username.trim() !== user.username || displayName.trim() !== user.fullName || email.trim() !== user.email || phone.trim() !== user.phone || description.trim() !== user.bio),
     );
 
@@ -88,145 +82,93 @@ export default function ProfilePage() {
     ? Math.round((myPerformance.tasksCompleted / Math.max(myPerformance.tasksCompleted + 2, 1)) * 88)
     : 85;
 
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <span className="ml-2 text-ink-muted">Đang tải...</span>
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-6">
-      {isLoading ? (
-        <Card>
-          <div className="flex animate-pulse flex-col gap-4 sm:flex-row sm:items-center">
-            <div className="h-16 w-16 shrink-0 rounded-full bg-surface-muted" />
-            <div className="flex-1 space-y-3">
-              <div className="h-6 w-48 rounded bg-surface-muted" />
-              <div className="h-4 w-72 rounded bg-surface-muted" />
-              <div className="h-4 w-64 rounded bg-surface-muted" />
-            </div>
-          </div>
-        </Card>
-      ) : (
-        <Card>
-          <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
-            <Avatar name={user?.fullName ?? 'User'} size="lg" />
-            <div className="min-w-0 flex-1">
-              {isEditing ? (
-                <div className="space-y-3">
-                  <div>
-                    <label htmlFor="profile-username" className="ez-label">
-                      Tên tài khoản
-                    </label>
-                    <input
-                      id="profile-username"
-                      value={username}
-                      onChange={(e) => setUsername(e.target.value)}
-                      className="ez-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="profile-display-name" className="ez-label">
-                      Tên hiển thị
-                    </label>
-                    <input
-                      id="profile-display-name"
-                      value={displayName}
-                      onChange={(e) => setDisplayName(e.target.value)}
-                      className="ez-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="profile-email" className="ez-label">
-                      Email
-                    </label>
-                    <input
-                      id="profile-email"
-                      type="email"
-                      value={email}
-                      onChange={(e) => setEmail(e.target.value)}
-                      className="ez-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="profile-phone" className="ez-label">
-                      Số điện thoại
-                    </label>
-                    <input
-                      id="profile-phone"
-                      type="tel"
-                      value={phone}
-                      onChange={(e) => setPhone(e.target.value)}
-                      className="ez-input w-full"
-                    />
-                  </div>
-                  <div>
-                    <label htmlFor="profile-description" className="ez-label">
-                      Mô tả
-                    </label>
-                    <textarea
-                      id="profile-description"
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="ez-input h-24 w-full resize-none"
-                    />
-                  </div>
+      <Card>
+        <div className="flex flex-col gap-4 sm:flex-row sm:items-center">
+          <Avatar name={user?.fullName ?? 'User'} size="lg" />
+          <div className="min-w-0 flex-1">
+            {isEditing ? (
+              <div className="space-y-3">
+                <div>
+                  <label htmlFor="profile-username" className="ez-label">Tên tài khoản</label>
+                  <input id="profile-username" value={username} onChange={(e) => setUsername(e.target.value)} className="ez-input w-full" />
                 </div>
-              ) : (
-                <div className="space-y-3">
-                  <div className="flex flex-wrap items-center gap-2">
-                    <p className="text-2xl font-bold text-ink">{user?.fullName ?? 'Người dùng'}</p>
-                    <span className="rounded-full bg-surface-muted px-2 py-1 text-xs font-medium text-ink-muted">
-                      @{user?.username ?? 'username'}
-                    </span>
-                  </div>
-                  <div className="grid gap-2 text-sm sm:grid-cols-2">
-                    <p className="text-ink-muted">
-                      <span className="font-semibold text-ink">Email:</span> {user?.email}
-                    </p>
-                    <p className="text-ink-muted">
-                      <span className="font-semibold text-ink">SĐT:</span> {user?.phone || 'Chưa có'}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm text-ink-secondary">{user?.bio || 'Đại học FPT · Kỹ thuật phần mềm · K18'}</p>
+                <div>
+                  <label htmlFor="profile-display-name" className="ez-label">Tên hiển thị</label>
+                  <input id="profile-display-name" value={displayName} onChange={(e) => setDisplayName(e.target.value)} className="ez-input w-full" />
                 </div>
-              )}
-            </div>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
-              {isEditing ? (
-                <>
-                  <Button
-                    variant="secondary"
-                    size="sm"
-                    onClick={() => {
-                      setUsername(user?.username ?? '');
-                      setDisplayName(user?.fullName ?? '');
-                      setEmail(user?.email ?? '');
-                      setPhone(user?.phone ?? '');
-                      setDescription(user?.bio ?? '');
-                      setIsEditing(false);
-                    }}
-                  >
-                    Hủy
-                  </Button>
-                  <Button variant="primary" size="sm" onClick={saveProfile} disabled={!canSaveProfile}>
-                    Lưu
-                  </Button>
-                </>
-              ) : (
-                <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>
-                  Chỉnh sửa
-                </Button>
-              )}
-              <Link to="/settings">
-                <Button variant="secondary" size="sm">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Cài đặt
-                </Button>
-              </Link>
-            </div>
+                <div>
+                  <label htmlFor="profile-email" className="ez-label">Email</label>
+                  <input id="profile-email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} className="ez-input w-full" />
+                </div>
+                <div>
+                  <label htmlFor="profile-phone" className="ez-label">Số điện thoại</label>
+                  <input id="profile-phone" type="tel" value={phone} onChange={(e) => setPhone(e.target.value)} className="ez-input w-full" />
+                </div>
+                <div>
+                  <label htmlFor="profile-description" className="ez-label">Mô tả</label>
+                  <textarea id="profile-description" value={description} onChange={(e) => setDescription(e.target.value)} className="ez-input h-24 w-full resize-none" />
+                </div>
+              </div>
+            ) : (
+              <div className="space-y-3">
+                <div className="flex flex-wrap items-center gap-2">
+                  <p className="text-2xl font-bold text-ink">{user?.fullName ?? 'Người dùng'}</p>
+                  <span className="rounded-full bg-surface-muted px-2 py-1 text-xs font-medium text-ink-muted">@{user?.username ?? 'username'}</span>
+                </div>
+                <div className="grid gap-2 text-sm sm:grid-cols-2">
+                  <p className="text-ink-muted"><span className="font-semibold text-ink">Email:</span> {user?.email}</p>
+                  <p className="text-ink-muted"><span className="font-semibold text-ink">SĐT:</span> {user?.phone || 'Chưa có'}</p>
+                </div>
+                <p className="mt-1 text-sm text-ink-secondary">{user?.bio || 'Chưa có mô tả'}</p>
+              </div>
+            )}
           </div>
-        </Card>
-      )}
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            {isEditing ? (
+              <>
+                <Button
+                  variant="secondary" size="sm"
+                  onClick={() => {
+                    setUsername(user?.username ?? '');
+                    setDisplayName(user?.fullName ?? '');
+                    setEmail(user?.email ?? '');
+                    setPhone(user?.phone ?? '');
+                    setDescription(user?.bio ?? '');
+                    setIsEditing(false);
+                  }}
+                >
+                  Hủy
+                </Button>
+                <Button variant="primary" size="sm" onClick={saveProfile} disabled={!canSaveProfile}>Lưu</Button>
+              </>
+            ) : (
+              <Button variant="secondary" size="sm" onClick={() => setIsEditing(true)}>Chỉnh sửa</Button>
+            )}
+            <Link to="/settings">
+              <Button variant="secondary" size="sm">
+                <Settings className="mr-2 h-4 w-4" />
+                Cài đặt
+              </Button>
+            </Link>
+          </div>
+        </div>
+      </Card>
 
       <div className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         {[
-          { icon: FolderKanban, label: 'Dự án tham gia', value: isLoading ? '-' : projects.length },
-          { icon: ListTodo, label: 'Task hoàn thành', value: isLoading ? '-' : tasksCompleted },
+          { icon: FolderKanban, label: 'Dự án tham gia', value: projects.length },
+          { icon: ListTodo, label: 'Task hoàn thành', value: tasksCompleted },
           { icon: TrendingUp, label: 'Đúng hạn', value: `${onTimeRate}%` },
         ].map(({ icon: Icon, label, value }) => (
           <div key={label} className="ez-stat-card">
@@ -261,9 +203,7 @@ export default function ProfilePage() {
       <div>
         <h2 className="mb-4 text-base font-semibold text-ink">Dự án đang tham gia</h2>
         <div className="space-y-4">
-          {isLoading ? (
-            <p className="text-sm text-ink-muted">Đang tải...</p>
-          ) : projects.length === 0 ? (
+          {projects.length === 0 ? (
             <p className="text-sm text-ink-muted">Chưa tham gia dự án nào.</p>
           ) : (
             projects.map((p) => <ProjectCard key={p.id} project={p} />)

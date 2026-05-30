@@ -5,13 +5,14 @@
  */
 
 export class ApiError extends Error {
-  constructor(
-    public readonly status: number,
-    message: string,
-    public readonly field?: string,
-  ) {
+  public readonly status: number;
+  public readonly field?: string;
+
+  constructor(status: number, message: string, field?: string) {
     super(message);
     this.name = 'ApiError';
+    this.status = status;
+    this.field = field;
   }
 }
 
@@ -30,11 +31,11 @@ export class UnauthorizedError extends Error {
 }
 
 export class ValidationError extends Error {
-  constructor(
-    message: string,
-    public readonly errors?: Array<{ field: string; message: string }>,
-  ) {
+  public readonly errors?: Array<{ field: string; message: string }>;
+
+  constructor(message: string, errors?: Array<{ field: string; message: string }>) {
     super(message);
     this.name = 'ValidationError';
+    this.errors = errors;
   }
 }

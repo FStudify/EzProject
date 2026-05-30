@@ -1,6 +1,6 @@
 import { useMemo } from 'react';
 import type { Task, TaskStatus, ProjectMember } from '@/types';
-import { ProjectMemberAvatar } from '@/components/ui';
+import Avatar from '@/components/ui/Avatar';
 
 interface TaskTimelineProps {
   tasks: Task[];
@@ -132,13 +132,13 @@ export default function TaskTimeline({
               onClick={() => onTaskClick?.(task)}
             >
               <div className="flex min-w-0 items-center gap-2 border-r border-border px-3 py-2.5">
-                <ProjectMemberAvatar member={task.assignee} projectMembers={projectMembers} size="sm" />
+                <Avatar name={task.assignee?.fullName ?? '?'} src={task.assignee?.avatar ?? undefined} size="sm" />
                 <div className="min-w-0">
                   <p className="truncate text-sm font-semibold text-[#1F1F1F]">
                     {task.title}
                   </p>
                   <p className="text-xs text-[#7F7167]">
-                    {task.assignee.name}
+                    {task.assignee?.fullName ?? 'Chưa giao'}
                     {isInProgress && (
                       <span className="ml-1 rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-primary">
                         Đang làm

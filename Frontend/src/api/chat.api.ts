@@ -5,8 +5,12 @@
  */
 import { api } from './config';
 import { Endpoints } from './endpoints';
-import { normalizeChatRooms, normalizeChatMessages } from './normalize';
-import type { ChatRoom, ChatMessage } from './types';
+import {
+  normalizeChatRooms,
+  normalizeChatRoom,
+  normalizeChatMessages,
+} from './normalize';
+import type { ChatRoom, ChatMessage } from '@/types';
 
 interface MessageListResponse {
   messages: ChatMessage[];
@@ -20,6 +24,15 @@ export async function getChatRooms(
 ): Promise<{ general: ChatRoom[]; channels: ChatRoom[]; direct: ChatRoom[] }> {
   const raw = await api.get<unknown>(Endpoints.CHAT_ROOMS(projectId));
   return normalizeChatRooms(raw);
+}
+
+/** Lay chi tiet 1 phong (members + createdBy + settings) */
+export async function getChatRoom(
+  projectId: string,
+  roomId: string,
+): Promise<ChatRoom> {
+  const raw = await api.get<unknown>(Endpoints.CHAT_ROOM_DETAIL(projectId, roomId));
+  return normalizeChatRoom(raw);
 }
 
 /** Lay tin nhan cua phong (phan trang) */
@@ -48,9 +61,10 @@ export async function getChatMessages(
 /** Tao kenh moi */
 export async function createChatRoom(
   projectId: string,
-  data: { name: string; type: 'CHANNEL'; memberIds: string[] },
+  data: { name: string; type: 'channel'; memberIds?: string[] },
 ): Promise<ChatRoom> {
-  return api.post<ChatRoom>(Endpoints.CHAT_ROOM_CREATE(projectId), data);
+  const raw = await api.post<unknown>(Endpoints.CHAT_ROOM_CREATE(projectId), data);
+  return normalizeChatRoom(raw);
 }
 
 /** Doi ten kenh */
@@ -59,10 +73,11 @@ export async function renameChatRoom(
   roomId: string,
   name: string,
 ): Promise<ChatRoom> {
-  return api.put<ChatRoom>(
+  const raw = await api.put<unknown>(
     Endpoints.CHAT_ROOM_DETAIL(projectId, roomId),
     { name },
   );
+  return normalizeChatRoom(raw);
 }
 
 /** Xoa kenh */
@@ -73,11 +88,48 @@ export async function deleteChatRoom(
   return api.delete(Endpoints.CHAT_ROOM_DETAIL(projectId, roomId));
 }
 
+/** Them thanh vien vao kenh */
+export async function addChatRoomMembers(
+  projectId: string,
+  roomId: string,
+  memberIds: string[],
+): Promise<ChatRoom> {
+  const raw = await api.post<unknown>(
+    `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/members`,
+    { memberIds },
+  );
+  return normalizeChatRoom(raw);
+}
+
+/** Xoa thanh vien khoi kenh (kick) */
+export async function removeChatRoomMember(
+  projectId: string,
+  roomId: string,
+  userId: string,
+): Promise<void> {
+  return api.delete(`${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/members/${userId}`);
+}
+
+/** Thay doi cai dat kenh (khoa/moi thanh vien) */
+export async function updateChatRoomSettings(
+  projectId: string,
+  roomId: string,
+  settings: { inviteLocked?: boolean },
+): Promise<ChatRoom> {
+  const raw = await api.patch<unknown>(
+    `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/settings`,
+    settings,
+  );
+  return normalizeChatRoom(raw);
+}
+
 /** Gui tin nhan vao phong */
 export async function sendMessage(
   projectId: string,
   roomId: string,
   data: { content: string; channel?: string },
 ): Promise<ChatMessage> {
-  return api.post<ChatMessage>(Endpoints.CHAT_SEND_MESSAGE(projectId, roomId), data);
+  const raw = await api.post<unknown>(Endpoints.CHAT_SEND_MESSAGE(projectId, roomId), data);
+  const normalized = normalizeChatMessages([raw]);
+  return normalized[0];
 }
