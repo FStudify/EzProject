@@ -134,7 +134,7 @@ function normalizeActivity(raw: Record<string, unknown>): Activity {
   };
 }
 
-function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
+export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
   const membersArr = (raw.members ?? []) as Record<string, unknown>[];
   const createdByRaw = raw.createdBy as Record<string, unknown> | string | null;
   return {

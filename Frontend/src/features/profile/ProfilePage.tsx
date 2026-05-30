@@ -1,11 +1,12 @@
-import { useEffect, useState } from 'react';
+  import { useEffect, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Award, FolderKanban, ListTodo, Settings, TrendingUp, Loader2 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { Card, Avatar, Button } from '@/components/ui';
 import ProjectCard from '@/features/projects/ProjectCard';
 import { getProjects } from '@/api/project.api';
-import type { Project } from '@/types';
+import { updateProfile } from '@/api/user.api';
+import type { Project, MemberPerformance } from '@/types';
 
 const BADGES = [
   { id: 'b1', title: 'Đúng hạn liên tiếp 7 task', earned: true },
@@ -14,7 +15,7 @@ const BADGES = [
 ];
 
 export default function ProfilePage() {
-  const { user, setUser } = useAuth();
+  const { user, refreshUser } = useAuth();
   const [isEditing, setIsEditing] = useState(false);
   const [username, setUsername] = useState(user?.username ?? '');
   const [displayName, setDisplayName] = useState(user?.fullName ?? '');
@@ -64,17 +65,19 @@ export default function ProfilePage() {
         (username.trim() !== user.username || displayName.trim() !== user.fullName || email.trim() !== user.email || phone.trim() !== user.phone || description.trim() !== user.bio),
     );
 
-  const saveProfile = () => {
+  const saveProfile = async () => {
     if (!user || !canSaveProfile) return;
-    setUser({
-      ...user,
-      username: username.trim(),
-      fullName: displayName.trim(),
-      email: email.trim(),
-      phone: phone.trim(),
-      bio: description.trim(),
-    });
-    setIsEditing(false);
+    try {
+      await updateProfile({
+        fullName: displayName.trim(),
+        phone: phone.trim(),
+        bio: description.trim(),
+      });
+      await refreshUser();
+      setIsEditing(false);
+    } catch (err) {
+      console.error('Failed to update profile:', err);
+    }
   };
 
   const myPerformance = performance.find((p) => p.member.id === user?.id);

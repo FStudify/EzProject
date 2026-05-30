@@ -9,21 +9,27 @@ import type { User, NotificationResponse } from './types';
 
 /** Lấy profile cua user hien tai */
 export async function getMe(): Promise<User> {
-  return api.get<User>(Endpoints.USER_ME);
+  const user = await api.get<any>(Endpoints.USER_ME);
+  if (user) user.id = user._id || user.id;
+  return user as User;
 }
 
 /** Cap nhat profile */
 export async function updateProfile(
   data: Partial<Pick<User, 'fullName' | 'phone' | 'department' | 'position' | 'bio'>>,
 ): Promise<User> {
-  return api.put<User>(Endpoints.USER_ME, data);
+  const user = await api.put<any>(Endpoints.USER_ME, data);
+  if (user) user.id = user._id || user.id;
+  return user as User;
 }
 
 /** Cap nhat preferences (theme, language) */
 export async function updatePreferences(
   data: { theme?: 'LIGHT' | 'DARK'; language?: 'VI' | 'EN' },
 ): Promise<User> {
-  return api.put<User>(Endpoints.USER_PREFERENCES, data);
+  const user = await api.put<any>(Endpoints.USER_PREFERENCES, data);
+  if (user) user.id = user._id || user.id;
+  return user as User;
 }
 
 /** Doi mat khau */
@@ -55,10 +61,14 @@ export async function uploadAvatar(
 ): Promise<{ avatar: string; user: User }> {
   const formData = new FormData();
   formData.append('avatar', file);
-  return api.upload<{ avatar: string; user: User }>(Endpoints.USER_AVATAR, formData);
+  const res = await api.upload<any>(Endpoints.USER_AVATAR, formData);
+  if (res.user) res.user.id = res.user._id || res.user.id;
+  return res as { avatar: string; user: User };
 }
 
 /** Xoa avatar */
 export async function deleteAvatar(): Promise<User> {
-  return api.delete<User>(Endpoints.USER_AVATAR);
+  const user = await api.delete<any>(Endpoints.USER_AVATAR);
+  if (user) user.id = user._id || user.id;
+  return user as User;
 }

@@ -152,7 +152,7 @@ export default function MemberList() {
   };
 
   const copyInviteLink = () => {
-    const link = `${window.location.origin}/projects/${projectId}?invite=demo`;
+    const link = `${window.location.origin}/app/projects/${projectId}?invite=demo`;
     void navigator.clipboard.writeText(link);
     toast(t('invite_link_copied'), 'success');
   };
