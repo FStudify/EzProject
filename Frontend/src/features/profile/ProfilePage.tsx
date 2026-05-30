@@ -4,16 +4,18 @@ import { getProjects } from '@/api/project.api';
 import { updateProfile, getUserActivities, uploadAvatar, getUserStats } from '@/api/user.api';
 import type { Project, MemberPerformance } from '@/types';
 import { useToast } from '@/components/ui';
+import { useLanguage } from '@/contexts/LanguageContext';
 import './ProfileStyles.css';
 
 const BADGES = [
-  { id: 'b1', title: 'Đúng hạn liên tiếp 7 task', icon: 'timer', colorClass: 'from-amber-200 to-amber-400 text-amber-900', borderClass: 'border-amber-100' },
-  { id: 'b2', title: 'Nhóm trưởng đầu tiên', icon: 'crowdsource', colorClass: 'from-purple-200 to-purple-400 text-purple-900', borderClass: 'border-purple-100' },
-  { id: 'b3', title: '100% review pass', icon: 'verified', colorClass: 'from-emerald-200 to-emerald-400 text-emerald-900', borderClass: 'border-emerald-100' },
+  { id: 'b1', titleKey: 'badge_1' as const, icon: 'timer', colorClass: 'from-amber-200 to-amber-400 text-amber-900', borderClass: 'border-amber-100' },
+  { id: 'b2', titleKey: 'badge_2' as const, icon: 'crowdsource', colorClass: 'from-purple-200 to-purple-400 text-purple-900', borderClass: 'border-purple-100' },
+  { id: 'b3', titleKey: 'badge_3' as const, icon: 'verified', colorClass: 'from-emerald-200 to-emerald-400 text-emerald-900', borderClass: 'border-emerald-100' },
 ];
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
+  const { t, lang } = useLanguage();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -24,10 +26,10 @@ export default function ProfilePage() {
       await uploadAvatar(file);
       setAvatarError(false);
       await refreshUser();
-      toast('Đã cập nhật ảnh đại diện thành công', 'success');
+      toast(t('avatar_update_success'), 'success');
     } catch (err) {
       console.error('Failed to upload avatar', err);
-      toast('Không thể cập nhật ảnh đại diện', 'error');
+      toast(t('avatar_update_error'), 'error');
     }
   };
 
@@ -97,10 +99,10 @@ export default function ProfilePage() {
       });
       await refreshUser();
       setIsEditing(false);
-      toast('Đã cập nhật thông tin thành công', 'success');
+      toast(t('profile_update_success'), 'success');
     } catch (err) {
       console.error('Failed to update profile:', err);
-      toast('Không thể cập nhật thông tin', 'error');
+      toast(t('profile_update_error'), 'error');
     }
   };
 
@@ -136,8 +138,8 @@ export default function ProfilePage() {
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>edit_square</span>
                   </div>
                   <div>
-                    <h2 className="font-headline-md text-headline-md font-bold text-[var(--color-on-surface)]">Chỉnh sửa </h2>
-                    <p className="font-label-md text-label-md text-[var(--color-on-surface-variant)]">Cập nhật thông tin cá nhân của bạn</p>
+                    <h2 className="font-headline-md text-headline-md font-bold text-[var(--color-on-surface)]">{t('edit_profile')}</h2>
+                    <p className="font-label-md text-label-md text-[var(--color-on-surface-variant)]">{t('update_personal_info')}</p>
                   </div>
                 </div>
 
@@ -169,7 +171,7 @@ export default function ProfilePage() {
                   <div className="space-y-1.5">
                     <label className="font-label-md text-label-md text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
                       <span className="material-symbols-outlined text-[18px]">phone</span>
-                      Số điện thoại
+                      {t('phone')}
                     </label>
                     <input
                       className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition-all"
@@ -186,7 +188,7 @@ export default function ProfilePage() {
                     onClick={() => setIsEditing(false)}
                     className="px-6 py-2.5 rounded-xl font-label-md text-label-md bg-[var(--color-surface-container-highest)] text-[var(--color-on-surface)] hover:bg-[var(--color-outline-variant)]/50 transition-colors"
                   >
-                    Hủy
+                    {t('cancel')}
                   </button>
                   <button
                     onClick={saveProfile}
@@ -194,7 +196,7 @@ export default function ProfilePage() {
                     className="px-6 py-2.5 rounded-xl font-label-md text-label-md bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2"
                   >
                     <span className="material-symbols-outlined text-[18px]">save</span>
-                    Lưu thay đổi
+                    {t('save_changes')}
                   </button>
                 </div>
               </div>
@@ -228,19 +230,19 @@ export default function ProfilePage() {
                 <div className="flex-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full">
                   <div className="flex flex-col gap-2">
                     <div className="flex items-center gap-3">
-                      <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-gradient-animate font-extrabold lowercase">{user?.fullName || 'Người dùng'}</h2>
+                      <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-gradient-animate font-extrabold lowercase">{user?.fullName || t('default_user')}</h2>
                       <span className="px-2.5 py-1 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-label-sm-caps text-label-sm-caps shadow-sm uppercase">@{user?.username || 'user'}</span>
                     </div>
-                    <p className="font-body-lg text-body-lg font-semibold text-[var(--color-on-surface)]">Thành viên EzProject</p>
+                    <p className="font-body-lg text-body-lg font-semibold text-[var(--color-on-surface)]">{t('ezproject_member')}</p>
 
                     <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 font-body-md text-body-md font-medium text-[var(--color-on-surface-variant)]">
                       <div className="flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[18px]">mail</span>
-                        <span>{user?.email || 'Chưa cập nhật email'}</span>
+                        <span>{user?.email || t('email_not_updated')}</span>
                       </div>
                       <div className="flex items-center gap-1.5">
                         <span className="material-symbols-outlined text-[18px]">phone</span>
-                        <span>{user?.phone || 'Chưa cập nhật SĐT'}</span>
+                        <span>{user?.phone || t('phone_not_updated')}</span>
                       </div>
                     </div>
 
@@ -250,7 +252,7 @@ export default function ProfilePage() {
                   <div className="flex flex-row md:flex-col gap-3 shrink-0 w-full md:w-auto mt-4 md:mt-0">
                     <button onClick={() => setIsEditing(true)} className="flex-1 md:flex-none py-2.5 px-6 rounded-full btn-neon font-label-md text-label-md flex items-center justify-center gap-2">
                       <span className="material-symbols-outlined text-[18px]">edit</span>
-                      Chỉnh sửa hồ sơ
+                      {t('edit_profile')}
                     </button>
                   </div>
                 </div>
@@ -262,7 +264,7 @@ export default function ProfilePage() {
           <section className="py-2 animate-slide-up" style={{ animationDelay: '0.2s' }}>
             <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
               <div className="stat-glass flex flex-col items-center group cursor-pointer">
-                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Dự án tham gia</span>
+                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">{t('projects')}</span>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-primary)]/5 flex items-center justify-center shadow-inner">
                     <span className="material-symbols-outlined text-[28px] text-[var(--color-primary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(53,37,205,0.3))' }}>folder_open</span>
@@ -272,7 +274,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="stat-glass flex flex-col items-center group cursor-pointer">
-                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Task hoàn thành</span>
+                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">{t('completed_tasks')}</span>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-secondary)]/20 to-[var(--color-secondary)]/5 flex items-center justify-center shadow-inner">
                     <span className="material-symbols-outlined text-[28px] text-[var(--color-secondary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,101,145,0.3))' }}>task_alt</span>
@@ -282,7 +284,7 @@ export default function ProfilePage() {
               </div>
 
               <div className="stat-glass flex flex-col items-center group cursor-pointer">
-                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Đúng hạn</span>
+                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">{t('on_time_rate')}</span>
                 <div className="flex items-center gap-3">
                   <div className="w-12 h-12 rounded-full bg-gradient-to-br from-emerald-500/20 to-emerald-500/5 flex items-center justify-center shadow-inner">
                     <span className="material-symbols-outlined text-emerald-600 text-[28px]" style={{ filter: 'drop-shadow(0 2px 4px rgba(5,150,105,0.3))' }}>trending_up</span>
@@ -297,7 +299,7 @@ export default function ProfilePage() {
           <section className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
             <h3 className="font-headline-md text-headline-md mb-6 flex items-center gap-2 font-bold drop-shadow-sm text-[var(--color-on-surface)]">
               <span className="material-symbols-outlined text-amber-500" style={{ filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.5))' }} style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
-              Thành tích nổi bật
+              {t('outstanding_achievements')}
             </h3>
             <div className="flex flex-wrap gap-4">
               {stats.badges.map(badge => (
@@ -305,17 +307,16 @@ export default function ProfilePage() {
                   <div className={`w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center shrink-0 shadow-inner border ${badge.colorClass} ${badge.borderClass}`}>
                     <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{badge.icon}</span>
                   </div>
-                  <span className={`font-label-md text-label-md font-bold ${badge.colorClass.split(' ').pop()}`}>{badge.title}</span>
+                  <span className={`font-label-md text-label-md font-bold ${badge.colorClass.split(' ').pop()}`}>{t(badge.titleKey)}</span>
                 </div>
               ))}
             </div>
           </section>
 
-          {/* 4. Activity Timeline */}
           <section className="mt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
             <h3 className="font-headline-md text-headline-md text-[var(--color-on-surface)] mb-8 flex items-center gap-2">
               <span className="material-symbols-outlined text-[var(--color-tertiary)]">history</span>
-              Hoạt động gần đây
+              {t('recent_activity')}
             </h3>
             <div className="relative pl-6 md:pl-8 border-l-2 border-[var(--color-outline-variant)]/30 space-y-10 ml-4">
               {activities.length > 0 ? (
@@ -329,16 +330,16 @@ export default function ProfilePage() {
                         <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
                           <h4 className="font-label-md text-label-md text-[var(--color-on-surface)] font-bold">{act.action}</h4>
                           <span className="font-label-sm-caps text-label-sm-caps text-[var(--color-outline)]">
-                            {new Date(act.timestamp).toLocaleString('vi-VN')}
+                            {new Date(act.timestamp).toLocaleString(lang === 'en' ? 'en-US' : 'vi-VN')}
                           </span>
                         </div>
-                        <p className="font-body-md text-body-md text-[var(--color-on-surface-variant)]">{act.target || 'Tương tác với hệ thống'}</p>
+                        <p className="font-body-md text-body-md text-[var(--color-on-surface-variant)]">{act.target || t('system_interaction')}</p>
                       </div>
                     </div>
                   );
                 })
               ) : (
-                <div className="text-[var(--color-on-surface-variant)] text-sm">Chưa có hoạt động nào.</div>
+                <div className="text-[var(--color-on-surface-variant)] text-sm">{t('no_recent_activity')}</div>
               )}
             </div>
           </section>
