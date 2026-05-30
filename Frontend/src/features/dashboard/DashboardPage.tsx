@@ -253,7 +253,7 @@ export default function DashboardPage() {
             )}
           </p>
         </div>
-        <Link to="/projects">
+        <Link to="/app/projects">
           <Button variant="primary" size="sm">+ {t('create_project')}</Button>
         </Link>
       </div>

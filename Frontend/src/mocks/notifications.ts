@@ -9,7 +9,7 @@ export const mockNotifications: AppNotification[] = [
     body: '「Thiết kế UI trang Dashboard」đã được gán cho bạn',
     read: false,
     createdAt: hoursAgo(1),
-    link: '/projects/proj-1/tasks',
+    link: '/app/projects/proj-1/tasks',
   },
   {
     id: 'n2',
@@ -18,7 +18,7 @@ export const mockNotifications: AppNotification[] = [
     body: '「Xây dựng REST API module Sinh viên」hết hạn trong 24 giờ',
     read: false,
     createdAt: hoursAgo(3),
-    link: '/projects/proj-1/tasks',
+    link: '/app/projects/proj-1/tasks',
   },
   {
     id: 'n3',
@@ -27,7 +27,7 @@ export const mockNotifications: AppNotification[] = [
     body: 'Nhóm trưởng yêu cầu sửa: cần bổ sung validation phía client',
     read: false,
     createdAt: hoursAgo(5),
-    link: '/projects/proj-1/tasks',
+    link: '/app/projects/proj-1/tasks',
   },
   {
     id: 'n4',
@@ -36,7 +36,7 @@ export const mockNotifications: AppNotification[] = [
     body: 'Sprint Planning — tuần mới bắt đầu sau 4 giờ',
     read: true,
     createdAt: hoursAgo(8),
-    link: '/projects/proj-1/meetings',
+    link: '/app/projects/proj-1/meetings',
   },
   {
     id: 'n5',
@@ -45,7 +45,7 @@ export const mockNotifications: AppNotification[] = [
     body: '@Khoa xem giúp file wireframe v2 nhé',
     read: true,
     createdAt: hoursAgo(12),
-    link: '/projects/proj-1/chat',
+    link: '/app/projects/proj-1/chat',
   },
   {
     id: 'n6',
@@ -54,7 +54,7 @@ export const mockNotifications: AppNotification[] = [
     body: 'Linh đã tải lên「Báo cáo tiến độ tuần 8.pdf」',
     read: true,
     createdAt: daysFromNow(-1),
-    link: '/projects/proj-1/documents',
+    link: '/app/projects/proj-1/documents',
   },
   {
     id: 'n7',
@@ -63,6 +63,6 @@ export const mockNotifications: AppNotification[] = [
     body: '「Thiết kế database schema」đã được approve',
     read: true,
     createdAt: daysFromNow(-2),
-    link: '/projects/proj-1/tasks',
+    link: '/app/projects/proj-1/tasks',
   },
 ];

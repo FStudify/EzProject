@@ -157,3 +157,47 @@ exports.markAllRead = async (req, res, next) => {
     next(err);
   }
 };
+
+// ── GET /users/me/stats ───────────────────────────────────────────────────────
+exports.getUserStats = async (req, res, next) => {
+  try {
+    const userId = req.user.id;
+    const Task = require('../models/Task');
+    const Project = require('../models/Project');
+
+    // Calculate onTimeRate
+    const completedTasks = await Task.find({ assigneeId: userId, status: 'DONE' }).lean();
+    let onTimeCount = 0;
+    completedTasks.forEach(task => {
+      if (!task.deadline || new Date(task.updatedAt) <= new Date(task.deadline)) {
+        onTimeCount++;
+      }
+    });
+    const onTimeRate = completedTasks.length > 0 ? Math.round((onTimeCount / completedTasks.length) * 100) : 100;
+
+    // Badges
+    const badges = [];
+    if (onTimeCount >= 7) {
+      badges.push({ id: 'b1', title: 'Đúng hạn liên tiếp 7 task', icon: 'timer', colorClass: 'from-amber-200 to-amber-400 text-amber-900', borderClass: 'border-amber-100' });
+    } else if (onTimeCount >= 3) {
+      badges.push({ id: 'b1', title: 'Đúng hạn 3 task', icon: 'timer', colorClass: 'from-amber-200 to-amber-400 text-amber-900', borderClass: 'border-amber-100' });
+    }
+
+    const ledProjects = await Project.countDocuments({ ownerId: userId });
+    if (ledProjects > 0) {
+      badges.push({ id: 'b2', title: 'Nhóm trưởng đầu tiên', icon: 'crowdsource', colorClass: 'from-purple-200 to-purple-400 text-purple-900', borderClass: 'border-purple-100' });
+    }
+
+    if (completedTasks.length > 0) {
+      badges.push({ id: 'b3', title: '100% review pass', icon: 'verified', colorClass: 'from-emerald-200 to-emerald-400 text-emerald-900', borderClass: 'border-emerald-100' });
+    }
+
+    if (badges.length === 0) {
+      badges.push({ id: 'new', title: 'Thành viên mới', icon: 'star', colorClass: 'from-blue-200 to-blue-400 text-blue-900', borderClass: 'border-blue-100' });
+    }
+
+    res.json({ success: true, data: { onTimeRate, badges } });
+  } catch (err) {
+    next(err);
+  }
+};
