@@ -10,6 +10,7 @@ const router = express.Router();
 
 // ── Profile ────────────────────────────────────────────
 router.get('/me', requireAuth, userController.getProfile);
+router.get('/me/stats', requireAuth, userController.getUserStats);
 router.put('/me', requireAuth, validate(validators.updateProfile), userController.updateProfile);
 router.put(
   '/me/preferences',

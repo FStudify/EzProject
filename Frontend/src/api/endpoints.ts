@@ -24,6 +24,8 @@ export const Endpoints = {
   USER_PREFERENCES: `${BASE}/users/me/preferences`,
   USER_PASSWORD: `${BASE}/users/me/password`,
   USER_NOTIFICATIONS: `${BASE}/users/me/notifications`,
+  USER_ACTIVITIES: `${BASE}/users/me/activities`,
+  USER_STATS: `${BASE}/users/me/stats`,
 
   // ── Projects ────────────────────────────────────────────
   PROJECT_LIST: `${BASE}/projects`,

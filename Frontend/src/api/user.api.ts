@@ -72,3 +72,15 @@ export async function deleteAvatar(): Promise<User> {
   if (user) user.id = user._id || user.id;
   return user as User;
 }
+
+/** Lay danh sach hoat dong cua user hien tai */
+export async function getUserActivities(): Promise<any[]> {
+  const res = await api.get<any>(Endpoints.USER_ACTIVITIES);
+  return Array.isArray(res) ? res : res?.data || [];
+}
+
+/** Lay thong ke nguoi dung hien tai */
+export async function getUserStats(): Promise<{ onTimeRate: number; badges: any[] }> {
+  const res = await api.get<any>(Endpoints.USER_STATS);
+  return res.data || { onTimeRate: 85, badges: [] };
+}

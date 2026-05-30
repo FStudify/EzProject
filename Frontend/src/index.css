@@ -139,7 +139,12 @@ body {
 }
 
 /* Minimal typography - reduce font weights */
-h1, h2, h3, h4, h5, h6 {
+h1,
+h2,
+h3,
+h4,
+h5,
+h6 {
   font-weight: 500;
 }
 
@@ -161,17 +166,21 @@ h1, h2, h3, h4, h5, h6 {
   scrollbar-width: auto;
   scrollbar-color: #2563EB #E2E8F0;
 }
+
 .kanban-scroll::-webkit-scrollbar {
   height: 12px;
 }
+
 .kanban-scroll::-webkit-scrollbar-track {
   background: #E2E8F0;
   border-radius: 6px;
 }
+
 .kanban-scroll::-webkit-scrollbar-thumb {
   background: #2563EB;
   border-radius: 6px;
 }
+
 .kanban-scroll::-webkit-scrollbar-thumb:hover {
   background: #1D4ED8;
 }
@@ -206,6 +215,7 @@ h1, h2, h3, h4, h5, h6 {
   -ms-overflow-style: none;
   scrollbar-width: none;
 }
+
 .scrollbar-hide::-webkit-scrollbar {
   display: none;
 }
@@ -238,7 +248,7 @@ h1, h2, h3, h4, h5, h6 {
 .docx-container .docx-wrapper,
 .docx-container .docx-viewer-wrapper {
   background: white !important;
-  box-shadow: 0 1px 3px rgba(0,0,0,0.08) !important;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.08) !important;
   margin: 0 auto !important;
   max-width: 100% !important;
 }
@@ -307,6 +317,7 @@ h1, h2, h3, h4, h5, h6 {
     opacity: 0;
     transform: translateY(20px) scale(0.98);
   }
+
   to {
     opacity: 1;
     transform: translateY(0) scale(1);
@@ -314,10 +325,12 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes ez-float {
+
   0%,
   100% {
     transform: translateY(0);
   }
+
   50% {
     transform: translateY(-7px);
   }
@@ -332,11 +345,13 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @keyframes ez-green-pulse {
+
   0%,
   100% {
     opacity: 0.72;
     box-shadow: 0 0 0 0 rgba(137, 211, 100, 0.52);
   }
+
   50% {
     opacity: 1;
     box-shadow: 0 0 0 10px rgba(137, 211, 100, 0);
@@ -347,6 +362,7 @@ h1, h2, h3, h4, h5, h6 {
   0% {
     transform: translateX(-125%);
   }
+
   100% {
     transform: translateX(165%);
   }
@@ -361,6 +377,7 @@ h1, h2, h3, h4, h5, h6 {
 }
 
 @media (prefers-reduced-motion: reduce) {
+
   .animate-ez-fade-up,
   .animate-ez-float,
   .animate-ez-green-pulse,
