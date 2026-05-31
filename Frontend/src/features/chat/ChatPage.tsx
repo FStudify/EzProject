@@ -24,7 +24,8 @@ import {
   createChatRoom,
   renameChatRoom,
   deleteChatRoom,
-  removeChatRoomMember,
+  leaveChatRoom,
+  kickChatRoomMember,
   updateChatRoomSettings,
   promoteChatAdmin,
   demoteChatAdmin,
@@ -34,7 +35,7 @@ import {
 import { getProjectMembers } from '@/api/member.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatSocket } from '@/contexts/ChatSocketContext';
-import type { ChatMessage, ChatRoom, Member, ProjectMember } from '@/types';
+import type { ChatMessage, ChatRoom, Member, ProjectMember, ChannelRole } from '@/types';
 import ChatMessageBubble from './ChatMessage';
 import { ProjectMemberAvatar, Button } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -192,10 +193,16 @@ export default function ChatPage() {
 
   // ── Room helpers ────────────────────────────────────────────
 
-  const isRoomOwner = useCallback((room: ChatRoom) => room.createdBy?.id === currentUserId, [currentUserId]);
+  const getMemberRole = useCallback((room: ChatRoom, userId: string): ChannelRole => {
+    const entry = room.memberRoles?.find((r) => r.userId === userId);
+    return entry?.role ?? 'MEMBER';
+  }, []);
+
+  const isRoomOwner = useCallback((room: ChatRoom) => getMemberRole(room, currentUserId) === 'OWNER', [currentUserId, getMemberRole]);
   const isRoomAdmin = useCallback((room: ChatRoom) => {
-    return isRoomOwner(room) || (room.chatAdmins ?? []).includes(currentUserId);
-  }, [currentUserId, isRoomOwner]);
+    const role = getMemberRole(room, currentUserId);
+    return role === 'OWNER' || role === 'ADMIN';
+  }, [currentUserId, getMemberRole]);
 
   const getRoomIcon = (room: ChatRoom) => {
     if (room.type === 'direct') {
@@ -284,27 +291,27 @@ export default function ChatPage() {
     setRoomMenuState(null);
   }, [projectId, activeRoomId, toast]);
 
-  const handleLeaveRoom = useCallback(async (roomId: string) => {
-    console.log('[DEBUG handleLeaveRoom] roomId:', roomId, 'projectId:', projectId, 'currentUserId:', currentUserId);
+  const handleLeaveRoom = useCallback(async (roomId: string, newOwnerId?: string) => {
     if (!projectId) return;
     const targetRoomId = makeGeneralRoomId(projectId);
     setRoomMenuState(null);
     setActiveRoomId(targetRoomId);
     try {
-      console.log('[DEBUG] calling removeChatRoomMember with:', projectId, roomId, currentUserId);
-      const result = await removeChatRoomMember(projectId, roomId, currentUserId);
-      console.log('[DEBUG] removeChatRoomMember result:', result);
+      const result = await leaveChatRoom(projectId, roomId, newOwnerId ? { newOwnerId } : undefined);
       if (result.deleted) {
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
+        toast('Đã rời kênh', 'success');
+      } else if (result.transferredTo) {
+        setRooms((prev) => prev.filter((r) => r.id !== roomId));
+        toast('Đã chuyển nhóm trưởng và rời kênh', 'success');
       } else if (result.room) {
         setRooms((prev) => prev.map((r) => (r.id === roomId ? result.room! : r)));
+        toast('Đã rời kênh', 'success');
       }
-      toast('Đã rời kênh', 'success');
     } catch (e: any) {
-      console.error('[DEBUG] leave error:', e);
       toast(e?.message || 'Không thể rời kênh', 'error');
     }
-  }, [projectId, currentUserId, toast]);
+  }, [projectId, toast]);
 
   const handleToggleInviteLock = useCallback(async (roomId: string, locked: boolean) => {
     if (!projectId) return;
@@ -335,7 +342,7 @@ export default function ChatPage() {
   const handleKickMember = useCallback(async (roomId: string, userId: string) => {
     if (!projectId) return;
     try {
-      const result = await removeChatRoomMember(projectId, roomId, userId);
+      const result = await kickChatRoomMember(projectId, roomId, userId);
       if (result.deleted) {
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
         if (activeRoomId === roomId) setActiveRoomId(makeGeneralRoomId(projectId));
@@ -660,7 +667,7 @@ interface RoomMenuModalProps {
   onPromote: (roomId: string, userId: string) => void;
   onDemote: (roomId: string, userId: string) => void;
   onKick: (roomId: string, userId: string) => void;
-  onLeave: (roomId: string) => void;
+  onLeave: (roomId: string, newOwnerId?: string) => void;
   onInvite: (roomId: string, memberIds: string[]) => void;
   onTransferOwner: (roomId: string, userId: string) => void;
 }
@@ -669,18 +676,23 @@ function RoomMenuModal({
   room, currentUserId, allMembers, onClose,
   onRename, onToggleLock, onPromote, onDemote, onKick, onLeave, onInvite, onTransferOwner,
 }: RoomMenuModalProps) {
+  const { t } = useLanguage();
   const isGeneral = room.type === 'general';
-  const isOwner = !isGeneral && room.createdBy?.id === currentUserId;
-  const isAdmin = !isGeneral && (room.chatAdmins ?? []).includes(currentUserId);
+  const myRole = (room.memberRoles?.find((r) => r.userId === currentUserId)?.role) ?? 'MEMBER';
+  const isOwner = !isGeneral && myRole === 'OWNER';
+  const isAdmin = !isGeneral && (myRole === 'ADMIN' || myRole === 'OWNER');
   const canManage = isOwner || isAdmin;
 
   const [editingName, setEditingName] = useState(false);
   const [nameInput, setNameInput] = useState(room.name);
   const [inviteIds, setInviteIds] = useState<string[]>([]);
-  const [transferId, setTransferId] = useState<string | null>(null);
-  const [showTransferOwnerConfirm, setShowTransferOwnerConfirm] = useState(false);
+
+  // Leave modal state
+  const [showLeaveModal, setShowLeaveModal] = useState(false);
+  const [leaveNewOwnerId, setLeaveNewOwnerId] = useState<string | null>(null);
 
   const nonMembers = allMembers.filter((m) => !room.members.some((rm) => rm.id === m.id));
+  const otherMembers = room.members.filter((m) => m.id !== currentUserId);
 
   const toggleInvite = (id: string) => {
     setInviteIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
@@ -698,7 +710,91 @@ function RoomMenuModal({
     setEditingName(false);
   };
 
+  const handleLeaveClick = () => {
+    if (isOwner && otherMembers.length > 0) {
+      setShowLeaveModal(true);
+    } else {
+      onLeave(room.id);
+    }
+  };
+
+  const handleLeaveConfirm = () => {
+    if (isOwner && otherMembers.length > 0 && !leaveNewOwnerId) return;
+    onLeave(room.id, leaveNewOwnerId ?? undefined);
+    setShowLeaveModal(false);
+    setLeaveNewOwnerId(null);
+  };
+
   return (
+    <>
+    {/* Leave Transfer Modal */}
+    {showLeaveModal && (
+      <div className="fixed inset-0 z-[60] flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.5)' }}>
+        <div className="w-full max-w-sm overflow-hidden rounded-2xl shadow-2xl" style={{ backgroundColor: '#FFFDFB', border: '1px solid #E8D8CF' }}>
+          <div className="px-6 py-4" style={{ borderBottom: '1px solid #E8D8CF' }}>
+            <div className="flex items-center gap-3">
+              <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: '#FFF5EC' }}>
+                <Crown className="h-5 w-5" style={{ color: '#D97853' }} />
+              </div>
+              <div>
+                <h3 className="text-base font-bold" style={{ color: '#1F1F1F' }}>Bạn là nhóm trưởng</h3>
+                <p className="text-xs" style={{ color: '#7D6F66' }}>Chọn người kế nhiệm trước khi rời nhóm</p>
+              </div>
+            </div>
+          </div>
+          <div className="px-6 py-4 space-y-2 max-h-60 overflow-y-auto">
+            {otherMembers.map((m) => {
+              const role = room.memberRoles?.find((r) => r.userId === m.id)?.role ?? 'MEMBER';
+              const selected = leaveNewOwnerId === m.id;
+              return (
+                <button
+                  key={m.id}
+                  type="button"
+                  onClick={() => setLeaveNewOwnerId(m.id)}
+                  className="flex w-full items-center gap-3 rounded-xl px-4 py-3 text-left transition-colors"
+                  style={selected ? { backgroundColor: '#FFF5EC', border: '2px solid #D97853' } : { backgroundColor: '#F8F3EE', border: '2px solid transparent' }}
+                >
+                  <div className="h-9 w-9 shrink-0 rounded-full overflow-hidden">
+                    {m.avatar
+                      ? <img src={m.avatar} alt={m.name} className="h-full w-full object-cover" />
+                      : <div className="flex h-full w-full items-center justify-center rounded-full text-sm font-bold text-white" style={{ background: 'linear-gradient(135deg, #0651A0, #008DDE)' }}>{m.name.charAt(0)}</div>}
+                  </div>
+                  <div className="flex-1 min-w-0">
+                    <p className="text-sm font-semibold truncate" style={{ color: '#1F1F1F' }}>{m.name}</p>
+                    <p className="text-xs" style={{ color: role === 'ADMIN' ? '#53B848' : '#9a9086' }}>
+                      {role === 'ADMIN' ? 'Admin' : 'Thành viên'}
+                    </p>
+                  </div>
+                  {selected && <Check className="h-5 w-5 shrink-0" style={{ color: '#D97853' }} />}
+                </button>
+              );
+            })}
+          </div>
+          <div className="px-6 py-4 flex gap-3" style={{ borderTop: '1px solid #E8D8CF', backgroundColor: '#FFF8F3' }}>
+            <button
+              type="button"
+              onClick={() => { setShowLeaveModal(false); setLeaveNewOwnerId(null); }}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors"
+              style={{ backgroundColor: '#F8F3EE', color: '#7D6F66' }}
+            >
+              Huỷ
+            </button>
+            <button
+              type="button"
+              onClick={handleLeaveConfirm}
+              disabled={isOwner && !leaveNewOwnerId}
+              className="flex-1 rounded-xl py-2.5 text-sm font-semibold transition-colors disabled:opacity-40"
+              style={{ backgroundColor: '#D97853', color: '#fff' }}
+              onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#B76442'; }}
+              onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#D97853'; }}
+            >
+              Xác nhận rời nhóm
+            </button>
+          </div>
+        </div>
+      </div>
+    )}
+
     <div className="fixed inset-0 z-50 flex items-center justify-center" style={{ backgroundColor: 'rgba(0,0,0,0.45)' }}>
       <div
         className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl"
@@ -850,9 +946,10 @@ function RoomMenuModal({
             <div className="space-y-1 max-h-52 overflow-y-auto">
               {room.members.map((m) => {
                 const isSelf = m.id === currentUserId;
-                const isMemberOwner = m.id === room.createdBy?.id;
-                const isMemberAdmin = (room.chatAdmins ?? []).includes(m.id);
-                const canKickMember = canManage && !isGeneral && !isMemberOwner && !isSelf && !isMemberAdmin;
+                const memberRole = (room.memberRoles?.find((r) => r.userId === m.id)?.role) ?? 'MEMBER';
+                const isMemberOwner = memberRole === 'OWNER';
+                const isMemberAdmin = memberRole === 'ADMIN';
+                const canKickMember = canManage && !isGeneral && !isMemberOwner && !isSelf;
                 const canDemoteAdmin = !isGeneral && isOwner && isMemberAdmin;
                 const canPromoteMember = !isGeneral && isOwner && !isMemberOwner && !isMemberAdmin;
                 const canTransfer = !isGeneral && isOwner && !isMemberOwner;
@@ -945,12 +1042,12 @@ function RoomMenuModal({
             </div>
           </div>
 
-          {/* Leave (not General) */}
-          {!isGeneral && (
+          {/* Leave (channels only — not General, not Direct) */}
+          {!isGeneral && room.type !== 'direct' && (
             <div className="px-6 py-3 space-y-2">
               <button
                 type="button"
-                onClick={() => onLeave(room.id)}
+                onClick={handleLeaveClick}
                 className="flex w-full items-center gap-2 rounded-xl px-4 py-2.5 text-sm transition-colors"
                 style={{ color: '#ef4444', backgroundColor: '#fef2f2' }}
                 onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#fee2e2'; }}
@@ -969,6 +1066,7 @@ function RoomMenuModal({
         </div>
       </div>
     </div>
+    </>
   );
 }
 

@@ -98,6 +98,9 @@ export interface Meeting {
   createdAt: string;
 }
 
+/** Role của thành viên trong channel */
+export type ChannelRole = 'OWNER' | 'ADMIN' | 'MEMBER';
+
 /** Local ChatRoom — members use local Member (with `.name`) */
 export interface ChatRoom {
   id: string;
@@ -109,6 +112,8 @@ export interface ChatRoom {
   chatAdmins: string[];
   inviteLocked: boolean;
   createdAt: string;
+  /** Per-member roles — source of truth for OWNER/ADMIN/MEMBER */
+  memberRoles?: { userId: string; role: ChannelRole; joinedAt: string }[];
 }
 
 /** Local ChatMessage — sender uses local Member (with `.name`) */

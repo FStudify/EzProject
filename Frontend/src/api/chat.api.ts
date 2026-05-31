@@ -1,6 +1,6 @@
 /**
  * ============================================================
- * Chat API Module (REST — WebSocket xu ly real-time ben ngoai)
+ * Chat API Module
  * ============================================================
  */
 import { api } from './config';
@@ -105,38 +105,50 @@ export async function addChatRoomMembers(
   return normalizeChatRoom(raw as Record<string, unknown>);
 }
 
-/** Xoa thanh vien khoi kenh (kick / rời) */
-export async function removeChatRoomMember(
+// ─── Role-based member operations ────────────────────────────────
+
+/** Rời kênh — xử lý tất cả 4 trường hợp:
+ * 1. MEMBER/ADMIN rời → xóa khỏi members
+ * 2. OWNER + còn thành viên khác → requires newOwnerId (400 nếu không có)
+ * 3. OWNER là người cuối → xóa room + messages
+ */
+export async function leaveChatRoom(
+  projectId: string,
+  roomId: string,
+  options?: { newOwnerId?: string },
+): Promise<{ deleted: boolean; transferredTo?: string; room?: ChatRoom }> {
+  if (!roomId || !/^[0-9a-fA-F]{24}$/.test(roomId)) {
+    throw new Error('Invalid room ID format');
+  }
+  const body = options?.newOwnerId ? { newOwnerId: options.newOwnerId } : {};
+  const raw = await api.post<unknown>(Endpoints.CHAT_ROOM_LEAVE(projectId, roomId), body);
+  const obj = raw as Record<string, unknown>;
+  if (obj.deleted === true) {
+    return { deleted: true };
+  }
+  if (obj.transferredTo) {
+    return { deleted: false, transferredTo: obj.transferredTo as string };
+  }
+  return { deleted: false, room: normalizeChatRoom(obj) };
+}
+
+/** Kick thanh vien (chỉ OWNER/ADMIN mới được gọi) */
+export async function kickChatRoomMember(
   projectId: string,
   roomId: string,
   userId: string,
 ): Promise<{ deleted: boolean; room?: ChatRoom }> {
-  const url = `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/members/${userId}`;
-  console.log('[DEBUG API] DELETE url:', url);
-  const raw = await api.delete<unknown>(url);
-  console.log('[DEBUG API] raw response:', raw);
-  const obj = (raw as Record<string, unknown>)?.data ?? raw;
-  console.log('[DEBUG API] unwrapped:', obj);
-  if ((obj as Record<string, unknown>).deleted) {
+  const raw = await api.delete<unknown>(
+    `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/members/${userId}`,
+  );
+  const obj = raw as Record<string, unknown>;
+  if (obj.deleted === true) {
     return { deleted: true };
   }
-  return { deleted: false, room: normalizeChatRoom(obj as Record<string, unknown>) };
+  return { deleted: false, room: normalizeChatRoom(obj) };
 }
 
-/** Thay doi cai dat kenh (khoa/moi thanh vien) */
-export async function updateChatRoomSettings(
-  projectId: string,
-  roomId: string,
-  settings: { inviteLocked?: boolean },
-): Promise<ChatRoom> {
-  const raw = await api.patch<unknown>(
-    `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/settings`,
-    settings,
-  );
-  return normalizeChatRoom(raw as Record<string, unknown>);
-}
-
-/** Phong cap thanh vien thanh admin (nhom truong chi dinh) */
+/** Nâng cấp thành viên lên ADMIN (chỉ OWNER) */
 export async function promoteChatAdmin(
   projectId: string,
   roomId: string,
@@ -148,7 +160,7 @@ export async function promoteChatAdmin(
   return normalizeChatRoom(raw as Record<string, unknown>);
 }
 
-/** Ha cap admin thanh thanh vien thuong (nhom truong chi dinh) */
+/** Hạ cấp ADMIN xuống MEMBER (chỉ OWNER) */
 export async function demoteChatAdmin(
   projectId: string,
   roomId: string,
@@ -160,7 +172,7 @@ export async function demoteChatAdmin(
   return normalizeChatRoom(raw as Record<string, unknown>);
 }
 
-/** Chuyen giao truong nhom */
+/** Chuyển giao nhóm trưởng (chỉ OWNER) */
 export async function transferChatOwner(
   projectId: string,
   roomId: string,
@@ -168,6 +180,19 @@ export async function transferChatOwner(
 ): Promise<ChatRoom> {
   const raw = await api.post<unknown>(
     `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/owner/${userId}`,
+  );
+  return normalizeChatRoom(raw as Record<string, unknown>);
+}
+
+/** Thay đổi cài đặt kênh (khóa/mở lời mời) */
+export async function updateChatRoomSettings(
+  projectId: string,
+  roomId: string,
+  settings: { inviteLocked?: boolean },
+): Promise<ChatRoom> {
+  const raw = await api.patch<unknown>(
+    `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/settings`,
+    settings,
   );
   return normalizeChatRoom(raw as Record<string, unknown>);
 }

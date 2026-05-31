@@ -139,6 +139,7 @@ export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
   const createdByRaw = raw.createdBy as Record<string, unknown> | string | null;
   const settings = (raw.settings ?? {}) as Record<string, unknown>;
   const chatAdminsRaw = (raw.chatAdmins ?? []) as unknown[];
+  const memberRolesRaw = (raw.memberRoles ?? []) as Record<string, unknown>[];
   return {
     id: normalizeId(raw),
     projectId: (raw.projectId as string) ?? '',
@@ -152,6 +153,11 @@ export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
       : undefined,
     inviteLocked: Boolean(settings.inviteLocked),
     chatAdmins: chatAdminsRaw.map(String),
+    memberRoles: memberRolesRaw.map((r) => ({
+      userId: String(r.userId ?? ''),
+      role: (r.role as 'OWNER' | 'ADMIN' | 'MEMBER') ?? 'MEMBER',
+      joinedAt: (r.joinedAt as string) ?? new Date().toISOString(),
+    })),
     createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
   };
 }
