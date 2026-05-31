@@ -45,21 +45,40 @@ export default function Topbar({ title }: TopbarProps) {
 
   return (
     <>
-      <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b border-border bg-surface px-4 lg:px-6">
-
-        <h1 className="hidden min-w-0 shrink-0 truncate text-lg font-semibold text-ink sm:block md:max-w-[200px] lg:max-w-[280px]">
+      <header
+        className={`ez-topbar sticky top-0 z-30 flex h-14 shrink-0 items-center gap-4 border-b px-4 lg:px-6 ${
+          theme === 'dark' ? 'header-dark' : ''
+        }`}
+        style={{
+          backgroundColor: theme === 'dark' ? undefined : '#FFFDFB',
+          borderColor: theme === 'dark' ? undefined : '#E8D8CF',
+        }}
+      >
+        <h1
+          className="hidden min-w-0 shrink-0 truncate text-lg font-bold sm:block md:max-w-[200px] lg:max-w-[280px]"
+          style={{
+            color: theme === 'dark' ? '#f0ebe3' : '#1F1F1F',
+            letterSpacing: '-0.02em',
+          }}
+        >
           {title}
         </h1>
 
         <div className="relative mx-auto hidden min-w-0 max-w-md flex-1 md:block">
           <Search
-            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-ink-muted"
+            className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+            style={{ color: theme === 'dark' ? '#9a9086' : '#7E7A76' }}
             aria-hidden
           />
           <input
             type="search"
             placeholder={t('search_placeholder')}
-            className="h-9 w-full rounded-lg border border-border bg-surface-muted pl-9 pr-3 text-sm text-ink placeholder:text-ink-muted transition-all focus:border-primary focus:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/10"
+            className="h-9 w-full rounded-xl py-2 pl-9 pr-3 text-sm shadow-sm transition-all focus:outline-none"
+            style={{
+              backgroundColor: theme === 'dark' ? '#2d261c' : '#F8F3EE',
+              color: theme === 'dark' ? '#f0ebe3' : '#2A2725',
+              border: `1px solid ${theme === 'dark' ? '#4a3d2e' : '#E8C7AE'}`,
+            }}
             aria-label={t('search_placeholder')}
           />
         </div>
@@ -67,26 +86,30 @@ export default function Topbar({ title }: TopbarProps) {
         <div className="ml-auto flex items-center gap-1.5">
 
           {/* Language switcher */}
-          <div className="flex items-center rounded-lg border border-border bg-surface-muted p-0.5">
+          <div
+            className="flex items-center rounded-xl p-0.5"
+            style={{
+              backgroundColor: theme === 'dark' ? '#2d261c' : '#F8F3EE',
+              border: `1px solid ${theme === 'dark' ? '#4a3d2e' : '#E8C7AE'}`,
+            }}
+          >
             <button
               type="button"
               onClick={() => setLang('vi')}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all ${
-                lang === 'vi'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all"
+              style={lang === 'vi'
+                ? { backgroundColor: '#D97853', color: 'white', boxShadow: '0 2px 4px rgba(201,107,72,0.3)' }
+                : { color: theme === 'dark' ? '#c8bfb3' : '#635648' }}
             >
               VI
             </button>
             <button
               type="button"
               onClick={() => setLang('en')}
-              className={`rounded-md px-2.5 py-1.5 text-xs font-semibold transition-all ${
-                lang === 'en'
-                  ? 'bg-primary text-white shadow-sm'
-                  : 'text-ink-muted hover:text-ink'
-              }`}
+              className="rounded-lg px-2.5 py-1.5 text-xs font-semibold transition-all"
+              style={lang === 'en'
+                ? { backgroundColor: '#D97853', color: 'white', boxShadow: '0 2px 4px rgba(201,107,72,0.3)' }
+                : { color: theme === 'dark' ? '#c8bfb3' : '#635648' }}
             >
               EN
             </button>
@@ -96,26 +119,35 @@ export default function Topbar({ title }: TopbarProps) {
           <button
             type="button"
             onClick={toggleTheme}
-            className="inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-muted text-ink-secondary transition-colors hover:border-primary/40 hover:bg-surface hover:text-primary"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors"
+            style={{
+              borderColor: theme === 'dark' ? '#4a3d2e' : '#E6D6CC',
+              backgroundColor: theme === 'dark' ? '#252018' : '#FFFDFB',
+              color: theme === 'dark' ? '#c8bfb3' : '#635648',
+            }}
             aria-label={theme === 'dark' ? t('theme_light') : t('theme_dark')}
           >
-            {theme === 'dark' ? (
-              <Sun className="h-4 w-4" />
-            ) : (
-              <Moon className="h-4 w-4" />
-            )}
+            {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
 
           {/* Notifications */}
           <button
             type="button"
             onClick={() => setIsNotifOpen(true)}
-            className="relative inline-flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-muted text-ink-secondary transition-colors hover:border-primary/40 hover:bg-primary-50 hover:text-primary"
+            className="relative inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors"
+            style={{
+              borderColor: theme === 'dark' ? '#4a3d2e' : '#E6D6CC',
+              backgroundColor: theme === 'dark' ? '#252018' : '#FFFDFB',
+              color: theme === 'dark' ? '#9a9086' : '#4F637F',
+            }}
             aria-label={t('notifications')}
           >
             <Bell className="h-[18px] w-[18px]" aria-hidden />
             {unreadCount > 0 && (
-              <span className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full bg-primary px-1 text-[10px] font-bold text-white">
+              <span
+                className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
+                style={{ backgroundColor: '#ef4444' }}
+              >
                 {unreadCount}
               </span>
             )}
@@ -126,7 +158,8 @@ export default function Topbar({ title }: TopbarProps) {
             <button
               type="button"
               onClick={() => setIsMenuOpen((prev) => !prev)}
-              className="rounded-full ring-2 ring-primary/25 transition-all hover:ring-primary focus:outline-none focus:ring-4 focus:ring-primary/20"
+              className="rounded-full transition-all focus:outline-none"
+              style={{ boxShadow: theme === 'dark' ? '0 0 0 3px #4a3d2e' : '0 0 0 3px #DDE7F4' }}
               aria-haspopup="menu"
               aria-expanded={isMenuOpen}
               aria-label="Menu"
@@ -137,35 +170,46 @@ export default function Topbar({ title }: TopbarProps) {
             {isMenuOpen && (
               <div
                 role="menu"
-                className="absolute right-0 top-full z-40 mt-2 w-56 overflow-hidden rounded-xl border border-border bg-surface p-1.5 shadow-lg"
+                className="absolute right-0 top-full z-40 w-56 overflow-hidden rounded-2xl p-1.5 shadow-xl"
+                style={{
+                  backgroundColor: theme === 'dark' ? '#252018' : '#FFFDFB',
+                  border: `1px solid ${theme === 'dark' ? '#4a3d2e' : '#E8D8CF'}`,
+                  marginTop: '8px',
+                }}
               >
                 <Link
                   to="/app/profile"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-muted"
-                  onClick={() => setIsMenuOpen(false)}
                   role="menuitem"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
+                  style={{ color: theme === 'dark' ? '#f0ebe3' : '#1F1F1F' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2d261c' : '#FFF8F3')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <UserPen className="h-4 w-4" />
+                  <UserPen className="h-4 w-4" style={{ color: theme === 'dark' ? '#9a9086' : '#635648' }} />
                   {t('nav_profile')}
                 </Link>
                 <Link
                   to="/app/settings"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-muted"
-                  onClick={() => setIsMenuOpen(false)}
                   role="menuitem"
+                  onClick={() => setIsMenuOpen(false)}
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
+                  style={{ color: theme === 'dark' ? '#f0ebe3' : '#1F1F1F' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2d261c' : '#FFF8F3')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <Settings className="h-4 w-4" />
+                  <Settings className="h-4 w-4" style={{ color: theme === 'dark' ? '#9a9086' : '#635648' }} />
                   {t('nav_settings')}
                 </Link>
-                <div className="my-1 border-t border-border" />
+                <div className="my-1" style={{ borderTop: `1px solid ${theme === 'dark' ? '#4a3d2e' : '#E8D8CF'}` }} />
                 <button
                   type="button"
-                  className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-left text-sm font-medium text-ink transition-colors hover:bg-surface-muted"
-                  onClick={() => {
-                    setIsMenuOpen(false);
-                    logout();
-                  }}
                   role="menuitem"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
+                  style={{ color: '#ef4444' }}
+                  onClick={() => { setIsMenuOpen(false); logout(); }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2d261c' : '#FFF8F3')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
                   <LogOut className="h-4 w-4" />
                   {t('sign_out')}

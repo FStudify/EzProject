@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { AtSign, Eye, EyeOff, LockKeyhole, UserCircle2, GraduationCap, Sun, Moon } from 'lucide-react';
+import { AtSign, Eye, EyeOff, LockKeyhole, UserCircle2, GraduationCap, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -40,12 +40,13 @@ function RegisterInput({
 }: RegisterInputProps) {
   return (
     <div>
-      <label htmlFor={id} className="mb-1.5 block text-[13px] font-semibold text-ink">
+      <label htmlFor={id} className="mb-1.5 block text-[13px] font-semibold" style={{ color: '#635648' }}>
         {label}
       </label>
       <div className="relative">
         <Icon
-          className="pointer-events-none absolute left-3.5 top-1/2 h-[17px] w-[17px] -translate-y-1/2 text-ink-muted"
+          className="pointer-events-none absolute left-3.5 top-1/2 h-[17px] w-[17px] -translate-y-1/2"
+          style={{ color: '#9a9086' }}
           aria-hidden
         />
         <input
@@ -53,16 +54,30 @@ function RegisterInput({
           type={type}
           value={value}
           onChange={(e) => onChange(e.target.value)}
-          className="h-11 w-full rounded-xl border border-border bg-surface-muted pl-10 pr-11 text-[14px] text-ink placeholder:text-ink-muted transition-all duration-200 focus:border-primary focus:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/10"
+          className="h-11 w-full rounded-xl border px-4 py-2.5 pl-10 pr-11 text-[14px] transition-all duration-200 focus:outline-none focus:ring-4"
           placeholder={placeholder}
           autoComplete={autoComplete}
           required={required}
           minLength={minLength}
+          style={{
+            backgroundColor: '#FFFDFB',
+            color: '#1F1F1F',
+            borderColor: '#E8C7AE',
+          }}
+          onFocus={e => {
+            e.currentTarget.style.borderColor = '#D97853';
+            e.currentTarget.style.boxShadow = '0 0 0 4px rgba(217,120,83,0.16)';
+          }}
+          onBlur={e => {
+            e.currentTarget.style.borderColor = '#E8C7AE';
+            e.currentTarget.style.boxShadow = '';
+          }}
         />
         {toggleButton && (
           <button
             type="button"
-            className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition hover:bg-surface-muted hover:text-primary focus:outline-none focus:ring-2 focus:ring-primary/20"
+            className="absolute right-1.5 top-1/2 inline-flex h-8 w-8 -translate-y-1/2 items-center justify-center rounded-full text-ink-muted transition"
+            style={{ color: '#9a9086' }}
             onClick={toggleButton.onClick}
             aria-label={toggleButton.label}
           >
@@ -97,7 +112,6 @@ export default function RegisterPage() {
       setError(t('confirm_password'));
       return;
     }
-
     if (password.length < 3) {
       setError(t('error'));
       return;
@@ -125,25 +139,35 @@ export default function RegisterPage() {
   }
 
   return (
-    <div className="ez-login-shell relative h-[100dvh] overflow-y-auto bg-canvas lg:overflow-hidden">
+    <div className="ez-login-shell relative h-[100dvh] overflow-y-auto lg:overflow-hidden">
 
       {/* Top bar */}
       <header className="relative z-30 flex h-14 shrink-0 items-center justify-between px-6">
-        <div className="flex items-center gap-2.5 text-white drop-shadow">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-            <GraduationCap className="h-4 w-4" />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('back_to_landing') || 'Về trang chủ'}</span>
+          </button>
+          <div className="h-5 w-px bg-white/20" />
+          <div className="flex items-center gap-2.5 text-white drop-shadow">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D97853]">
+              <GraduationCap className="h-4 w-4" />
+            </div>
+            <span className="text-base font-bold tracking-tight">EZProject</span>
           </div>
-          <span className="text-base font-bold tracking-tight">EZProject</span>
         </div>
 
         <div className="flex items-center gap-3">
-          {/* Lang pill */}
           <div className="flex items-center rounded-lg border border-white/20 bg-white/10 p-0.5 backdrop-blur">
             <button
               type="button"
               onClick={() => setLang('vi')}
               className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
-                lang === 'vi' ? 'bg-primary text-white shadow-sm' : 'text-white/70 hover:text-white'
+                lang === 'vi' ? 'bg-[#D97853] text-white shadow-sm' : 'text-white/70 hover:text-white'
               }`}
             >
               VI
@@ -152,14 +176,13 @@ export default function RegisterPage() {
               type="button"
               onClick={() => setLang('en')}
               className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
-                lang === 'en' ? 'bg-primary text-white shadow-sm' : 'text-white/70 hover:text-white'
+                lang === 'en' ? 'bg-[#D97853] text-white shadow-sm' : 'text-white/70 hover:text-white'
               }`}
             >
               EN
             </button>
           </div>
 
-          {/* Theme toggle */}
           <button
             type="button"
             onClick={toggleTheme}
@@ -192,10 +215,15 @@ export default function RegisterPage() {
 
         <div className="flex items-center justify-center lg:justify-end">
           <div className="w-full max-w-[620px]">
-            <div className="animate-ez-fade-up rounded-[24px] border border-border bg-surface p-5 shadow-lg sm:p-6 lg:p-6">
+            <div
+              className="animate-ez-fade-up overflow-hidden rounded-2xl p-5 shadow-lg sm:p-6 lg:p-6"
+              style={{ backgroundColor: 'rgba(255,253,251,0.96)', backdropFilter: 'blur(12px)', border: '1px solid #E8C7AE' }}
+            >
               <div className="mb-4">
-                <h1 className="text-[31px] font-extrabold leading-tight tracking-tight text-ink">{t('register_title')}</h1>
-                <p className="mt-1.5 text-sm leading-relaxed text-ink-secondary">
+                <h1 className="text-[31px] font-extrabold leading-tight" style={{ color: '#1F1F1F', letterSpacing: '-0.02em' }}>
+                  {t('register_title')}
+                </h1>
+                <p className="mt-1.5 text-sm leading-relaxed" style={{ color: '#635648' }}>
                   {t('register_subtitle')}
                 </p>
               </div>
@@ -283,7 +311,11 @@ export default function RegisterPage() {
                 </div>
 
                 {error && (
-                  <div className="rounded-xl border border-red-200 bg-red-50 px-3.5 py-2.5 text-sm text-red-700" role="alert">
+                  <div
+                    className="rounded-xl px-3.5 py-2.5 text-sm"
+                    style={{ backgroundColor: '#fef2f2', border: '1px solid #fecaca', color: '#dc2626' }}
+                    role="alert"
+                  >
                     {error}
                   </div>
                 )}
@@ -291,18 +323,18 @@ export default function RegisterPage() {
                 <button
                   type="submit"
                   disabled={loading}
-                  className="group relative inline-flex h-[46px] w-full items-center justify-center overflow-hidden rounded-xl bg-primary text-[15px] font-semibold text-white shadow-md transition duration-200 hover:bg-primary-dark focus:outline-none focus:ring-4 focus:ring-primary/20 disabled:cursor-not-allowed disabled:opacity-65"
+                  className="btn-accent btn-lg relative inline-flex h-[46px] w-full items-center justify-center text-[15px] disabled:cursor-not-allowed disabled:opacity-65"
                 >
-                  <span className="absolute inset-0 bg-black/0 transition group-hover:bg-black/5" />
-                  <span className="relative">{loading ? t('loading') : t('sign_up')}</span>
+                  {loading ? t('loading') : t('sign_up')}
                 </button>
               </form>
 
-              <p className="mt-4 text-center text-sm text-ink-secondary">
+              <p className="mt-4 text-center text-sm" style={{ color: '#635648' }}>
                 {t('have_account')}{' '}
                 <Link
                   to="/login"
-                  className="font-semibold text-ink transition hover:text-primary hover:underline"
+                  className="font-semibold transition hover:underline"
+                  style={{ color: '#0651A0' }}
                 >
                   {t('sign_in')}
                 </Link>

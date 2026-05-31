@@ -104,16 +104,24 @@ exports.getRoomMembers = async (req, res, next) => {
 exports.createRoom = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
+    const rawType = (req.body.type ?? 'CHANNEL').toUpperCase();
+    const validTypes = ['GENERAL', 'CHANNEL', 'DIRECT'];
+    if (!validTypes.includes(rawType)) {
+      return res.status(400).json({ success: false, message: 'Invalid room type' });
+    }
     const room = await ChatRoom.create({
       projectId: new ObjectId(req.params.projectId),
       name: req.body.name,
-      type: req.body.type,
+      type: rawType,
       createdBy: new ObjectId(req.user.id),
+      chatAdmins: [],
       members: [
         new ObjectId(req.user.id),
         ...(req.body.memberIds || []).map((id) => new ObjectId(id)),
       ],
     });
+    await room.populate('members', 'id fullName avatar');
+    await room.populate('createdBy', 'id fullName avatar');
     res.status(201).json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -130,8 +138,11 @@ exports.renameRoom = async (req, res, next) => {
     if (room.type === 'GENERAL') throw errors.Forbidden('Cannot rename General room');
 
     const member = await getProjectMemberRole(req.params.projectId, req.user.id);
-    if (!member || (room.createdBy._id.toString() !== req.user.id && member.role !== 'LEADER' && member.role !== 'SUPERVISOR')) {
-      throw errors.Forbidden('Only the room creator, LEADER or SUPERVISOR can rename this room');
+    if (!member) throw errors.Forbidden('You are not a member of this project');
+    const isOwner = room.createdBy._id.toString() === req.user.id;
+    const isChatAdmin = room.chatAdmins.map((a) => a.toString()).includes(req.user.id);
+    if (!isOwner && member.role !== 'LEADER' && member.role !== 'SUPERVISOR' && !isChatAdmin) {
+      throw errors.Forbidden('You do not have permission to rename this room');
     }
 
     room.name = req.body.name;
@@ -153,8 +164,11 @@ exports.addMembers = async (req, res, next) => {
     if (room.settings.inviteLocked) throw errors.Forbidden('Member invitation is locked');
 
     const member = await getProjectMemberRole(req.params.projectId, req.user.id);
-    if (!member || (room.createdBy._id.toString() !== req.user.id && member.role !== 'LEADER' && member.role !== 'SUPERVISOR')) {
-      throw errors.Forbidden('Only the room creator, LEADER or SUPERVISOR can add members');
+    if (!member) throw errors.Forbidden('You are not a member of this project');
+    const isOwner = room.createdBy._id.toString() === req.user.id;
+    const isChatAdmin = room.chatAdmins.map((a) => a.toString()).includes(req.user.id);
+    if (!isOwner && member.role !== 'LEADER' && member.role !== 'SUPERVISOR' && !isChatAdmin) {
+      throw errors.Forbidden('You do not have permission to add members');
     }
 
     const project = await Project.findOne({
@@ -182,10 +196,12 @@ exports.addMembers = async (req, res, next) => {
 
 exports.removeMember = async (req, res, next) => {
   try {
+    console.log('[DEBUG removeMember] params:', req.params);
     const room = await ChatRoom.findOne({
       _id: new ObjectId(req.params.roomId),
       projectId: new ObjectId(req.params.projectId),
     }).populate('createdBy', 'id fullName avatar');
+    console.log('[DEBUG removeMember] room found:', room?._id, 'members:', room?.members?.length, 'createdBy:', room?.createdBy?._id);
     if (!room) throw errors.NotFound('Room');
     if (room.type === 'GENERAL') throw errors.Forbidden('Cannot remove members from General room');
 
@@ -193,18 +209,28 @@ exports.removeMember = async (req, res, next) => {
     const targetId = req.params.userId;
     const isSelf = targetId === req.user.id;
     const isCreator = room.createdBy._id.toString() === targetId;
-
-    if (isCreator) {
-      throw errors.Forbidden('Cannot remove the room creator');
-    }
+    console.log('[DEBUG removeMember] targetId:', targetId, 'req.user.id:', req.user.id, 'isSelf:', isSelf, 'isCreator:', isCreator);
+    const isTargetAdmin = room.chatAdmins.map((a) => a.toString()).includes(targetId);
+    const isChatAdmin = room.chatAdmins.map((a) => a.toString()).includes(req.user.id);
 
     if (isSelf) {
-      if (room.createdBy._id.toString() === req.user.id) {
-        throw errors.Forbidden('Room creator cannot leave. Delete the room instead.');
+      if (isCreator) {
+        if (room.members.length === 1) {
+          await ChatRoom.findByIdAndDelete(room._id);
+          return res.json({ success: true, data: { deleted: true } });
+        }
+        throw errors.Forbidden('You are the owner. Transfer ownership before leaving.');
       }
     } else {
-      if (!member || (room.createdBy._id.toString() !== req.user.id && member.role !== 'LEADER' && member.role !== 'SUPERVISOR')) {
-        throw errors.Forbidden('Only the room creator, LEADER or SUPERVISOR can remove members');
+      if (isCreator) {
+        throw errors.Forbidden('Cannot remove the room creator');
+      }
+      if (!member) throw errors.Forbidden('You are not a member of this project');
+      const isOwner = room.createdBy._id.toString() === req.user.id;
+      const canKick = isOwner || member.role === 'LEADER' || member.role === 'SUPERVISOR' || isChatAdmin;
+      if (!canKick) throw errors.Forbidden('You do not have permission to remove members');
+      if (isTargetAdmin && !isOwner) {
+        throw errors.Forbidden('Only the room creator can remove an admin');
       }
       const targetRole = await getProjectMemberRole(req.params.projectId, targetId);
       if (targetRole?.role === 'LEADER') {
@@ -213,8 +239,102 @@ exports.removeMember = async (req, res, next) => {
     }
 
     room.members = room.members.filter((m) => m.toString() !== targetId);
+
+    if (room.members.length === 0) {
+      await ChatRoom.findByIdAndDelete(room._id);
+      return res.json({ success: true, data: { deleted: true } });
+    }
+
     await room.save();
-    res.status(204).send();
+    await room.populate('members', 'id fullName avatar');
+    await room.populate('createdBy', 'id fullName avatar');
+    res.json({ success: true, data: room });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.promoteChatAdmin = async (req, res, next) => {
+  try {
+    await checkMember(req.params.projectId, req.user.id);
+    const room = await ChatRoom.findOne({
+      _id: new ObjectId(req.params.roomId),
+      projectId: new ObjectId(req.params.projectId),
+    }).populate('createdBy', 'id fullName avatar');
+    if (!room) throw errors.NotFound('Room');
+    if (room.createdBy._id.toString() !== req.user.id) {
+      throw errors.Forbidden('Only the room creator can promote members to admin');
+    }
+
+    const targetId = req.params.userId;
+    if (room.createdBy._id.toString() === targetId) {
+      throw errors.Forbidden('Cannot promote the room creator');
+    }
+    if (room.chatAdmins.map((a) => a.toString()).includes(targetId)) {
+      throw errors.BadRequest('User is already an admin');
+    }
+
+    room.chatAdmins.push(new ObjectId(targetId));
+    await room.save();
+    await room.populate('members', 'id fullName avatar');
+    res.json({ success: true, data: room.toObject() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.demoteChatAdmin = async (req, res, next) => {
+  try {
+    await checkMember(req.params.projectId, req.user.id);
+    const room = await ChatRoom.findOne({
+      _id: new ObjectId(req.params.roomId),
+      projectId: new ObjectId(req.params.projectId),
+    }).populate('createdBy', 'id fullName avatar');
+    if (!room) throw errors.NotFound('Room');
+    if (room.createdBy._id.toString() !== req.user.id) {
+      throw errors.Forbidden('Only the room creator can demote admins');
+    }
+
+    const targetId = req.params.userId;
+    room.chatAdmins = room.chatAdmins.filter((a) => a.toString() !== targetId);
+    await room.save();
+    await room.populate('members', 'id fullName avatar');
+    res.json({ success: true, data: room.toObject() });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.transferOwner = async (req, res, next) => {
+  try {
+    await checkMember(req.params.projectId, req.user.id);
+    const room = await ChatRoom.findOne({
+      _id: new ObjectId(req.params.roomId),
+      projectId: new ObjectId(req.params.projectId),
+    }).populate('members', 'id fullName avatar');
+    if (!room) throw errors.NotFound('Room');
+    if (room.type === 'GENERAL') throw errors.Forbidden('Cannot transfer ownership of General room');
+
+    if (room.createdBy._id.toString() !== req.user.id) {
+      throw errors.Forbidden('Only the room creator can transfer ownership');
+    }
+
+    const targetId = req.params.userId;
+    const isMember = room.members.some((m) => {
+      const memberId = typeof m === 'object' ? m._id.toString() : m.toString();
+      return memberId === targetId;
+    });
+    if (!isMember) throw errors.NotFound('Target user is not a member of this room');
+
+    const oldOwnerId = room.createdBy._id;
+    room.createdBy = new ObjectId(targetId);
+    if (!room.chatAdmins.map((a) => a.toString()).includes(targetId)) {
+      room.chatAdmins.push(oldOwnerId);
+    }
+    await room.save();
+    await room.populate('members', 'id fullName avatar');
+    await room.populate('createdBy', 'id fullName avatar');
+    res.json({ success: true, data: room.toObject() });
   } catch (err) {
     next(err);
   }

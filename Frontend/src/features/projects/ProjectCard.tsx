@@ -10,33 +10,34 @@ interface ProjectCardProps {
 function getProgressTheme(value: number) {
   if (value >= 70) {
     return {
-      accent: 'bg-emerald-500',
-      track: 'bg-emerald-100',
-      bar: 'bg-emerald-500',
-      percent: 'text-emerald-700',
-      statusPill: 'border-emerald-200 bg-emerald-50 text-emerald-700',
-      statusLabel: 'Tốt',
+      bar: '#6DBE45',
+      track: '#EAF7E2',
+      percent: '#4E9D33',
+      pillBg: '#EFF9E8',
+      pillBorder: '#CDE8BF',
+      pillText: '#4B9331',
+      topBar: 'linear-gradient(90deg, #8BD66A 0%, #6DBE45 100%)',
     };
   }
-
   if (value >= 40) {
     return {
-      accent: 'bg-amber-500',
-      track: 'bg-amber-100',
-      bar: 'bg-amber-500',
-      percent: 'text-amber-700',
-      statusPill: 'border-amber-200 bg-amber-50 text-amber-800',
-      statusLabel: 'Đang thực hiện',
+      bar: '#D97853',
+      track: '#F5E7DD',
+      percent: '#B76442',
+      pillBg: '#FDF0E8',
+      pillBorder: '#EFC8B4',
+      pillText: '#B76442',
+      topBar: 'linear-gradient(90deg, #E89B78 0%, #D97853 100%)',
     };
   }
-
   return {
-    accent: 'bg-primary',
-    track: 'bg-slate-200',
-    bar: 'bg-slate-500',
-    percent: 'text-slate-600',
-    statusPill: 'border-slate-200 bg-slate-100 text-slate-700',
-    statusLabel: 'Cần tập trung',
+    bar: '#274C7D',
+    track: '#E8EEF6',
+    percent: '#31527F',
+    pillBg: '#EDF3FB',
+    pillBorder: '#C9D6E8',
+    pillText: '#31527F',
+    topBar: 'linear-gradient(90deg, #4D668D 0%, #274C7D 100%)',
   };
 }
 
@@ -44,57 +45,111 @@ export default function ProjectCard({ project }: ProjectCardProps) {
   const progress = Math.round(project.progress);
   const theme = getProgressTheme(progress);
   const daysLeft = Math.ceil((new Date(project.deadline).getTime() - Date.now()) / 86400000);
-  const dueSoon = daysLeft >= 0 && daysLeft <= 5 && project.status !== 'completed';
+  const dueSoon = daysLeft >= 0 && daysLeft <= 5 && project.status !== 'COMPLETED';
 
   return (
     <Link
       to={`/app/projects/${project.id}`}
-      className="group relative block overflow-hidden rounded-2xl border border-border bg-surface p-5 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:border-primary/25 hover:shadow-md"
+      className="group relative flex flex-col overflow-hidden rounded-2xl p-5 transition-all duration-200"
+      style={{
+        border: '1px solid #E8D8CF',
+        background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,249,244,0.72) 100%)',
+        boxShadow: '0 18px 30px -24px rgba(38, 24, 16, 0.6)',
+      }}
+      onMouseEnter={e => {
+        e.currentTarget.style.transform = 'translateY(-2px)';
+        e.currentTarget.style.boxShadow = '0 22px 36px -24px rgba(38, 24, 16, 0.55)';
+        e.currentTarget.style.borderColor = '#D8C9BD';
+      }}
+      onMouseLeave={e => {
+        e.currentTarget.style.transform = '';
+        e.currentTarget.style.boxShadow = '0 18px 30px -24px rgba(38, 24, 16, 0.6)';
+        e.currentTarget.style.borderColor = '#E8D8CF';
+      }}
     >
-      <span className={`pointer-events-none absolute inset-x-0 top-0 h-1 ${theme.accent}`} />
+      {/* Top accent bar */}
+      <span
+        className="pointer-events-none absolute inset-x-0 top-0 h-[3px] block"
+        style={{ background: theme.topBar }}
+      />
 
-      <div className="flex items-start justify-between gap-3">
-        <h3 className="line-clamp-2 text-[22px] font-extrabold leading-tight tracking-[-0.018em] text-ink transition-colors duration-200 group-hover:text-primary">
+      <div className="flex items-start justify-between gap-3 mt-1">
+        <h3
+          className="line-clamp-2 leading-tight transition-colors duration-200"
+          style={{ fontSize: '22px', fontWeight: 700, letterSpacing: '-0.018em', color: '#1F1F1F' }}
+        >
           {project.name}
         </h3>
         <div className="flex shrink-0 flex-col items-end gap-1">
           {dueSoon && (
-            <span className="inline-flex items-center rounded-full border border-danger/30 bg-red-50 px-2 py-0.5 text-[11px] font-semibold text-danger">
+            <span
+              className="inline-flex items-center rounded-full px-2 py-0.5 text-[11px] font-semibold"
+              style={{
+                backgroundColor: '#fef2f2',
+                border: '1px solid #fecaca',
+                color: '#dc2626',
+              }}
+            >
               Sắp hết hạn
             </span>
           )}
           <span
-            className={`inline-flex items-center rounded-full border px-2.5 py-1 text-[11px] font-semibold tracking-[0.03em] ${theme.statusPill}`}
+            className="inline-flex items-center rounded-full px-2.5 py-1 text-[11px] font-semibold tracking-[0.03em]"
+            style={{
+              backgroundColor: theme.pillBg,
+              border: `1px solid ${theme.pillBorder}`,
+              color: theme.pillText,
+            }}
           >
-            {theme.statusLabel}
+            {progress >= 70 ? 'Tốt' : progress >= 40 ? 'Đang thực hiện' : 'Cần tập trung'}
           </span>
         </div>
       </div>
 
-      <p className="mt-1 line-clamp-2 text-[15px] leading-relaxed text-ink-secondary">
+      <p
+        className="mt-1 line-clamp-2 leading-relaxed"
+        style={{ fontSize: '15px', color: '#635648' }}
+      >
         {project.description}
       </p>
 
+      {/* Progress */}
       <div className="mt-5">
         <div className="mb-2 flex items-center justify-between">
-          <span className="text-[11px] font-semibold uppercase tracking-[0.12em] text-ink-muted">
+          <span
+            className="text-[11px] font-semibold uppercase tracking-[0.12em]"
+            style={{ color: '#A0816E' }}
+          >
             Tiến độ
           </span>
-          <span className={`text-[15px] font-semibold ${theme.percent}`}>{progress}%</span>
+          <span
+            className="text-[15px] font-bold"
+            style={{ color: theme.percent }}
+          >
+            {progress}%
+          </span>
         </div>
-
-        <div className={`h-2 rounded-full ${theme.track}`}>
+        <div
+          className="h-2 w-full overflow-hidden rounded-full"
+          style={{ backgroundColor: theme.track }}
+        >
           <div
-            className={`h-full rounded-full transition-all duration-500 ease-out ${theme.bar}`}
-            style={{ width: `${progress}%` }}
+            className="h-full rounded-full transition-all duration-500 ease-out"
+            style={{ width: `${progress}%`, backgroundColor: theme.bar }}
           />
         </div>
       </div>
 
-      <div className="mt-5 flex items-center justify-between border-t border-border pt-4">
+      {/* Footer */}
+      <div className="mt-5 flex items-center justify-between pt-4" style={{ borderTop: '1px solid #F0E1D8' }}>
         <div className="flex -space-x-2.5">
           {project.members.slice(0, 4).map(({ member, isOwner, role }, index) => (
-            <div key={member.id} className="rounded-full ring-2 ring-surface" title={member.fullName}>
+            <div
+              key={member.id}
+              className="rounded-full ring-2"
+              style={{ ringColor: '#ffffff' }}
+              title={member.fullName}
+            >
               <MemberAvatar
                 src={member.avatar}
                 name={member.fullName}
@@ -107,8 +162,8 @@ export default function ProjectCard({ project }: ProjectCardProps) {
           ))}
         </div>
 
-        <div className="inline-flex items-center gap-1.5 text-[14px] text-ink-secondary">
-          <Calendar className="h-4 w-4 text-ink-muted" strokeWidth={2} />
+        <div className="inline-flex items-center gap-1.5 text-[14px]" style={{ color: '#635648' }}>
+          <Calendar className="h-4 w-4" strokeWidth={2} style={{ color: '#A0816E' }} />
           <span className="font-medium">
             {new Date(project.deadline).toLocaleDateString(undefined, {
               month: 'short',
@@ -120,8 +175,15 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       </div>
 
       <div className="mt-3">
-        <span className="inline-flex items-center gap-1.5 rounded-full border border-border bg-surface-muted px-3 py-1.5 text-[13px] font-medium text-ink-secondary">
-          <CheckCheck className="h-3.5 w-3.5 text-emerald-600" />
+        <span
+          className="inline-flex items-center gap-1.5 rounded-full px-3 py-1.5 text-[13px] font-medium"
+          style={{
+            backgroundColor: '#FFFDFB',
+            border: '1px solid #E8D8CF',
+            color: '#635648',
+          }}
+        >
+          <CheckCheck className="h-3.5 w-3.5" style={{ color: '#53B848' }} />
           {project.completedTasks} / {project.totalTasks} công việc
         </span>
       </div>

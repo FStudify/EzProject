@@ -106,9 +106,8 @@ export interface ChatRoom {
   type: 'general' | 'channel' | 'direct';
   members: Member[];
   createdBy: Member;
-  settings: {
-    inviteLocked: boolean;
-  };
+  chatAdmins: string[];
+  inviteLocked: boolean;
   createdAt: string;
 }
 

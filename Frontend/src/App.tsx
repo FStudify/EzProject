@@ -14,6 +14,7 @@ import { ProfilePage, SettingsPage } from '@/features/profile';
 import { ProtectedRoute, GuestRoute, LoginPage, RegisterPage } from '@/features/auth';
 import { ToastProvider } from '@/components/ui';
 import { ThemeProvider, LanguageProvider, AuthProvider } from '@/contexts';
+import { ChatSocketProvider } from '@/contexts/ChatSocketContext';
 import LandingPage from '@/features/landing/LandingPage';
 
 const router = createBrowserRouter([
@@ -69,13 +70,15 @@ const router = createBrowserRouter([
 export default function App() {
   return (
     <AuthProvider>
-      <ThemeProvider>
-        <LanguageProvider>
-          <ToastProvider>
-            <RouterProvider router={router} />
-          </ToastProvider>
-        </LanguageProvider>
-      </ThemeProvider>
+      <ChatSocketProvider>
+        <ThemeProvider>
+          <LanguageProvider>
+            <ToastProvider>
+              <RouterProvider router={router} />
+            </ToastProvider>
+          </LanguageProvider>
+        </ThemeProvider>
+      </ChatSocketProvider>
     </AuthProvider>
   );
 }
