@@ -180,3 +180,127 @@ exports.joinByInvite = async (req, res, next) => {
     next(err);
   }
 };
+
+// ─── POST /projects/:projectId/transfer-ownership ──────────────────
+// Owner only — chuyển quyền sở hữu cho thành viên khác
+exports.transferOwnership = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { newOwnerId } = req.body;
+    if (!newOwnerId) throw errors.BadRequest('newOwnerId is required');
+
+    const project = await Project.findOne({
+      _id: new ObjectId(projectId),
+      'members.userId': new ObjectId(req.user.id),
+      'members.isOwner': true,
+    });
+    if (!project) throw errors.Forbidden('Only the owner can transfer ownership');
+
+    const currentMember = project.members.find((m) => m.userId.toString() === req.user.id);
+    if (!currentMember?.isOwner) throw errors.Forbidden('Only the owner can transfer ownership');
+    if (newOwnerId === req.user.id) throw errors.BadRequest('Cannot transfer ownership to yourself');
+
+    const newOwnerMember = project.members.find((m) => m.userId.toString() === newOwnerId);
+    if (!newOwnerMember) throw errors.NotFound('Target user is not a member of this project');
+
+    // Swap: old owner → SUPERVISOR, new owner → OWNER
+    for (const m of project.members) {
+      if (m.userId.toString() === req.user.id) {
+        m.isOwner = false;
+        m.role = 'SUPERVISOR';
+      }
+      if (m.userId.toString() === newOwnerId) {
+        m.isOwner = true;
+        m.role = 'LEADER';
+      }
+    }
+    project.ownerId = new ObjectId(newOwnerId);
+
+    await project.save();
+
+    await project.populate('members.userId', 'id fullName email avatar');
+
+    res.json({ success: true, data: { ownerId: newOwnerId } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── POST /projects/:projectId/leave ──────────────────────────────
+// Member rời dự án — xử lý 3 trường hợp:
+// 1. MEMBER/SUPERVISOR → xóa khỏi members
+// 2. OWNER + còn thành viên → requires newOwnerId
+// 3. OWNER là người cuối → xóa project + invitations + links
+exports.leaveProject = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const { newOwnerId } = req.body || {};
+    const userId = req.user.id;
+
+    const project = await Project.findOne({
+      _id: new ObjectId(projectId),
+      'members.userId': new ObjectId(userId),
+    });
+    if (!project) throw errors.NotFound('You are not a member of this project');
+
+    const member = project.members.find((m) => m.userId.toString() === userId);
+    const isOwner = member?.isOwner === true;
+    const memberCount = project.members.length;
+
+    // CASE 3: Owner là người cuối → xóa project hoàn toàn
+    if (isOwner && memberCount === 1) {
+      const Invitation = require('../models/Invitation');
+      const InviteLink = require('../models/InviteLink');
+      await Invitation.deleteMany({ projectId: project._id });
+      await InviteLink.deleteMany({ projectId: project._id });
+      await Project.findByIdAndDelete(project._id);
+      return res.json({ success: true, data: { deleted: true, reason: 'last_owner' } });
+    }
+
+    // CASE 2: Owner + còn thành viên khác → require transfer
+    if (isOwner && memberCount > 1) {
+      if (!newOwnerId) {
+        return res.status(400).json({
+          success: false,
+          message: 'You are the owner. Please transfer ownership before leaving.',
+          code: 'OWNER_TRANSFER_REQUIRED',
+        });
+      }
+      const newOwnerMember = project.members.find((m) => m.userId.toString() === newOwnerId);
+      if (!newOwnerMember) throw errors.NotFound('New owner is not a member of this project');
+
+      for (const m of project.members) {
+        if (m.userId.toString() === userId) {
+          m.isOwner = false;
+          m.role = 'SUPERVISOR';
+        }
+        if (m.userId.toString() === newOwnerId) {
+          m.isOwner = true;
+          m.role = 'LEADER';
+        }
+      }
+      project.ownerId = new ObjectId(newOwnerId);
+      project.members = project.members.filter((m) => m.userId.toString() !== userId);
+
+      await project.save();
+      return res.json({ success: true, data: { transferredTo: newOwnerId } });
+    }
+
+    // CASE 1: MEMBER hoặc SUPERVISOR rời
+    project.members = project.members.filter((m) => m.userId.toString() !== userId);
+
+    if (project.members.length === 0) {
+      const Invitation = require('../models/Invitation');
+      const InviteLink = require('../models/InviteLink');
+      await Invitation.deleteMany({ projectId: project._id });
+      await InviteLink.deleteMany({ projectId: project._id });
+      await Project.findByIdAndDelete(project._id);
+      return res.json({ success: true, data: { deleted: true, reason: 'last_member' } });
+    }
+
+    await project.save();
+    return res.json({ success: true, data: {} });
+  } catch (err) {
+    next(err);
+  }
+};
