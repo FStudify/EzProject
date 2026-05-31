@@ -5,7 +5,6 @@ interface AvatarProps {
   name: string;
   size?: 'sm' | 'md' | 'lg';
   showCrown?: boolean;
-  /** Gray ring when offline, green when online. Omit when parent adds its own ring (e.g. MemberAvatar). */
   online?: boolean;
 }
 
@@ -15,7 +14,7 @@ const sizeStyles = {
   lg: 'w-12 h-12 text-base',
 };
 
-const crownSizes = { sm: 'h-3 w-3', md: 'h-4 w-4', lg: 'h-5 w-5' };
+const crownSizes = { sm: 'h-2.5 w-2.5', md: 'h-3.5 w-3.5', lg: 'h-4 w-4' };
 
 function getInitials(name: string): string {
   return name
@@ -35,15 +34,23 @@ export default function Avatar({
   online,
 }: AvatarProps) {
   const sizeClass = sizeStyles[size];
-  const ringClass =
-    online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
+  const ringClass = online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
 
   const content = (
-    <div className={`rounded-full overflow-hidden ${sizeClass} ${ringClass}`.trim()}>
+    <div
+      className={`relative flex overflow-hidden ${sizeClass} ${ringClass}`.trim()}
+      style={{ borderRadius: '50%' }}
+    >
       {src ? (
         <img src={src} alt={name} className="h-full w-full object-cover" />
       ) : (
-        <div className="flex h-full w-full items-center justify-center font-semibold bg-primary-50 text-primary">
+        <div
+          className="flex h-full w-full items-center justify-center font-semibold"
+          style={{
+            background: 'linear-gradient(135deg, #e6f2fa, #b3d9f2)',
+            color: '#0651A0',
+          }}
+        >
           {getInitials(name)}
         </div>
       )}
@@ -55,7 +62,8 @@ export default function Avatar({
       <div className="relative inline-block">
         {content}
         <span
-          className="absolute -top-0.5 left-1/2 -translate-x-1/2 flex items-center justify-center rounded-full bg-amber-400 p-0.5 text-amber-900 shadow-sm"
+          className="absolute -top-0.5 left-1/2 flex -translate-x-1/2 items-center justify-center rounded-full p-0.5"
+          style={{ backgroundColor: '#FCD34D', color: '#92400E', boxShadow: '0 1px 3px rgba(0,0,0,0.2)' }}
           title="Project creator"
         >
           <Crown className={crownSizes[size]} strokeWidth={2.5} fill="currentColor" />

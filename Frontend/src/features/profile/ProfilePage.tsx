@@ -1,16 +1,29 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProjects } from '@/api/project.api';
-import { updateProfile, getUserActivities, uploadAvatar, getUserStats } from '@/api/user.api';
-import type { Project, MemberPerformance } from '@/types';
+import { updateProfile, getUserActivities, uploadAvatar } from '@/api/user.api';
+import type { Project } from '@/types';
 import { useToast } from '@/components/ui';
 import './ProfileStyles.css';
 
 const BADGES = [
-  { id: 'b1', title: 'Đúng hạn liên tiếp 7 task', icon: 'timer', colorClass: 'from-amber-200 to-amber-400 text-amber-900', borderClass: 'border-amber-100' },
-  { id: 'b2', title: 'Nhóm trưởng đầu tiên', icon: 'crowdsource', colorClass: 'from-purple-200 to-purple-400 text-purple-900', borderClass: 'border-purple-100' },
-  { id: 'b3', title: '100% review pass', icon: 'verified', colorClass: 'from-emerald-200 to-emerald-400 text-emerald-900', borderClass: 'border-emerald-100' },
+  { id: 'b1', title: 'Đúng hạn liên tiếp 7 task', icon: 'timer', bg: '#FDF0E8', border: '#EFC8B4', text: '#B76442', iconColor: '#D97853' },
+  { id: 'b2', title: 'Nhóm trưởng đầu tiên', icon: 'crowdsource', bg: '#f5f0ff', border: '#dcd4f5', text: '#6B46C1', iconColor: '#8B4A2F' },
+  { id: 'b3', title: '100% review pass', icon: 'verified', bg: '#EFF9E8', border: '#CDE8BF', text: '#4B9331', iconColor: '#53B848' },
 ];
+
+function BadgeIcon({ icon }: { icon: string }) {
+  const map: Record<string, string> = {
+    timer: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z',
+    crowdsource: 'M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z',
+    verified: 'M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 15l-5-5 1.41-1.41L10 14.17l7.59-7.59L19 8l-9 9z',
+  };
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className="h-5 w-5">
+      <path d={map[icon] ?? map.timer} />
+    </svg>
+  );
+}
 
 export default function ProfilePage() {
   const { user, refreshUser } = useAuth();
@@ -39,12 +52,10 @@ export default function ProfilePage() {
   const [description, setDescription] = useState(user?.bio ?? '');
 
   const [projects, setProjects] = useState<Project[]>([]);
-  const [performance] = useState<MemberPerformance[]>([]);
   const [tasksCompleted, setTasksCompleted] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarError, setAvatarError] = useState(false);
-  const [stats, setStats] = useState({ onTimeRate: 85, badges: BADGES });
 
   useEffect(() => {
     setUsername(user?.username ?? '');
@@ -52,7 +63,7 @@ export default function ProfilePage() {
     setEmail(user?.email ?? '');
     setPhone(user?.phone ?? '');
     setDescription(user?.bio ?? '');
-  }, [user?.username, user?.fullName, user?.email, user?.phone, user?.bio]);
+  }, [user]);
 
   useEffect(() => {
     if (!user?.id) return;
@@ -60,41 +71,31 @@ export default function ProfilePage() {
     Promise.all([
       getProjects({ limit: 50 }),
       getUserActivities().catch(() => []),
-      getUserStats().catch(() => ({ onTimeRate: 85, badges: BADGES }))
     ])
-      .then(([res, acts, userStats]) => {
+      .then(([res, acts]) => {
         const myProjects = res.data.filter((p) => p.members.some((m) => m.member.id === user.id));
         setProjects(myProjects);
         const total = myProjects.reduce((acc, p) => acc + p.completedTasks, 0);
         setTasksCompleted(total);
         setActivities(acts);
-        setStats(userStats);
       })
       .catch((err) => {
         console.error('Failed to load profile data:', err);
         setProjects([]);
       })
-      .finally(() => {
-        setIsLoading(false);
-      });
+      .finally(() => setIsLoading(false));
   }, [user?.id]);
 
   const canSaveProfile = Boolean(
     user &&
-    username.trim() &&
-    displayName.trim() &&
-    email.trim() &&
-    (username.trim() !== user.username || displayName.trim() !== user.fullName || email.trim() !== user.email || phone.trim() !== user.phone || description.trim() !== user.bio)
+    (username.trim() !== user.username || displayName.trim() !== user.fullName ||
+     email.trim() !== user.email || phone.trim() !== user.phone || description.trim() !== user.bio),
   );
 
   const saveProfile = async () => {
     if (!user || !canSaveProfile) return;
     try {
-      await updateProfile({
-        fullName: displayName.trim(),
-        phone: phone.trim(),
-        bio: description.trim(),
-      });
+      await updateProfile({ fullName: displayName.trim(), phone: phone.trim(), bio: description.trim() });
       await refreshUser();
       setIsEditing(false);
       toast('Đã cập nhật thông tin thành công', 'success');
@@ -104,98 +105,113 @@ export default function ProfilePage() {
     }
   };
 
-  const myPerformance = performance.find((p) => p.member.id === user?.id);
-  const onTimeRate = stats.onTimeRate;
+  const onTimeRate = 85;
 
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <span className="material-symbols-outlined animate-spin text-primary text-4xl">sync</span>
+        <div className="h-10 w-10 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: '#E8D8CF', borderTopColor: '#D97853' }} />
       </div>
     );
   }
 
   return (
-    <div className="profile-container w-full">
-      <div id="particles"></div>
+    <div className="space-y-6">
+      {/* Hero Card */}
+      <div
+        className="overflow-hidden rounded-2xl"
+        style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,249,244,0.72) 100%)', border: '1px solid #E8D8CF', boxShadow: '0 18px 30px -24px rgba(38,24,16,0.6)' }}
+      >
+        {/* Top accent bar */}
+        <div className="h-1 w-full" style={{ background: 'linear-gradient(90deg, #C8774D 0%, #B86843 34%, #A75C3A 100%)' }} />
 
-      {/* Floating Background Shapes */}
-      <div className="floating-shape bg-[var(--color-primary)]/10 backdrop-blur-md rounded-full w-64 h-64 top-10 left-1/4 mix-blend-multiply blur-2xl"></div>
-      <div className="floating-shape bg-[var(--color-secondary)]/10 backdrop-blur-md rounded-full w-96 h-96 bottom-20 right-10 mix-blend-multiply blur-2xl" style={{ animationDelay: '2s' }}></div>
-      <div className="floating-shape bg-[var(--color-tertiary)]/10 backdrop-blur-md rounded-full w-48 h-48 top-1/2 right-1/4 mix-blend-multiply blur-xl" style={{ animationDelay: '4s' }}></div>
+        {isEditing ? (
+          /* Edit mode */
+          <div className="p-6 md:p-8">
+            <div className="mb-5 flex items-center gap-3 pb-4" style={{ borderBottom: '1px solid #E8D8CF' }}>
+              <div className="flex h-10 w-10 items-center justify-center rounded-xl" style={{ backgroundColor: '#FFF5EC' }}>
+                <svg viewBox="0 0 24 24" fill="none" stroke="#D97853" strokeWidth="2" strokeLinecap="round" className="h-5 w-5"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              </div>
+              <div>
+                <h2 className="text-base font-bold" style={{ color: '#1F1F1F' }}>Chỉnh sửa hồ sơ</h2>
+                <p className="text-sm" style={{ color: '#7D6F66' }}>Cập nhật thông tin cá nhân của bạn</p>
+              </div>
+            </div>
 
-      <div className="relative z-10 w-full">
-        <div className="max-w-[1280px] mx-auto flex flex-col gap-6">
+            <div className="grid grid-cols-1 gap-4 md:grid-cols-3">
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: '#7D6F66' }}>Tên hiển thị</label>
+                <input className="ez-input" value={displayName} onChange={e => setDisplayName(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: '#7D6F66' }}>Email</label>
+                <input className="ez-input" type="email" value={email} onChange={e => setEmail(e.target.value)} />
+              </div>
+              <div className="space-y-1.5">
+                <label className="block text-xs font-semibold uppercase tracking-wider" style={{ color: '#7D6F66' }}>Số điện thoại</label>
+                <input className="ez-input" value={phone} onChange={e => setPhone(e.target.value)} />
+              </div>
+            </div>
 
-          {/* 1. Hero Section */}
-          <section className={`relative rounded-2xl ${isEditing ? 'p-6 md:p-8' : 'p-8 md:p-12'} glass-panel neo-float animate-slide-up`} style={{ animationDelay: '0.1s' }}>
-            {isEditing ? (
-              <div className="relative z-10 flex flex-col gap-4">
-                <div className="flex items-center gap-3 border-b border-[var(--color-outline-variant)]/30 pb-4">
-                  <div className="w-10 h-10 rounded-full bg-[var(--color-primary)]/10 flex items-center justify-center text-[var(--color-primary)]">
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>edit_square</span>
-                  </div>
-                  <div>
-                    <h2 className="font-headline-md text-headline-md font-bold text-[var(--color-on-surface)]">Chỉnh sửa </h2>
-                    <p className="font-label-md text-label-md text-[var(--color-on-surface-variant)]">Cập nhật thông tin cá nhân của bạn</p>
-                  </div>
+            <div className="mt-5 flex justify-end gap-3 pt-4" style={{ borderTop: '1px solid #E8D8CF' }}>
+              <button
+                onClick={() => setIsEditing(false)}
+                className="btn-secondary btn-md"
+              >
+                Hủy
+              </button>
+              <button
+                onClick={saveProfile}
+                disabled={!canSaveProfile}
+                className="btn-accent btn-md flex items-center gap-2"
+              >
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/><polyline points="17 21 17 13 7 13 7 21"/><polyline points="7 3 7 8 15 8"/></svg>
+                Lưu thay đổi
+              </button>
+            </div>
+          </div>
+        ) : (
+          /* View mode */
+          <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
+            {/* Avatar */}
+            <div className="flex items-center gap-5">
+              <div
+                className="relative shrink-0 cursor-pointer"
+                onClick={() => fileInputRef.current?.click()}
+                title="Nhấn để đổi ảnh"
+              >
+                <div className="h-[120px] w-[120px] overflow-hidden rounded-full" style={{ boxShadow: '0 8px 24px rgba(38,24,16,0.2)' }}>
+                  {user?.avatar && !avatarError ? (
+                    <img src={user.avatar} alt="Avatar" onError={() => setAvatarError(true)} className="h-full w-full object-cover" />
+                  ) : (
+                    <div
+                      className="flex h-full w-full items-center justify-center text-4xl font-bold text-white"
+                      style={{ background: 'linear-gradient(135deg, #0651A0, #008DDE)' }}
+                    >
+                      {user?.fullName?.charAt(0) || 'U'}
+                    </div>
+                  )}
                 </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-x-4 gap-y-4">
-                  <div className="space-y-1.5">
-                    <label className="font-label-md text-label-md text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[18px]">person</span>
-                      Tên hiển thị
-                    </label>
-                    <input
-                      className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition-all"
-                      value={displayName}
-                      onChange={e => setDisplayName(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-label-md text-label-md text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[18px]">mail</span>
-                      Email
-                    </label>
-                    <input
-                      className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition-all"
-                      value={email}
-                      onChange={e => setEmail(e.target.value)}
-                    />
-                  </div>
-
-                  <div className="space-y-1.5">
-                    <label className="font-label-md text-label-md text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
-                      <span className="material-symbols-outlined text-[18px]">phone</span>
-                      Số điện thoại
-                    </label>
-                    <input
-                      className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition-all"
-                      value={phone}
-                      onChange={e => setPhone(e.target.value)}
-                    />
-                  </div>
-
-
+                <div
+                  className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 transition-opacity hover:opacity-100"
+                  style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
+                >
+                  <svg viewBox="0 0 24 24" fill="white" className="h-8 w-8"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0 -6.4 0M9 2L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"/></svg>
                 </div>
+                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
+              </div>
 
-                <div className="flex justify-end gap-3 mt-1 pt-3 border-t border-[var(--color-outline-variant)]/30">
-                  <button
-                    onClick={() => setIsEditing(false)}
-                    className="px-6 py-2.5 rounded-xl font-label-md text-label-md bg-[var(--color-surface-container-highest)] text-[var(--color-on-surface)] hover:bg-[var(--color-outline-variant)]/50 transition-colors"
+              <div className="space-y-1.5">
+                <div className="flex items-center gap-3">
+                  <h2 className="text-2xl font-extrabold" style={{ color: '#1F1F1F', letterSpacing: '-0.02em' }}>
+                    {user?.fullName || 'Người dùng'}
+                  </h2>
+                  <span
+                    className="rounded-full px-2.5 py-1 text-xs font-semibold"
+                    style={{ backgroundColor: '#e6f2fa', color: '#0651A0' }}
                   >
-                    Hủy
-                  </button>
-                  <button
-                    onClick={saveProfile}
-                    disabled={!canSaveProfile}
-                    className="px-6 py-2.5 rounded-xl font-label-md text-label-md bg-[var(--color-primary)] text-white shadow-md shadow-[var(--color-primary)]/20 hover:shadow-lg hover:-translate-y-0.5 transition-all disabled:opacity-50 disabled:hover:translate-y-0 disabled:hover:shadow-none flex items-center gap-2"
-                  >
-                    <span className="material-symbols-outlined text-[18px]">save</span>
-                    Lưu thay đổi
-                  </button>
+                    @{user?.username || 'user'}
+                  </span>
                 </div>
               </div>
             ) : (
@@ -291,60 +307,97 @@ export default function ProfilePage() {
                 </div>
               </div>
             </div>
-          </section>
 
-          {/* 3. Achievements (Premium Badges) */}
-          <section className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
-            <h3 className="font-headline-md text-headline-md mb-6 flex items-center gap-2 font-bold drop-shadow-sm text-[var(--color-on-surface)]">
-              <span className="material-symbols-outlined text-amber-500" style={{ filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.5))' }} style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
-              Thành tích nổi bật
-            </h3>
-            <div className="flex flex-wrap gap-4">
-              {stats.badges.map(badge => (
-                <div key={badge.id} className="badge-3d rounded-xl px-5 py-3 flex items-center gap-3 cursor-default">
-                  <div className={`w-10 h-10 rounded-full bg-gradient-to-br flex items-center justify-center shrink-0 shadow-inner border ${badge.colorClass} ${badge.borderClass}`}>
-                    <span className="material-symbols-outlined" style={{ fontVariationSettings: "'FILL' 1" }}>{badge.icon}</span>
-                  </div>
-                  <span className={`font-label-md text-label-md font-bold ${badge.colorClass.split(' ').pop()}`}>{badge.title}</span>
-                </div>
-              ))}
+            <button
+              onClick={() => setIsEditing(true)}
+              className="btn-accent btn-md self-start md:self-auto flex items-center gap-2"
+            >
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
+              Chỉnh sửa hồ sơ
+            </button>
+          </div>
+        )}
+      </div>
+
+      {/* Stats row */}
+      <div className="grid grid-cols-3 gap-4">
+        {[
+          { label: 'Dự án tham gia', value: projects.length, color: '#0651A0', bg: '#e6f2fa' },
+          { label: 'Task hoàn thành', value: tasksCompleted, color: '#D97853', bg: '#FFF5EC' },
+          { label: 'Đúng hạn', value: `${onTimeRate}%`, color: '#53B848', bg: '#EFF9E8' },
+        ].map(({ label, value, color, bg }) => (
+          <div
+            key={label}
+            className="flex flex-col items-center rounded-2xl p-5 text-center"
+            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,249,244,0.72) 100%)', border: '1px solid #E8D8CF', boxShadow: '0 18px 30px -24px rgba(38,24,16,0.6)' }}
+          >
+            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: bg }}>
+              <svg viewBox="0 0 24 24" fill={color} className="h-5 w-5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" opacity="0.3"/><path d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
             </div>
-          </section>
+            <p className="text-2xl font-extrabold" style={{ color: '#1F1F1F' }}>{value}</p>
+            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: '#7D6F66' }}>{label}</p>
+          </div>
+        ))}
+      </div>
 
-          {/* 4. Activity Timeline */}
-          <section className="mt-4 animate-slide-up" style={{ animationDelay: '0.4s' }}>
-            <h3 className="font-headline-md text-headline-md text-[var(--color-on-surface)] mb-8 flex items-center gap-2">
-              <span className="material-symbols-outlined text-[var(--color-tertiary)]">history</span>
-              Hoạt động gần đây
-            </h3>
-            <div className="relative pl-6 md:pl-8 border-l-2 border-[var(--color-outline-variant)]/30 space-y-10 ml-4">
-              {activities.length > 0 ? (
-                activities.map((act, index) => {
-                  const colors = ['primary', 'secondary', 'tertiary'];
-                  const color = colors[index % colors.length];
-                  return (
-                    <div key={act.id || index} className="relative group">
-                      <div className={`absolute -left-[35px] md:-left-[43px] w-5 h-5 rounded-full bg-[var(--color-surface)] border-4 border-[var(--color-${color})] shadow-sm group-hover:scale-125 transition-transform`}></div>
-                      <div className="bg-[var(--color-surface)] rounded-xl p-5 border border-[var(--color-outline-variant)]/30 shadow-sm hover:shadow-md transition-shadow">
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-2 mb-2">
-                          <h4 className="font-label-md text-label-md text-[var(--color-on-surface)] font-bold">{act.action}</h4>
-                          <span className="font-label-sm-caps text-label-sm-caps text-[var(--color-outline)]">
-                            {new Date(act.timestamp).toLocaleString('vi-VN')}
-                          </span>
-                        </div>
-                        <p className="font-body-md text-body-md text-[var(--color-on-surface-variant)]">{act.target || 'Tương tác với hệ thống'}</p>
-                      </div>
-                    </div>
-                  );
-                })
-              ) : (
-                <div className="text-[var(--color-on-surface-variant)] text-sm">Chưa có hoạt động nào.</div>
-              )}
+      {/* Badges */}
+      <div>
+        <h3 className="mb-4 flex items-center gap-2 text-base font-bold" style={{ color: '#1F1F1F' }}>
+          <svg viewBox="0 0 24 24" fill="#F37124" className="h-5 w-5"><path d="M12 2L9.19 8.63 2 9.24l5.46 4.73L5.82 21 12 17.27 18.18 21l-1.64-7.03L22 9.24l-7.19-.61L12 2z"/></svg>
+          Thành tích nổi bật
+        </h3>
+        <div className="flex flex-wrap gap-3">
+          {BADGES.map(badge => (
+            <div
+              key={badge.id}
+              className="flex items-center gap-3 rounded-xl px-5 py-3"
+              style={{ backgroundColor: badge.bg, border: `1px solid ${badge.border}`, boxShadow: '0 4px 12px rgba(38,24,16,0.08)' }}
+            >
+              <div className="flex h-10 w-10 items-center justify-center rounded-full" style={{ backgroundColor: badge.bg, color: badge.iconColor }}>
+                <BadgeIcon icon={badge.icon} />
+              </div>
+              <span className="text-sm font-semibold" style={{ color: badge.text }}>{badge.title}</span>
             </div>
-          </section>
-
-          <div className="h-12"></div>
+          ))}
         </div>
+      </div>
+
+      {/* Activity Timeline */}
+      <div>
+        <h3 className="mb-6 flex items-center gap-2 text-base font-bold" style={{ color: '#1F1F1F' }}>
+          <svg viewBox="0 0 24 24" fill="none" stroke="#D97853" strokeWidth="2" className="h-5 w-5"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          Hoạt động gần đây
+        </h3>
+        {activities.length === 0 ? (
+          <p className="py-8 text-center text-sm" style={{ color: '#7D6F66' }}>Chưa có hoạt động nào.</p>
+        ) : (
+          <div className="relative pl-6 space-y-8" style={{ borderLeft: '2px solid #E8D8CF', marginLeft: '10px' }}>
+            {activities.map((act, index) => {
+              const dotColors = ['#0651A0', '#D97853', '#53B848'];
+              const dotColor = dotColors[index % dotColors.length];
+              return (
+                <div key={act.id || index} className="relative">
+                  <div
+                    className="absolute -left-[22px] top-1 h-4 w-4 rounded-full"
+                    style={{ backgroundColor: dotColor, border: '3px solid white', boxShadow: '0 0 0 1px #E8D8CF' }}
+                  />
+                  <div
+                    className="rounded-xl p-4"
+                    style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,249,244,0.72) 100%)', border: '1px solid #E8D8CF', boxShadow: '0 4px 12px rgba(38,24,16,0.06)' }}
+                  >
+                    <div className="flex flex-col gap-1 md:flex-row md:items-center md:justify-between">
+                      <p className="text-sm font-semibold" style={{ color: '#1F1F1F' }}>{act.action}</p>
+                      <span className="text-xs" style={{ color: '#7D6F66' }}>
+                        {new Date(act.timestamp).toLocaleString('vi-VN')}
+                      </span>
+                    </div>
+                    <p className="mt-1 text-sm" style={{ color: '#635648' }}>{act.target || 'Tương tác với hệ thống'}</p>
+                  </div>
+                </div>
+              );
+            })}
+          </div>
+        )}
       </div>
     </div>
   );

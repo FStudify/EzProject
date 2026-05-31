@@ -6,13 +6,13 @@ interface BadgeProps {
   className?: string;
 }
 
-const variantStyles = {
-  default: 'bg-surface-muted text-ink-secondary border border-border',
-  primary: 'bg-primary-50 text-primary-dark',
-  success: 'bg-emerald-50 text-emerald-700',
-  warning: 'bg-amber-50 text-amber-800',
-  danger: 'bg-red-50 text-red-700',
-  info: 'bg-sky-50 text-sky-700',
+const variantStyles: Record<NonNullable<BadgeProps['variant']>, { bg: string; text: string }> = {
+  default: { bg: '#f1f5f9', text: '#475569' },
+  primary:  { bg: '#e6f2fa', text: '#053d7a' },
+  success:  { bg: '#eff9f0', text: '#4B9331' },
+  warning:  { bg: '#FDF0E8', text: '#B76442' },
+  danger:   { bg: '#fef2f2', text: '#dc2626' },
+  info:     { bg: '#eff6ff', text: '#1d4ed8' },
 };
 
 export default function Badge({
@@ -20,9 +20,11 @@ export default function Badge({
   children,
   className = '',
 }: BadgeProps) {
+  const s = variantStyles[variant];
   return (
     <span
-      className={`inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium transition-colors duration-150 ${variantStyles[variant]} ${className}`.trim().replace(/\s+/g, ' ')}
+      className={`inline-flex items-center rounded-full px-2.5 py-0.5 text-xs font-medium transition-colors ${className}`.trim()}
+      style={{ backgroundColor: s.bg, color: s.text }}
     >
       {children}
     </span>

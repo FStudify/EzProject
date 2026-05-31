@@ -91,6 +91,8 @@ export const Endpoints = {
     `${BASE}/projects/${projectId}/chat/rooms/${roomId}`,
   CHAT_SEND_MESSAGE: (projectId: string, roomId: string) =>
     `${BASE}/projects/${projectId}/chat/rooms/${roomId}/messages`,
+  CHAT_ROOM_LEAVE: (projectId: string, roomId: string) =>
+    `${BASE}/projects/${projectId}/chat/rooms/${roomId}/leave`,
 
   // ── Admin ───────────────────────────────────────────────
   ADMIN_STATS: `${BASE}/admin/stats`,

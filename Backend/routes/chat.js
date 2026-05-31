@@ -18,7 +18,11 @@ router.post(
 );
 router.put('/rooms/:roomId', requireAuth, chatController.renameRoom);
 router.post('/rooms/:roomId/members', requireAuth, chatController.addMembers);
-router.delete('/rooms/:roomId/members/:userId', requireAuth, chatController.removeMember);
+router.delete('/rooms/:roomId/members/:userId', requireAuth, chatController.kickMember);
+router.post('/rooms/:roomId/leave', requireAuth, chatController.leaveChannel);
+router.post('/rooms/:roomId/admins/:userId', requireAuth, chatController.promoteChatAdmin);
+router.delete('/rooms/:roomId/admins/:userId', requireAuth, chatController.demoteChatAdmin);
+router.post('/rooms/:roomId/owner/:userId', requireAuth, chatController.transferOwner);
 router.patch('/rooms/:roomId/settings', requireAuth, chatController.updateRoomSettings);
 router.delete('/rooms/:roomId', requireAuth, chatController.deleteRoom);
 router.post(

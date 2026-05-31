@@ -2,24 +2,15 @@
 
 const mongoose = require('mongoose');
 
-const chatRoomSchema = new mongoose.Schema({
-  projectId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true,
-  },
-  name: { type: String, required: true, trim: true },
-  type: {
+const MemberRoleSchema = new mongoose.Schema({
+  userId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  role: {
     type: String,
-    enum: ['GENERAL', 'CHANNEL', 'DIRECT'],
-    default: 'CHANNEL',
+    enum: ['OWNER', 'ADMIN', 'MEMBER'],
+    default: 'MEMBER',
   },
-  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  settings: {
-    inviteLocked: { type: Boolean, default: false },
-  },
-}, { timestamps: true });
+  joinedAt: { type: Date, default: Date.now },
+}, { _id: false });
 
 const chatMessageSchema = new mongoose.Schema({
   roomId: {
@@ -38,8 +29,30 @@ const chatMessageSchema = new mongoose.Schema({
   timestamp: { type: Date, default: Date.now },
 });
 
+const chatRoomSchema = new mongoose.Schema({
+  projectId: {
+    type: mongoose.Schema.Types.ObjectId,
+    ref: 'Project',
+    required: true,
+  },
+  name: { type: String, required: true, trim: true },
+  type: {
+    type: String,
+    enum: ['GENERAL', 'CHANNEL', 'DIRECT'],
+    default: 'CHANNEL',
+  },
+  members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  chatAdmins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
+  memberRoles: [MemberRoleSchema],
+  settings: {
+    inviteLocked: { type: Boolean, default: false },
+  },
+}, { timestamps: true });
+
 chatRoomSchema.index({ projectId: 1 });
 chatRoomSchema.index({ members: 1 });
+chatRoomSchema.index({ memberRoles: 1 });
 chatMessageSchema.index({ roomId: 1, timestamp: -1 });
 
 const ChatRoom = mongoose.model('ChatRoom', chatRoomSchema);

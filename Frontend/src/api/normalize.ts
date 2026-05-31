@@ -137,20 +137,27 @@ function normalizeActivity(raw: Record<string, unknown>): Activity {
 export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
   const membersArr = (raw.members ?? []) as Record<string, unknown>[];
   const createdByRaw = raw.createdBy as Record<string, unknown> | string | null;
+  const settings = (raw.settings ?? {}) as Record<string, unknown>;
+  const chatAdminsRaw = (raw.chatAdmins ?? []) as unknown[];
+  const memberRolesRaw = (raw.memberRoles ?? []) as Record<string, unknown>[];
   return {
     id: normalizeId(raw),
     projectId: (raw.projectId as string) ?? '',
     name: (raw.name as string) ?? '',
-    type: ((raw.type as string) ?? 'GENERAL').toLowerCase() as ChatRoom['type'],
+    type: ((raw.type as string) ?? 'general').toLowerCase() as ChatRoom['type'],
     members: membersArr.map(normalizeUser),
     createdBy: createdByRaw
       ? (typeof createdByRaw === 'object' && createdByRaw !== null
         ? normalizeUser(createdByRaw as Record<string, unknown>)
         : { id: String(createdByRaw), name: 'Unknown', fullName: 'Unknown', email: '', avatar: null })
-      : { id: '', name: 'Unknown', fullName: 'Unknown', email: '', avatar: null },
-    settings: {
-      inviteLocked: Boolean((raw.settings as Record<string, unknown>)?.inviteLocked),
-    },
+      : undefined,
+    inviteLocked: Boolean(settings.inviteLocked),
+    chatAdmins: chatAdminsRaw.map(String),
+    memberRoles: memberRolesRaw.map((r) => ({
+      userId: String(r.userId ?? ''),
+      role: (r.role as 'OWNER' | 'ADMIN' | 'MEMBER') ?? 'MEMBER',
+      joinedAt: (r.joinedAt as string) ?? new Date().toISOString(),
+    })),
     createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
   };
 }

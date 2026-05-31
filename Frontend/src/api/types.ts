@@ -176,6 +176,12 @@ export interface ChatRoom {
   type: ChatRoomType;
   members: Pick<User, 'id' | 'fullName' | 'avatar'>[];
   createdAt: string;
+  /** User who created the room (owner) */
+  createdBy?: Pick<User, 'id' | 'fullName' | 'avatar'>;
+  /** Whether non-owner/admin members can invite others */
+  inviteLocked?: boolean;
+  /** IDs of members promoted to admin (same power as owner except kick owner) */
+  chatAdmins?: string[];
 }
 
 export interface ChatMessage {
