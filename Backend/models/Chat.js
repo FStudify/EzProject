@@ -16,6 +16,8 @@ const chatRoomSchema = new mongoose.Schema({
   },
   members: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  /** IDs of promoted chat admins — same power as creator except cannot kick/remove creator */
+  chatAdmins: [{ type: mongoose.Schema.Types.ObjectId, ref: 'User' }],
   settings: {
     inviteLocked: { type: Boolean, default: false },
   },

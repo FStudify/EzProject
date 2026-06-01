@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useLocation, useNavigate } from 'react-router-dom';
-import { GraduationCap, Sun, Moon } from 'lucide-react';
+import { GraduationCap, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -38,15 +38,26 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="ez-login-shell relative h-[100dvh] overflow-y-auto bg-canvas lg:overflow-hidden">
+    <div className="ez-login-shell relative h-[100dvh] overflow-y-auto lg:overflow-hidden">
 
       {/* Top bar */}
       <header className="relative z-30 flex h-14 shrink-0 items-center justify-between px-6">
-        <div className="flex items-center gap-2.5 text-white drop-shadow">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-            <GraduationCap className="h-4 w-4" />
+        <div className="flex items-center gap-3">
+          <button
+            type="button"
+            onClick={() => navigate('/')}
+            className="inline-flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm font-semibold text-white/80 transition-colors hover:bg-white/10 hover:text-white"
+          >
+            <ArrowLeft className="h-4 w-4" />
+            <span className="hidden sm:inline">{t('back_to_landing') || 'Về trang chủ'}</span>
+          </button>
+          <div className="h-5 w-px bg-white/20" />
+          <div className="flex items-center gap-2.5 text-white drop-shadow">
+            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D97853]">
+              <GraduationCap className="h-4 w-4" />
+            </div>
+            <span className="text-base font-bold tracking-tight">EZProject</span>
           </div>
-          <span className="text-base font-bold tracking-tight">EZProject</span>
         </div>
 
         <div className="flex items-center gap-3">
@@ -56,7 +67,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => setLang('vi')}
               className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
-                lang === 'vi' ? 'bg-primary text-white shadow-sm' : 'text-white/70 hover:text-white'
+                lang === 'vi' ? 'bg-[#D97853] text-white shadow-sm' : 'text-white/70 hover:text-white'
               }`}
             >
               VI
@@ -65,7 +76,7 @@ export default function LoginPage() {
               type="button"
               onClick={() => setLang('en')}
               className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
-                lang === 'en' ? 'bg-primary text-white shadow-sm' : 'text-white/70 hover:text-white'
+                lang === 'en' ? 'bg-[#D97853] text-white shadow-sm' : 'text-white/70 hover:text-white'
               }`}
             >
               EN

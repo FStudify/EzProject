@@ -71,7 +71,8 @@ export default function Modal({
     >
       {/* Backdrop */}
       <div
-        className={`absolute inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity ${backdropClassName}`}
+        className={`absolute inset-0 backdrop-blur-sm transition-opacity ${backdropClassName}`}
+        style={{ backgroundColor: 'rgba(31, 18, 3, 0.5)' }}
         onClick={onClose}
         aria-hidden="true"
       />
@@ -79,20 +80,30 @@ export default function Modal({
       {/* Modal */}
       <div
         className={`
-          relative w-full max-h-[90vh] flex flex-col rounded-xl bg-white shadow-xl
+          relative w-full max-h-[90vh] flex flex-col
           transition-all duration-200 ease-out
           ${sizeClasses[size]}
           ${panelOverflow === 'visible' ? 'overflow-visible' : 'overflow-hidden'}
           ${mounted ? 'opacity-100 scale-100' : 'opacity-0 scale-95'}
           ${panelClassName}
         `}
+        style={{
+          backgroundColor: '#FFFDFB',
+          borderRadius: '12px',
+          border: '1px solid #E8C7AE',
+          boxShadow: '0 30px 60px -20px rgba(38, 24, 16, 0.65)',
+        }}
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header */}
-        <div className={`flex items-center justify-between border-b border-slate-200 px-6 py-4 ${headerClassName}`}>
+        <div
+          className={`flex items-center justify-between px-6 py-4 ${headerClassName}`}
+          style={{ borderBottom: '1px solid #E8D8CF' }}
+        >
           <h2
             id="modal-title"
-            className={`text-lg font-semibold text-slate-900 ${titleClassName}`}
+            className={`text-lg font-semibold ${titleClassName}`}
+            style={{ color: '#1F1F1F', letterSpacing: '-0.01em' }}
           >
             {title}
           </h2>
@@ -100,12 +111,16 @@ export default function Modal({
             type="button"
             onClick={onClose}
             className={`
-              rounded-lg p-1.5 text-slate-500
-              hover:bg-slate-100 hover:text-slate-700
-              focus:outline-none focus:ring-2 focus:ring-primary focus:ring-offset-2
+              rounded-lg p-1.5
+              focus:outline-none focus:ring-2 focus:ring-offset-2
               transition-colors duration-150
               ${closeButtonClassName}
             `}
+            style={{ color: '#9a9087' }}
+            onMouseEnter={e => (e.currentTarget.style.backgroundColor = '#f1f0ee')}
+            onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+            onFocus={e => (e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,120,83,0.2)')}
+            onBlur={e => (e.currentTarget.style.boxShadow = '')}
             aria-label="Close modal"
           >
             <X className="w-5 h-5" strokeWidth={2} />
@@ -113,7 +128,12 @@ export default function Modal({
         </div>
 
         {/* Content */}
-        <div className={`px-6 py-4 text-slate-600 flex-1 ${bodyScrollable ? 'overflow-y-auto' : 'overflow-visible'} ${bodyClassName}`}>{children}</div>
+        <div
+          className={`px-6 py-5 flex-1 ${bodyScrollable ? 'overflow-y-auto' : 'overflow-visible'} ${bodyClassName}`}
+          style={{ color: '#635648' }}
+        >
+          {children}
+        </div>
       </div>
     </div>
   );

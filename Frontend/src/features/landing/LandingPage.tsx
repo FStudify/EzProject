@@ -21,37 +21,43 @@ const features = [
     icon: CheckSquare,
     titleKey: 'landing_feature_tasks_title',
     descKey: 'landing_feature_tasks_desc',
-    color: 'from-blue-500 to-indigo-600',
+    bg: 'linear-gradient(135deg, #e6f2fa, #b3d9f2)',
+    iconColor: '#0651A0',
   },
   {
     icon: Users,
     titleKey: 'landing_feature_team_title',
     descKey: 'landing_feature_team_desc',
-    color: 'from-violet-500 to-purple-600',
+    bg: 'linear-gradient(135deg, #FFF5EC, #f5e7dd)',
+    iconColor: '#D97853',
   },
   {
     icon: TrendingUp,
     titleKey: 'landing_feature_progress_title',
     descKey: 'landing_feature_progress_desc',
-    color: 'from-emerald-500 to-teal-600',
+    bg: 'linear-gradient(135deg, #eff9f0, #d4f0d2)',
+    iconColor: '#53B848',
   },
   {
     icon: Video,
     titleKey: 'landing_feature_meeting_title',
     descKey: 'landing_feature_meeting_desc',
-    color: 'from-orange-500 to-rose-600',
+    bg: 'linear-gradient(135deg, #fff0e8, #fde0cc)',
+    iconColor: '#B76442',
   },
   {
     icon: FileText,
     titleKey: 'landing_feature_docs_title',
     descKey: 'landing_feature_docs_desc',
-    color: 'from-cyan-500 to-blue-600',
+    bg: 'linear-gradient(135deg, #edf6fd, #cce5f7)',
+    iconColor: '#008DDE',
   },
   {
     icon: MessageCircle,
     titleKey: 'landing_feature_chat_title',
     descKey: 'landing_feature_chat_desc',
-    color: 'from-pink-500 to-rose-600',
+    bg: 'linear-gradient(135deg, #f5e7dd, #e8d0c0)',
+    iconColor: '#8B4A2F',
   },
 ];
 
@@ -67,37 +73,53 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-screen overflow-hidden bg-surface">
-      {/* Background gradient */}
-      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.06] via-transparent to-secondary/[0.06]" />
+    <div className="relative min-h-screen overflow-hidden" style={{ backgroundColor: '#FFFDFB' }}>
+      {/* Background */}
+      <div
+        className="pointer-events-none absolute inset-0"
+        style={{
+          background: 'radial-gradient(ellipse at 80% 0%, rgba(212,120,83,0.1) 0%, transparent 50%), radial-gradient(ellipse at 20% 100%, rgba(6,81,160,0.06) 0%, transparent 50%)',
+        }}
+      />
 
       {/* Top bar */}
-      <header className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b border-border bg-surface/80 px-6 backdrop-blur-md">
+      <header
+        className="relative z-20 flex h-14 shrink-0 items-center justify-between border-b px-6"
+        style={{ backgroundColor: '#FFFDFB', borderColor: '#E8D8CF' }}
+      >
         <div className="flex items-center gap-2.5">
-          <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-primary text-white">
-            <GraduationCap className="h-4 w-4" />
+          <div
+            className="flex h-9 w-9 items-center justify-center rounded-xl text-white"
+            style={{ background: 'linear-gradient(145deg, #A75C3A, #8B4A2F)', boxShadow: '0 14px 24px -18px rgba(31,12,3,0.7)' }}
+          >
+            <GraduationCap className="h-5 w-5" />
           </div>
-          <span className="text-base font-bold tracking-tight text-ink">EZProject</span>
+          <span className="text-base font-bold tracking-tight" style={{ color: '#1F1F1F' }}>EZProject</span>
         </div>
 
         <div className="flex items-center gap-3">
           {/* Lang pill */}
-          <div className="flex items-center rounded-lg border border-border bg-surface-muted p-0.5">
+          <div
+            className="flex items-center rounded-xl p-0.5"
+            style={{ backgroundColor: '#F8F3EE', border: '1px solid #E8C7AE' }}
+          >
             <button
               type="button"
               onClick={() => setLang('vi')}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
-                lang === 'vi' ? 'bg-primary text-white shadow-sm' : 'text-ink-muted hover:text-ink'
-              }`}
+              className="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
+              style={lang === 'vi'
+                ? { backgroundColor: '#D97853', color: 'white', boxShadow: '0 2px 4px rgba(201,107,72,0.3)' }
+                : { color: '#635648' }}
             >
               VI
             </button>
             <button
               type="button"
               onClick={() => setLang('en')}
-              className={`rounded-md px-2.5 py-1 text-xs font-semibold transition-all ${
-                lang === 'en' ? 'bg-primary text-white shadow-sm' : 'text-ink-muted hover:text-ink'
-              }`}
+              className="rounded-lg px-2.5 py-1 text-xs font-semibold transition-all"
+              style={lang === 'en'
+                ? { backgroundColor: '#D97853', color: 'white', boxShadow: '0 2px 4px rgba(201,107,72,0.3)' }
+                : { color: '#635648' }}
             >
               EN
             </button>
@@ -107,16 +129,13 @@ export default function LandingPage() {
           <button
             type="button"
             onClick={toggleTheme}
-            className="flex h-9 w-9 items-center justify-center rounded-lg border border-border bg-surface-muted text-ink-secondary transition-colors hover:border-primary/40 hover:text-primary"
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors"
+            style={{ borderColor: '#E6D6CC', backgroundColor: '#FFFDFB', color: '#635648' }}
           >
             {theme === 'dark' ? <Sun className="h-4 w-4" /> : <Moon className="h-4 w-4" />}
           </button>
 
-          <Button
-            variant="primary"
-            size="sm"
-            onClick={() => navigate('/login')}
-          >
+          <Button variant="accent" size="sm" onClick={() => navigate('/login')}>
             {t('sign_in')}
           </Button>
         </div>
@@ -124,23 +143,32 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative z-10 mx-auto max-w-5xl px-6 pt-16 pb-14 text-center">
-        <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[28rem] -translate-x-1/2 rounded-full bg-primary/10 blur-3xl" />
+        <div
+          className="pointer-events-none absolute left-1/2 top-0 h-64 w-[28rem] -translate-x-1/2 rounded-full blur-3xl"
+          style={{ background: 'radial-gradient(circle, rgba(217,120,83,0.15) 0%, transparent 70%)' }}
+        />
         <div className="relative">
-          <div className="mb-5 inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/8 px-4 py-1.5">
-            <LayoutDashboard className="h-3.5 w-3.5 text-primary" />
-            <span className="text-xs font-semibold text-primary">{t('landing_badge')}</span>
+          <div
+            className="mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5"
+            style={{ backgroundColor: '#FFF5EC', border: '1px solid #EFC8B4' }}
+          >
+            <LayoutDashboard className="h-3.5 w-3.5" style={{ color: '#D97853' }} />
+            <span className="text-xs font-semibold" style={{ color: '#B76442' }}>{t('landing_badge')}</span>
           </div>
-          <h1 className="text-4xl font-extrabold tracking-tight text-ink sm:text-5xl xl:text-[3.25rem]">
+          <h1
+            className="text-4xl font-extrabold tracking-tight sm:text-5xl xl:text-[3.25rem]"
+            style={{ color: '#1F1F1F', letterSpacing: '-0.02em' }}
+          >
             {t('landing_hero_title')}
           </h1>
-          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed text-ink-secondary">
+          <p className="mx-auto mt-5 max-w-2xl text-lg leading-relaxed" style={{ color: '#635648' }}>
             {t('landing_hero_desc')}
           </p>
           <div className="mt-8 flex flex-wrap items-center justify-center gap-3">
             <Button
-            variant="secondary"
-            size="lg"
-            onClick={() => navigate('/register')}
+              variant="accent"
+              size="lg"
+              onClick={() => navigate('/register')}
               className="gap-2"
             >
               {t('landing_cta_start')}
@@ -160,8 +188,8 @@ export default function LandingPage() {
         <div className="mt-14 flex flex-wrap items-center justify-center gap-8">
           {stats.map(({ value, labelKey }) => (
             <div key={labelKey} className="text-center">
-              <p className="text-3xl font-extrabold text-ink">{value}</p>
-              <p className="mt-0.5 text-sm text-ink-muted">{t(labelKey)}</p>
+              <p className="text-3xl font-extrabold" style={{ color: '#1F1F1F' }}>{value}</p>
+              <p className="mt-0.5 text-sm" style={{ color: '#7D6F66' }}>{t(labelKey)}</p>
             </div>
           ))}
         </div>
@@ -170,33 +198,54 @@ export default function LandingPage() {
       {/* Features */}
       <section className="relative z-10 mx-auto max-w-5xl px-6 pb-20">
         <div className="mb-10 text-center">
-          <h2 className="text-2xl font-bold text-ink sm:text-3xl">{t('landing_features_title')}</h2>
-          <p className="mt-2 text-ink-muted">{t('landing_features_subtitle')}</p>
+          <h2 className="text-2xl font-bold sm:text-3xl" style={{ color: '#1F1F1F' }}>{t('landing_features_title')}</h2>
+          <p className="mt-2" style={{ color: '#7D6F66' }}>{t('landing_features_subtitle')}</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ icon: Icon, titleKey, descKey, color }) => (
+          {features.map(({ icon: Icon, titleKey, descKey, bg, iconColor }) => (
             <div
               key={titleKey}
-              className="group rounded-2xl border border-border bg-surface p-6 shadow-sm transition-all duration-200 hover:-translate-y-0.5 hover:shadow-md"
+              className="group flex flex-col rounded-2xl p-6 transition-all duration-200"
+              style={{
+                background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,249,244,0.72) 100%)',
+                border: '1px solid #E8D8CF',
+                boxShadow: '0 18px 30px -24px rgba(38,24,16,0.6)',
+              }}
+              onMouseEnter={e => {
+                e.currentTarget.style.transform = 'translateY(-3px)';
+                e.currentTarget.style.boxShadow = '0 22px 36px -24px rgba(38,24,16,0.55)';
+                e.currentTarget.style.borderColor = '#D8C9BD';
+              }}
+              onMouseLeave={e => {
+                e.currentTarget.style.transform = '';
+                e.currentTarget.style.boxShadow = '0 18px 30px -24px rgba(38,24,16,0.6)';
+                e.currentTarget.style.borderColor = '#E8D8CF';
+              }}
             >
-              <div className={`mb-4 inline-flex rounded-xl bg-gradient-to-br p-3 text-white shadow-sm ${color}`}>
-                <Icon className="h-5 w-5" />
+              <div
+                className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl"
+                style={{ background: bg, boxShadow: '0 4px 12px rgba(38,24,16,0.12)' }}
+              >
+                <Icon className="h-5 w-5" style={{ color: iconColor }} />
               </div>
-              <h3 className="mb-2 text-base font-bold text-ink">{t(titleKey)}</h3>
-              <p className="text-sm leading-relaxed text-ink-muted">{t(descKey)}</p>
+              <h3 className="mb-2 text-base font-bold" style={{ color: '#1F1F1F' }}>{t(titleKey)}</h3>
+              <p className="text-sm leading-relaxed" style={{ color: '#635648' }}>{t(descKey)}</p>
             </div>
           ))}
         </div>
       </section>
 
       {/* Footer */}
-      <footer className="relative z-10 border-t border-border bg-surface-muted px-6 py-8">
+      <footer
+        className="relative z-10 px-6 py-8"
+        style={{ borderTop: '1px solid #E8D8CF', backgroundColor: '#FFF8F3' }}
+      >
         <div className="mx-auto flex max-w-5xl flex-col items-center justify-between gap-4 text-center sm:flex-row">
           <div className="flex items-center gap-2">
-            <GraduationCap className="h-5 w-5 text-primary" />
-            <span className="text-sm font-bold text-ink">EZProject</span>
+            <GraduationCap className="h-5 w-5" style={{ color: '#D97853' }} />
+            <span className="text-sm font-bold" style={{ color: '#1F1F1F' }}>EZProject</span>
           </div>
-          <p className="text-sm text-ink-muted">{t('landing_footer')}</p>
+          <p className="text-sm" style={{ color: '#7D6F66' }}>{t('landing_footer')}</p>
         </div>
       </footer>
     </div>
