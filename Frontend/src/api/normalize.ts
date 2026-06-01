@@ -139,6 +139,7 @@ export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
   const createdByRaw = raw.createdBy as Record<string, unknown> | string | null;
   const settings = (raw.settings ?? {}) as Record<string, unknown>;
   const chatAdminsRaw = (raw.chatAdmins ?? []) as unknown[];
+  const memberRolesRaw = (raw.memberRoles ?? []) as Record<string, unknown>[];
   return {
     id: normalizeId(raw),
     projectId: (raw.projectId as string) ?? '',
@@ -152,6 +153,11 @@ export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
       : undefined,
     inviteLocked: Boolean(settings.inviteLocked),
     chatAdmins: chatAdminsRaw.map(String),
+    memberRoles: memberRolesRaw.map((r) => ({
+      userId: String(r.userId ?? ''),
+      role: (r.role as 'OWNER' | 'ADMIN' | 'MEMBER') ?? 'MEMBER',
+      joinedAt: (r.joinedAt as string) ?? new Date().toISOString(),
+    })),
     createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
   };
 }
@@ -218,7 +224,7 @@ export function normalizeMemberList(data: unknown): { user: { id: string; name: 
     const raw = item as Record<string, unknown>;
     const userDoc = (raw.user ?? raw.userId) as Record<string, unknown>;
     const fullName = (userDoc?.fullName as string) ?? 'Unknown';
-    const roleStr = ((raw.role as string) ?? 'MEMBER').toLowerCase();
+    const roleStr = ((raw.role as string) ?? 'MEMBER').toUpperCase();
     return {
       user: {
         id: normalizeId(userDoc ?? raw),
@@ -235,7 +241,7 @@ export function normalizeMemberList(data: unknown): { user: { id: string; name: 
   });
 }
 
-export function normalizePerformanceList(data: unknown): { member: { id: string; name: string; fullName: string; avatar: string | null }; role: 'leader' | 'supervisor' | 'member'; isOwner: boolean; tasksCompleted: number; tasksInProgress: number; tasksTodo: number; documentsUploaded: number; commentsCount: number; score: number; contributions: { date: string; count: number }[]; evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null }[] {
+export function normalizePerformanceList(data: unknown): { member: { id: string; name: string; fullName: string; avatar: string | null }; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksCompleted: number; tasksInProgress: number; tasksTodo: number; documentsUploaded: number; commentsCount: number; score: number; contributions: { date: string; count: number }[]; evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null }[] {
   const arr = Array.isArray(data) ? data : ((data as Record<string, unknown>).data as unknown[]) ?? [];
   return arr.map((item) => {
     const raw = item as Record<string, unknown>;
@@ -243,6 +249,7 @@ export function normalizePerformanceList(data: unknown): { member: { id: string;
     const fullName = (memberDoc?.fullName as string) ?? 'Unknown';
     const contributionsArr = (raw.contributions ?? []) as Record<string, unknown>[];
     const evaluationRaw = raw.evaluation as Record<string, unknown> | null;
+    const roleStr = ((raw.role as string) ?? 'MEMBER').toUpperCase();
     return {
       member: {
         id: normalizeId(memberDoc ?? raw),
@@ -250,7 +257,7 @@ export function normalizePerformanceList(data: unknown): { member: { id: string;
         fullName,
         avatar: (memberDoc?.avatar as string | null) ?? null,
       },
-      role: ((raw.role as string) ?? 'member').toLowerCase() as 'leader' | 'supervisor' | 'member',
+      role: roleStr as 'LEADER' | 'SUPERVISOR' | 'MEMBER',
       isOwner: Boolean(raw.isOwner),
       tasksCompleted: (raw.tasksCompleted as number) ?? 0,
       tasksInProgress: (raw.tasksInProgress as number) ?? 0,

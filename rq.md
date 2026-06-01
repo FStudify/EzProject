@@ -1,150 +1,690 @@
-chức năng chat
-thì nó phải telegram
-- có xem số lượng thành viên ( ấn vào thì nó hiển thị các thành viên và nhóm trưởng có quyền kick ), có thể rời nhóm, nhóm general luôn xuất hiện và có ở trong kênh ( không hiển thị số lượng thành viên ở trong kênh)
-nhóm trưởng ( người tạo group) có quyền khoá quyền mời thành viên, phong cấp quản trị nhóm, quản trị viên quyền tương đương nhóm trưởng nhưng không có quyền kcik nhóm trưởng, nhóm trưởng thì toàn quyền kể cả hạ cấp quản trị vien và kick quản trị viên 
-vẽ ra
-------------------------------------------------------------
-| kênh               |                                                              |
-| Genaral          |
+# TASK: IMPLEMENT COMPLETE PROJECT MEMBER MANAGEMENT SYSTEM
 
-Nếu muốn chức năng chat giống Telegram nhưng đơn giản hóa cho hệ thống quản lý dự án của bạn, mình đề xuất cấu trúc và quyền như sau:
+## Objective
 
-1. Cấu trúc Chat
-Workspace / Project
-│
-├── KÊNH (Channels)
-│   ├── # General (mặc định)
-│   ├── # Frontend
-│   ├── # Backend
-│   ├── # Meeting
-│   └── ...
-│
-└── NHÓM CHAT (Groups)
-    ├── Team Design
-    ├── Team Dev
-    ├── Team Marketing
-    └── ...
-2. Sidebar
-------------------------------------------------------------
-| Trò chuyện                                             + |
-------------------------------------------------------------
-| 🔍 Tìm cuộc trò chuyện...                               |
-------------------------------------------------------------
-| KÊNH                                                    |
-|                                                         |
-| # General                                               |
-| # Frontend                                              |
-| # Backend                                               |
-| # Meeting                                               |
-|                                                         |
-------------------------------------------------------------
-| NHÓM                                                    |
-|                                                         |
-| 👥 Team Dev (8)                                         |
-| 👥 Team Design (5)                                      |
-| 👥 Team Marketing (3)                                   |
-|                                                         |
-------------------------------------------------------------
-| TIN NHẮN TRỰC TIẾP                                      |
-|                                                         |
-| 🟢 Nguyễn Văn A                                         |
-| 🟢 Trần Văn B                                           |
-------------------------------------------------------------
-Quy tắc
+Implement a complete Project Member Management System for EzProject.
 
-✅ General luôn tồn tại
+The implementation must include:
 
-✅ General luôn nằm trong mục KÊNH
+* Backend
+* Database
+* API
+* Frontend
+* State Management
+* Socket Events (if used)
+* Permission System
+* UI/UX
+* Integration Testing
 
-✅ Không hiển thị số thành viên của Kênh
+The solution must be production-ready.
 
-✅ Nhóm Chat hiển thị số thành viên
+Do NOT create mock implementations.
 
-3. Header nhóm
+Do NOT leave TODO/FIXME comments.
 
-Ví dụ đang mở nhóm "Team Dev"
+Do NOT break existing modules.
 
-------------------------------------------------------------
-| 👥 Team Dev                                     ▼       |
-| 8 thành viên                                            |
-------------------------------------------------------------
+Before making changes, analyze the current architecture and reuse existing patterns whenever possible.
 
-Click vào phần "8 thành viên":
+---
 
---------------------------------------------------
-| Thành viên nhóm                                |
---------------------------------------------------
-| 👑 Nguyễn Văn A (Nhóm trưởng)                  |
-| ⭐ Trần Văn B (Quản trị viên)                  |
-| 👤 Lê Văn C                                    |
-| 👤 Phạm Văn D                                  |
---------------------------------------------------
-| [Rời nhóm]                                     |
---------------------------------------------------
-4. Quyền hạn
-Member
+# IMPORTANT REQUIREMENTS
 
-Có thể:
+Before coding:
 
-Chat
-Xem thành viên
-Rời nhóm
+1. Analyze current database schema.
+2. Analyze current project module.
+3. Analyze authentication and authorization flow.
+4. Analyze current API patterns.
+5. Analyze frontend state management.
+6. Analyze current member/project relationship.
+7. Analyze notification system if available.
 
-Không thể:
+After analysis:
 
-Kick người khác
-Mời người khác khi bị khóa
-Phong cấp
-Admin
+* Reuse existing architecture.
+* Avoid duplicate logic.
+* Avoid creating parallel systems.
+* Maintain backward compatibility.
 
-Có thể:
+---
 
-Chat
-Mời thành viên
-Kick Member
-Phong cấp Member → Admin
-Khóa/Mở quyền mời thành viên
+# FEATURE OVERVIEW
 
-Không thể:
+Implement a full member management system for projects.
 
-Kick Owner
-Hạ cấp Owner
-Owner (Người tạo nhóm)
+Roles:
 
-Có toàn quyền:
+```ts
+enum ProjectRole {
+    OWNER = "OWNER",
+    SUPERVISOR = "SUPERVISOR",
+    MEMBER = "MEMBER"
+}
+```
 
-Kick Member
-Kick Admin
-Hạ cấp Admin
-Nâng cấp Admin
-Khóa quyền mời thành viên
-Chuyển quyền Owner
-Xóa nhóm
-5. Menu quản lý nhóm
+---
 
-Chỉ Owner/Admin mới thấy
+# OWNER RULES
 
---------------------------------------------------
-| Cài đặt nhóm                                   |
---------------------------------------------------
-| Mời thành viên                                 |
-| Danh sách thành viên                           |
-|------------------------------------------------|
-| [✓] Cho phép thành viên mời người khác         |
-|------------------------------------------------|
-| Phong quản trị viên                            |
-| Hạ cấp quản trị viên                           |
-|------------------------------------------------|
-| Rời nhóm                                       |
---------------------------------------------------
-6. Danh sách thành viên (Owner)
---------------------------------------------------
-| Thành viên                                     |
---------------------------------------------------
-| 👑 Nguyễn Văn A                                |
-|                                                 |
-| ⭐ Trần Văn B                     [Hạ cấp]      |
-|                                                 |
-| 👤 Lê Văn C                       [Kick]        |
-| 👤 Phạm Văn D                     [Kick]        |
---------------------------------------------------
+The creator of a project automatically becomes OWNER.
+
+There must always be exactly ONE OWNER.
+
+OWNER permissions:
+
+* Edit project
+* Delete project
+* Invite members
+* Generate invite links
+* Revoke invitations
+* Change member roles
+* Promote member to supervisor
+* Demote supervisor to member
+* Remove members
+* Transfer ownership
+* Leave project after transferring ownership
+
+---
+
+# SUPERVISOR RULES
+
+SUPERVISOR permissions:
+
+* View all project data
+* Create tasks
+* Edit tasks
+* Assign tasks
+* Manage task workflow
+* View reports
+
+SUPERVISOR cannot:
+
+* Delete project
+* Change member roles
+* Remove owner
+* Transfer ownership
+* Edit project permissions
+
+---
+
+# MEMBER RULES
+
+MEMBER permissions:
+
+* View project
+* View assigned tasks
+* Update own tasks
+* Upload files
+* Comment
+* Participate in discussions
+
+MEMBER cannot:
+
+* Manage members
+* Manage permissions
+* Delete project
+
+---
+
+# DATABASE DESIGN
+
+Review existing schema first.
+
+If necessary, create migrations.
+
+Required structure:
+
+```ts
+Project
+{
+    id
+    name
+    description
+    ownerId
+    createdAt
+    updatedAt
+}
+```
+
+```ts
+ProjectMember
+{
+    id
+    projectId
+    userId
+    role
+    joinedAt
+}
+```
+
+```ts
+enum ProjectRole {
+    OWNER,
+    SUPERVISOR,
+    MEMBER
+}
+```
+
+Enforce:
+
+* One OWNER per project.
+* No duplicate memberships.
+* ownerId must match OWNER role.
+
+---
+
+# INVITATION SYSTEM
+
+Implement two invitation methods.
+
+---
+
+## METHOD 1: INVITE LINK
+
+### Create Invite Link
+
+Only OWNER.
+
+API:
+
+```http
+POST /projects/:projectId/invite-links
+```
+
+Response:
+
+```json
+{
+    "inviteLink": "https://domain.com/invite/xxxxx"
+}
+```
+
+---
+
+Invite link table:
+
+```ts
+ProjectInviteLink
+{
+    id
+    projectId
+    token
+    createdBy
+    expiresAt
+    maxUses
+    currentUses
+    isActive
+}
+```
+
+Requirements:
+
+* Unique token.
+* Expiration support.
+* Usage limit support.
+* Ability to revoke.
+
+---
+
+### Join By Invite Link
+
+API:
+
+```http
+POST /projects/invite/:token/join
+```
+
+Requirements:
+
+* User must be authenticated.
+* Cannot join twice.
+* Expired links rejected.
+* Revoked links rejected.
+
+Default role:
+
+```ts
+MEMBER
+```
+
+---
+
+# METHOD 2: MANUAL INVITATION
+
+Only OWNER.
+
+Owner can invite by:
+
+* Username
+* Email
+
+---
+
+API:
+
+```http
+POST /projects/:projectId/invitations
+```
+
+Request:
+
+```json
+{
+    "username": "abc"
+}
+```
+
+or
+
+```json
+{
+    "email": "abc@gmail.com"
+}
+```
+
+---
+
+Invitation table:
+
+```ts
+ProjectInvitation
+{
+    id
+    projectId
+    invitedBy
+    invitedUserId
+    invitedEmail
+    status
+    expiresAt
+    createdAt
+}
+```
+
+```ts
+enum InvitationStatus {
+    PENDING,
+    ACCEPTED,
+    DECLINED,
+    EXPIRED
+}
+```
+
+---
+
+# ACCEPT INVITATION
+
+API:
+
+```http
+POST /project-invitations/:id/accept
+```
+
+Requirements:
+
+* Add user to project.
+* Create ProjectMember.
+* Set role MEMBER.
+* Update invitation status.
+
+---
+
+# DECLINE INVITATION
+
+API:
+
+```http
+POST /project-invitations/:id/decline
+```
+
+---
+
+# MEMBER MANAGEMENT
+
+Owner can access:
+
+```text
+Project Settings
+→ Members
+```
+
+Display:
+
+* Avatar
+* Name
+* Email
+* Role
+* Join Date
+
+---
+
+# CHANGE ROLE
+
+Only OWNER.
+
+API:
+
+```http
+PATCH /projects/:projectId/members/:memberId/role
+```
+
+Request:
+
+```json
+{
+    "role": "SUPERVISOR"
+}
+```
+
+or
+
+```json
+{
+    "role": "MEMBER"
+}
+```
+
+Rules:
+
+* Cannot assign OWNER.
+* Cannot demote current OWNER.
+* Cannot create multiple owners.
+
+---
+
+# REMOVE MEMBER
+
+Only OWNER.
+
+API:
+
+```http
+DELETE /projects/:projectId/members/:memberId
+```
+
+Rules:
+
+* Cannot remove OWNER.
+* Cannot remove non-member.
+* Remove access immediately.
+
+After removal:
+
+* Project disappears from sidebar.
+* User cannot access project routes.
+* API returns 403.
+
+---
+
+# TRANSFER OWNERSHIP
+
+Only OWNER.
+
+API:
+
+```http
+POST /projects/:projectId/transfer-ownership
+```
+
+Request:
+
+```json
+{
+    "newOwnerId": "..."
+}
+```
+
+Rules:
+
+* New owner must already be a member.
+* New owner cannot be current owner.
+* Transfer must be atomic.
+
+After transfer:
+
+```text
+Old Owner → SUPERVISOR
+New Owner → OWNER
+Project.ownerId updated
+```
+
+---
+
+# LEAVE PROJECT
+
+Implement complete leave flow.
+
+---
+
+## MEMBER leaves
+
+Remove membership.
+
+Project disappears immediately.
+
+---
+
+## SUPERVISOR leaves
+
+Remove membership.
+
+Project disappears immediately.
+
+---
+
+## OWNER leaves
+
+If other members exist:
+
+Show modal:
+
+```text
+Select a new project owner before leaving.
+```
+
+Require ownership transfer first.
+
+Do not allow leave until transfer completed.
+
+---
+
+## OWNER is last member
+
+Show warning:
+
+```text
+You are the last member.
+Leaving will permanently delete this project.
+```
+
+After confirmation:
+
+* Delete project
+* Delete memberships
+* Delete invite links
+* Delete invitations
+
+Handle related records safely.
+
+Use existing cascade strategy if available.
+
+---
+
+# FRONTEND REQUIREMENTS
+
+Create complete UI.
+
+---
+
+## Members Page
+
+Display:
+
+```text
+Name
+Email
+Role
+Joined Date
+Actions
+```
+
+---
+
+## Owner Actions
+
+* Invite Member
+* Generate Invite Link
+* Copy Invite Link
+* Change Role
+* Remove Member
+* Transfer Ownership
+
+---
+
+## Supervisor Actions
+
+No member-management actions.
+
+Read-only.
+
+---
+
+## Member Actions
+
+Read-only.
+
+---
+
+# INVITATION UI
+
+Create:
+
+```text
+Invite Member Modal
+```
+
+Tabs:
+
+```text
+Invite by Username
+Invite by Email
+Invite Link
+```
+
+---
+
+# INVITATIONS PAGE
+
+Display:
+
+* Pending invitations
+* Accepted invitations
+* Declined invitations
+* Expired invitations
+
+Allow owner to revoke pending invitations.
+
+---
+
+# PROJECT SIDEBAR
+
+After:
+
+* Leave
+* Remove member
+* Ownership transfer
+
+Refresh state immediately.
+
+No page reload required.
+
+---
+
+# API INTEGRATION
+
+Connect all frontend screens to real backend APIs.
+
+No mock data.
+
+No fake success messages.
+
+All mutations must:
+
+* Update cache
+* Refresh affected queries
+* Update sidebar state
+* Handle errors correctly
+
+---
+
+# AUTHORIZATION
+
+Enforce permissions BOTH:
+
+* Frontend
+* Backend
+
+Backend is the source of truth.
+
+Never trust frontend role values.
+
+---
+
+# SOCKET SUPPORT
+
+If socket architecture exists:
+
+Emit events:
+
+```text
+project.member.joined
+project.member.left
+project.member.removed
+project.member.role_changed
+project.owner.changed
+project.invitation.created
+```
+
+Update UI in realtime.
+
+If socket module does not exist, do not introduce unnecessary complexity.
+
+---
+
+# TESTING REQUIREMENTS
+
+Verify:
+
+1. Create project.
+2. Owner assignment.
+3. Invite by username.
+4. Invite by email.
+5. Invite by link.
+6. Accept invitation.
+7. Decline invitation.
+8. Change role.
+9. Remove member.
+10. Transfer ownership.
+11. Leave project.
+12. Delete project when last owner leaves.
+13. Sidebar updates.
+14. Authorization rules.
+15. Existing modules remain functional.
+
+---
+
+# FINAL VALIDATION
+
+Before finishing:
+
+1. Run application.
+2. Test all APIs.
+3. Test all UI flows.
+4. Test permissions.
+5. Test project sidebar.
+6. Test database updates.
+7. Test ownership transfer.
+8. Test leave project flow.
+9. Ensure no regression in existing modules.
+
+Provide a summary of all modified files and explain why each change was made.

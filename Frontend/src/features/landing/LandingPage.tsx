@@ -21,43 +21,37 @@ const features = [
     icon: CheckSquare,
     titleKey: 'landing_feature_tasks_title',
     descKey: 'landing_feature_tasks_desc',
-    bg: 'linear-gradient(135deg, #e6f2fa, #b3d9f2)',
-    iconColor: '#0651A0',
+  color: 'from-orange-500 to-amber-600',
   },
   {
     icon: Users,
     titleKey: 'landing_feature_team_title',
     descKey: 'landing_feature_team_desc',
-    bg: 'linear-gradient(135deg, #FFF5EC, #f5e7dd)',
-    iconColor: '#D97853',
+    color: 'from-orange-400 to-orange-600',
   },
   {
     icon: TrendingUp,
     titleKey: 'landing_feature_progress_title',
     descKey: 'landing_feature_progress_desc',
-    bg: 'linear-gradient(135deg, #eff9f0, #d4f0d2)',
-    iconColor: '#53B848',
+    color: 'from-amber-500 to-orange-500',
   },
   {
     icon: Video,
     titleKey: 'landing_feature_meeting_title',
     descKey: 'landing_feature_meeting_desc',
-    bg: 'linear-gradient(135deg, #fff0e8, #fde0cc)',
-    iconColor: '#B76442',
+    color: 'from-orange-500 to-red-500',
   },
   {
     icon: FileText,
     titleKey: 'landing_feature_docs_title',
     descKey: 'landing_feature_docs_desc',
-    bg: 'linear-gradient(135deg, #edf6fd, #cce5f7)',
-    iconColor: '#008DDE',
+    color: 'from-amber-400 to-orange-500',
   },
   {
     icon: MessageCircle,
     titleKey: 'landing_feature_chat_title',
     descKey: 'landing_feature_chat_desc',
-    bg: 'linear-gradient(135deg, #f5e7dd, #e8d0c0)',
-    iconColor: '#8B4A2F',
+    color: 'from-orange-400 to-amber-600',
   },
 ];
 
@@ -73,14 +67,9 @@ export default function LandingPage() {
   const navigate = useNavigate();
 
   return (
-    <div className="relative min-h-screen overflow-hidden" style={{ backgroundColor: '#FFFDFB' }}>
-      {/* Background */}
-      <div
-        className="pointer-events-none absolute inset-0"
-        style={{
-          background: 'radial-gradient(ellipse at 80% 0%, rgba(212,120,83,0.1) 0%, transparent 50%), radial-gradient(ellipse at 20% 100%, rgba(6,81,160,0.06) 0%, transparent 50%)',
-        }}
-      />
+    <div className="relative min-h-screen overflow-hidden bg-surface">
+      {/* Background gradient */}
+      <div className="pointer-events-none absolute inset-0 bg-gradient-to-br from-primary/[0.08] via-transparent to-secondary/[0.08]" />
 
       {/* Top bar */}
       <header
@@ -143,10 +132,7 @@ export default function LandingPage() {
 
       {/* Hero */}
       <section className="relative z-10 mx-auto max-w-5xl px-6 pt-16 pb-14 text-center">
-        <div
-          className="pointer-events-none absolute left-1/2 top-0 h-64 w-[28rem] -translate-x-1/2 rounded-full blur-3xl"
-          style={{ background: 'radial-gradient(circle, rgba(217,120,83,0.15) 0%, transparent 70%)' }}
-        />
+        <div className="pointer-events-none absolute left-1/2 top-0 h-64 w-[28rem] -translate-x-1/2 rounded-full bg-primary/15 blur-3xl" />
         <div className="relative">
           <div
             className="mb-5 inline-flex items-center gap-2 rounded-full px-4 py-1.5"
@@ -202,7 +188,7 @@ export default function LandingPage() {
           <p className="mt-2" style={{ color: '#7D6F66' }}>{t('landing_features_subtitle')}</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ icon: Icon, titleKey, descKey, bg, iconColor }) => (
+          {features.map(({ icon: Icon, titleKey, descKey, bg, iconColor, color }) => (
             <div
               key={titleKey}
               className="group flex flex-col rounded-2xl p-6 transition-all duration-200"
@@ -223,10 +209,10 @@ export default function LandingPage() {
               }}
             >
               <div
-                className="mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl"
-                style={{ background: bg, boxShadow: '0 4px 12px rgba(38,24,16,0.12)' }}
+                className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl ${color ? `bg-gradient-to-br ${color} text-white` : ''}`}
+                style={bg ? { background: bg, boxShadow: '0 4px 12px rgba(38,24,16,0.12)' } : { boxShadow: '0 4px 12px rgba(38,24,16,0.12)' }}
               >
-                <Icon className="h-5 w-5" style={{ color: iconColor }} />
+                <Icon className="h-5 w-5" style={iconColor ? { color: iconColor } : undefined} />
               </div>
               <h3 className="mb-2 text-base font-bold" style={{ color: '#1F1F1F' }}>{t(titleKey)}</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#635648' }}>{t(descKey)}</p>

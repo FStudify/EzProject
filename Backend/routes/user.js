@@ -2,6 +2,7 @@
 
 const express = require('express');
 const userController = require('../controllers/userController');
+const invitationController = require('../controllers/invitationController');
 const { requireAuth } = require('../middlewares/auth');
 const { validate, validators } = require('../validators');
 const { handleUpload, uploadAvatar } = require('../middlewares/upload');
@@ -33,5 +34,8 @@ router.delete('/me/avatar', requireAuth, userController.deleteAvatar);
 router.get('/me/notifications', requireAuth, userController.getNotifications);
 router.put('/me/notifications/read-all', requireAuth, userController.markAllRead);
 router.put('/me/notifications/:id/read', requireAuth, userController.markNotificationRead);
+
+// ── My invitations ────────────────────────────────────
+router.get('/me/invitations', requireAuth, invitationController.myInvitations);
 
 module.exports = router;

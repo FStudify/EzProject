@@ -34,12 +34,7 @@ export default function Avatar({
   online,
 }: AvatarProps) {
   const sizeClass = sizeStyles[size];
-  const ringClass =
-    online === undefined
-      ? ''
-      : online
-        ? 'ring-2 ring-emerald-500'
-        : 'ring-2 ring-slate-200';
+  const ringClass = online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
 
   const content = (
     <div

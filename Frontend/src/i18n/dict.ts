@@ -11,12 +11,17 @@ export type DictKey =
   | 'documents' | 'upload' | 'create_folder' | 'folder_name' | 'rename' | 'rename_folder' | 'delete_folder' | 'delete_file' | 'rename_file' | 'folder_root' | 'folder_up' | 'folders' | 'files' | 'no_documents' | 'select_document' | 'file_info' | 'file_comments' | 'file_type' | 'file_size' | 'uploaded_by' | 'upload_date' | 'download' | 'history' | 'send_comment' | 'write_comment' | 'no_comments' | 'no_results' | 'folder_empty'
   | 'search_placeholder_doc' | 'folder_options' | 'file_options' | 'search_results' | 'just_now' | 'minutes_ago' | 'hours_ago' | 'days_ago'
   | 'team_members' | 'add_member' | 'role_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members'
+  | 'owner_manage_members' | 'failed_to_load_members' | 'failed_to_update_role' | 'failed_to_remove_member' | 'kick_member_confirm' | 'owner_transferred' | 'transfer_ownership' | 'leave_project' | 'failed_to_generate_link' | 'failed_to_invite' | 'invitation_sent' | 'failed_to_revoke' | 'invitation_revoked' | 'copied'
+  | 'invite_members' | 'invite_by_account' | 'invite_by_email' | 'invite_by_link' | 'invite_list' | 'send_invitation' | 'generate_link' | 'no_invitations' | 'revoke' | 'link_expires_note' | 'enter_username' | 'enter_email' | 'generating_link' | 'copy'
+  | 'you_are_owner' | 'select_new_owner_before_leave' | 'warning_delete_project' | 'last_member_warning' | 'last_member_delete_warning' | 'select_new_owner' | 'will_lose_access' | 'delete_and_leave' | 'confirm_leave' | 'admin'
   | 'meetings' | 'schedule_meeting' | 'meeting_topic' | 'meeting_date' | 'meeting_time' | 'meeting_duration' | 'meeting_location' | 'meeting_link' | 'meeting_notes' | 'attendees' | 'join' | 'will_attend' | 'decline' | 'pending' | 'no_meetings' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'online' | 'offline'
   | 'chat' | 'channels' | 'direct_messages' | 'create_channel' | 'channel_name' | 'add_members' | 'selected' | 'search_conversation' | 'no_messages' | 'start_conversation' | 'select_conversation' | 'rename_channel' | 'leave_channel' | 'delete_channel' | 'new_channel_name' | 'channel_general_cant_edit' | 'direct_message' | 'create_channel_btn'
+  | 'no_channels' | 'default_channel' | 'default_channel_subtitle'
+  | 'error_load_data' | 'cannot_create_channel' | 'cannot_rename' | 'cannot_delete_channel' | 'cannot_leave_channel' | 'cannot_update_settings' | 'promoted_successfully' | 'cannot_promote' | 'demoted_successfully' | 'cannot_demote' | 'member_kicked' | 'cannot_kick_member' | 'member_invited' | 'cannot_invite_member' | 'ownership_transferred' | 'cannot_transfer_ownership' | 'default_channel' | 'promote_to_admin' | 'demote_from_admin' | 'transfer_channel_owner' | 'kick' | 'leave' | 'lock_invite' | 'unlock_invite' | 'only_owner_can_invite' | 'all_can_invite' | 'invite_locked' | 'invite_open' | 'owner' | 'all_members_invited' | 'invite_selected_members' | 'invite_th_members'
   | 'performance' | 'completed_tasks' | 'pending_tasks' | 'overdue_tasks' | 'progress' | 'of_total' | 'in_progress_label' | 'need_attention' | 'member_performance' | 'evaluate' | 'update_evaluation' | 'rating' | 'feedback' | 'evaluated_feedback' | 'write_feedback' | 'submit_evaluation'
   | 'theme' | 'theme_light' | 'theme_dark' | 'language' | 'account' | 'security' | 'notifications_settings' | 'appearance' | 'general'
   | 'profile' | 'edit_profile' | 'department' | 'position' | 'phone' | 'bio' | 'save_changes'
-  | 'loading' | 'error' | 'success' | 'confirm' | 'yes' | 'no' | 'ok' | 'close' | 'back' | 'next' | 'previous' | 'total' | 'name' | 'date' | 'description' | 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'assignee' | 'owner' | 'role' | 'all' | 'active' | 'inactive' | 'today' | 'yesterday' | 'this_week' | 'this_month'
+  | 'loading' | 'error' | 'success' | 'confirm' | 'yes' | 'no' | 'ok' | 'close' | 'back' | 'next' | 'previous' | 'total' | 'name' | 'date' | 'description' | 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'assignee' | 'role' | 'all' | 'active' | 'inactive' | 'today' | 'yesterday' | 'this_week' | 'this_month'
   | 'new_task_assigned' | 'task_due_soon' | 'meeting_reminder' | 'document_shared' | 'member_joined'
   | 'demo_account' | 'demo_account_desc'
   | 'ezproject_member' | 'phone_not_updated' | 'email_not_updated' | 'on_time_rate' | 'outstanding_achievements' | 'no_recent_activity' | 'avatar_update_success' | 'avatar_update_error' | 'profile_update_success' | 'profile_update_error'
@@ -200,6 +205,87 @@ export const vi = {
   member_removed: 'Đã xóa thành viên khỏi dự án',
   invite_link_copied: 'Đã sao chép link mời',
 
+  // Member management (new)
+  owner_manage_members: 'Bạn có quyền quản lý thành viên',
+  failed_to_load_members: 'Không thể tải danh sách thành viên',
+  failed_to_update_role: 'Không thể cập nhật vai trò',
+  failed_to_remove_member: 'Không thể xóa thành viên',
+  kick_member_confirm: 'Thành viên này sẽ bị xóa khỏi dự án và không thể truy cập.',
+  failed_to_generate_link: 'Không thể tạo link mời',
+  failed_to_invite: 'Không thể gửi lời mời',
+  invitation_sent: 'Đã gửi lời mời',
+  failed_to_revoke: 'Không thể thu hồi lời mời',
+  invitation_revoked: 'Đã thu hồi lời mời',
+  owner_transferred: 'Đã chuyển nhóm trưởng',
+  transfer_ownership: 'Chuyển nhóm trưởng',
+  leave_project: 'Rời dự án',
+  left_project: 'Đã rời dự án',
+  project_deleted: 'Đã rời và xóa dự án',
+  cannot_leave_project: 'Không thể rời dự án',
+
+  // Invite modal
+  invite_members: 'Mời thành viên',
+  invite_by_account: 'Tài khoản',
+  invite_by_email: 'Email',
+  invite_by_link: 'Link',
+  invite_list: 'DS lời mời',
+  send_invitation: 'Gửi lời mời',
+  generate_link: 'Tạo link mới',
+  no_invitations: 'Chưa có lời mời nào',
+  revoke: 'Thu hồi',
+  link_expires_note: 'Link mời có hiệu lực trong 7 ngày. Bất kỳ ai có link đều có thể tham gia dự án.',
+  enter_username: 'Nhập tên tài khoản...',
+  enter_email: 'Nhập địa chỉ email...',
+  generating_link: 'Đang tạo link...',
+  copy: 'Sao chép',
+
+  // Leave modal
+  you_are_owner: 'Bạn là nhóm trưởng',
+  select_new_owner_before_leave: 'Chọn người kế nhiệm trước khi rời nhóm',
+  warning_delete_project: 'Cảnh báo: Xóa dự án',
+  last_member_warning: 'Bạn là người cuối cùng trong dự án',
+  last_member_delete_warning: 'Khi bạn rời đi, dự án và tất cả dữ liệu liên quan sẽ bị xóa vĩnh viễn.',
+  select_new_owner: 'Chọn nhóm trưởng mới:',
+  will_lose_access: 'Bạn sẽ không còn truy cập được dự án sau khi rời đi.',
+  delete_and_leave: 'Xóa và rời',
+  confirm_leave: 'Xác nhận rời',
+  admin: 'Admin',
+  member: 'Thành viên',
+
+  // Chat
+  error_load_data: 'Không thể tải dữ liệu',
+  cannot_create_channel: 'Không thể tạo kênh',
+  cannot_rename: 'Không thể đổi tên',
+  cannot_delete_channel: 'Không thể xóa kênh',
+  cannot_leave_channel: 'Không thể rời kênh',
+  cannot_update_settings: 'Không thể cập nhật cài đặt',
+  promoted_successfully: 'Đã phong cấp thành công',
+  cannot_promote: 'Không thể phong cấp',
+  demoted_successfully: 'Đã hạ cấp thành công',
+  cannot_demote: 'Không thể hạ cấp',
+  member_kicked: 'Đã xóa thành viên',
+  cannot_kick_member: 'Không thể xóa thành viên',
+  member_invited: 'Đã mời thành viên',
+  cannot_invite_member: 'Không thể mời thành viên',
+  ownership_transferred: 'Đã chuyển giao nhóm trưởng',
+  cannot_transfer_ownership: 'Không thể chuyển giao',
+  default_channel: 'Kênh mặc định',
+  promote_to_admin: 'Thăng Admin',
+  demote_from_admin: 'Hạ cấp',
+  transfer_channel_owner: 'Chuyển nhóm trưởng',
+  kick: 'Xóa',
+  leave: 'Rời kênh',
+  lock_invite: 'Khoá mời thành viên',
+  unlock_invite: 'Mở mời thành viên',
+  only_owner_can_invite: 'Chỉ nhóm trưởng mới mời được',
+  all_can_invite: 'Tất cả thành viên đều có thể mời',
+  invite_locked: 'Khoá',
+  invite_open: 'Mở',
+  owner: 'Nhóm trưởng',
+  all_members_invited: 'Tất cả thành viên đã ở trong kênh',
+  invite_selected_members: 'Mời {count} người',
+  invite_th_members: 'thành viên',
+
   // Meetings
   meetings: 'Cuộc họp',
   schedule_meeting: 'Lên lịch họp',
@@ -290,6 +376,9 @@ export const vi = {
   delete_channel_action: 'Xóa kênh',
   leave_channel_action: 'Rời kênh',
   general_channel: 'Chung',
+  no_channels: 'Chưa có kênh nào',
+  default_channel: 'Kênh mặc định',
+  default_channel_subtitle: 'Kênh chung của dự án',
   channel_created: 'Đã tạo kênh',
   no_conversations_yet: 'Chưa có cuộc trò chuyện nào',
   start_conversation_hint: 'Bắt đầu một cuộc trò chuyện với các thành viên trong nhóm!',
@@ -598,6 +687,88 @@ export const en = {
   member_removed: 'Member removed from project',
   invite_link_copied: 'Invite link copied',
 
+  // Member management (new)
+  owner_manage_members: 'You can manage members',
+  failed_to_load_members: 'Failed to load members',
+  failed_to_update_role: 'Failed to update role',
+  failed_to_remove_member: 'Failed to remove member',
+  kick_member_confirm: 'This member will be removed from the project and lose access.',
+  failed_to_generate_link: 'Failed to generate invite link',
+  failed_to_invite: 'Failed to send invitation',
+  invitation_sent: 'Invitation sent',
+  failed_to_revoke: 'Failed to revoke invitation',
+  invitation_revoked: 'Invitation revoked',
+  owner_transferred: 'Ownership transferred',
+  transfer_ownership: 'Transfer Ownership',
+  leave_project: 'Leave Project',
+  left_project: 'Left project',
+  project_deleted: 'Left and deleted project',
+  cannot_leave_project: 'Cannot leave project',
+  copied: 'Copied',
+
+  // Invite modal
+  invite_members: 'Invite Members',
+  invite_by_account: 'Account',
+  invite_by_email: 'Email',
+  invite_by_link: 'Link',
+  invite_list: 'Invitations',
+  send_invitation: 'Send Invitation',
+  generate_link: 'Generate New Link',
+  no_invitations: 'No invitations yet',
+  revoke: 'Revoke',
+  link_expires_note: 'Link expires in 7 days. Anyone with the link can join the project.',
+  enter_username: 'Enter username...',
+  enter_email: 'Enter email address...',
+  generating_link: 'Generating link...',
+  copy: 'Copy',
+
+  // Leave modal
+  you_are_owner: 'You are the owner',
+  select_new_owner_before_leave: 'Select a new owner before leaving',
+  warning_delete_project: 'Warning: Delete Project',
+  last_member_warning: 'You are the last member',
+  last_member_delete_warning: 'Leaving will permanently delete this project and all related data.',
+  select_new_owner: 'Select new owner:',
+  will_lose_access: 'You will lose access to this project after leaving.',
+  delete_and_leave: 'Delete and Leave',
+  confirm_leave: 'Confirm Leave',
+  admin: 'Admin',
+  member: 'Member',
+
+  // Chat
+  error_load_data: 'Failed to load data',
+  cannot_create_channel: 'Cannot create channel',
+  cannot_rename: 'Cannot rename',
+  cannot_delete_channel: 'Cannot delete channel',
+  cannot_leave_channel: 'Cannot leave channel',
+  cannot_update_settings: 'Cannot update settings',
+  promoted_successfully: 'Promoted successfully',
+  cannot_promote: 'Cannot promote',
+  demoted_successfully: 'Demoted successfully',
+  cannot_demote: 'Cannot demote',
+  member_kicked: 'Member removed',
+  cannot_kick_member: 'Cannot remove member',
+  member_invited: 'Member invited',
+  cannot_invite_member: 'Cannot invite member',
+  ownership_transferred: 'Ownership transferred',
+  cannot_transfer_ownership: 'Cannot transfer ownership',
+  default_channel: 'Default Channel',
+  promote_to_admin: 'Promote to Admin',
+  demote_from_admin: 'Demote',
+  transfer_channel_owner: 'Transfer Owner',
+  kick: 'Kick',
+  leave: 'Leave',
+  lock_invite: 'Lock Invite',
+  unlock_invite: 'Unlock Invite',
+  only_owner_can_invite: 'Only the owner can invite',
+  all_can_invite: 'All members can invite',
+  invite_locked: 'Locked',
+  invite_open: 'Open',
+  owner: 'Owner',
+  all_members_invited: 'All members are already in the channel',
+  invite_selected_members: 'Invite {count} members',
+  invite_th_members: 'members',
+
   // Meetings
   meetings: 'Meetings',
   schedule_meeting: 'Schedule Meeting',
@@ -688,6 +859,9 @@ export const en = {
   delete_channel_action: 'Delete Channel',
   leave_channel_action: 'Leave Channel',
   general_channel: 'General',
+  no_channels: 'No channels yet',
+  default_channel: 'Default Channel',
+  default_channel_subtitle: 'General project channel',
   channel_created: 'Channel created',
   no_conversations_yet: 'No conversations yet',
   start_conversation_hint: 'Start a conversation with team members!',
