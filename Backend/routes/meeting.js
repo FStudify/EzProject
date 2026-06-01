@@ -15,7 +15,12 @@ router.post(
   validate(validators.createMeeting),
   meetingController.create,
 );
-router.put('/:meetingId', requireAuth, meetingController.update);
+router.put(
+  '/:meetingId',
+  requireAuth,
+  validate(validators.updateMeeting),
+  meetingController.update,
+);
 router.delete('/:meetingId', requireAuth, meetingController.delete);
 router.put(
   '/:meetingId/rsvp',

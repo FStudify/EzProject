@@ -90,16 +90,69 @@ const validators = {
   }),
 
   // ── Meetings ────────────────────────────────────────────
-  createMeeting: z.object({
-    title: z.string().min(1, 'Meeting title is required'),
-    description: z.string().optional(),
-    type: z.enum(['ONLINE', 'OFFLINE']),
-    startTime: z.string(),
-    endTime: z.string(),
-    location: z.string().optional(),
-    meetingLink: z.string().optional(),
-    attendeeIds: z.array(z.string()),
-  }),
+  createMeeting: z
+    .object({
+      title: z.string().min(1, 'Meeting title is required'),
+      description: z.string().optional(),
+      type: z.enum(['ONLINE', 'OFFLINE']),
+      startTime: z.string(),
+      endTime: z.string(),
+      location: z.string().optional(),
+      meetingLink: z.string().optional(),
+      attendeeIds: z.array(z.string()),
+    })
+    .refine((data) => {
+      const start = new Date(data.startTime);
+      return !Number.isNaN(start.valueOf()) && start > new Date();
+    }, {
+      message: 'Meeting startTime must be a valid future date',
+      path: ['startTime'],
+    })
+    .refine((data) => {
+      const start = new Date(data.startTime);
+      const end = new Date(data.endTime);
+      return (
+        !Number.isNaN(start.valueOf()) &&
+        !Number.isNaN(end.valueOf()) &&
+        end > start
+      );
+    }, {
+      message: 'Meeting endTime must be after startTime',
+      path: ['endTime'],
+    }),
+
+  updateMeeting: z
+    .object({
+      title: z.string().min(1).optional(),
+      description: z.string().optional(),
+      type: z.enum(['ONLINE', 'OFFLINE']).optional(),
+      startTime: z.string().optional(),
+      endTime: z.string().optional(),
+      location: z.string().optional(),
+      meetingLink: z.string().optional(),
+      attendeeIds: z.array(z.string()).optional(),
+    })
+    .refine((data) => {
+      if (!data.startTime) return true;
+      const start = new Date(data.startTime);
+      return !Number.isNaN(start.valueOf()) && start > new Date();
+    }, {
+      message: 'Meeting startTime must be a valid future date',
+      path: ['startTime'],
+    })
+    .refine((data) => {
+      if (!data.startTime || !data.endTime) return true;
+      const start = new Date(data.startTime);
+      const end = new Date(data.endTime);
+      return (
+        !Number.isNaN(start.valueOf()) &&
+        !Number.isNaN(end.valueOf()) &&
+        end > start
+      );
+    }, {
+      message: 'Meeting endTime must be after startTime',
+      path: ['endTime'],
+    }),
 
   rsvp: z.object({
     willAttend: z.boolean(),

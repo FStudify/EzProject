@@ -9,21 +9,51 @@ import {
   Clock,
   CheckCircle2,
   Users,
-        {[
-          { icon: FolderKanban, label: t('nav_projects'), value: activeProjects.length, sub: t('active'), iconBg: 'bg-primary-50 text-primary' },
-          { icon: ListTodo, label: t('my_tasks'), value: myTasksCount, sub: `${t('completed_tasks')}: ${doneTasks}`, iconBg: 'bg-primary-50 text-primary-dark' },
-          { icon: AlertTriangle, label: t('overdue_tasks'), value: overdueCount, sub: overdueCount > 0 ? t('need_attention') : t('no'), iconBg: 'bg-primary-50 text-primary-dark' },
-          { icon: CalendarCheck, label: t('of_total').replace(':total', ''), value: '88%', sub: t('this_month'), iconBg: 'bg-primary-50 text-primary' },
-        ].map(({ icon: Icon, label, value, sub, iconBg, bg, color }) => (
+  ArrowRight,
+  Loader2
+} from 'lucide-react';
+
+import { Button, Card } from '@/components/ui';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import { getProjects } from '@/api/project.api';
+import { getTasks } from '@/api/task.api';
+import { getActivities } from '@/api/member.api';
+import { getMeetings } from '@/api/meeting.api';
+import type { Project, Task, Activity, Meeting } from '@/types';
+
+type Filter = 'all' | 'mine' | 'team';
+
+function timeAgo(date: string | Date | number) {
+  const dObj = new Date(date);
+  const now = new Date();
+  const diff = now.getTime() - dObj.getTime();
+  const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
-            <div
-              className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${iconBg ?? ''}`}
-              style={iconBg ? undefined : bg ? { backgroundColor: bg } : undefined}
-            >
-              <Icon className="h-5 w-5" style={iconBg ? undefined : color ? { color } : undefined} />
+  const d = Math.floor(diff / 86400000);
+
   if (m < 60) return `${m}m`;
   if (h < 24) return `${h}h`;
   return `${d}d`;
+}
+
+function priorityStyle(priority: string) {
+  if (priority === 'HIGH') return { bg: '#FDF0E8', text: '#B76442', border: '#EFC8B4' };
+  if (priority === 'MEDIUM') return { bg: '#EFF9E8', text: '#4B9331', border: '#CDE8BF' };
+  return { bg: '#EDF3FB', text: '#31527F', border: '#C9D6E8' };
+}
+
+function priorityLabel(priority: string) {
+  if (priority === 'HIGH') return 'Cao';
+  if (priority === 'MEDIUM') return 'Trung bình';
+  return 'Thấp';
+}
+
+function getTimeGreeting() {
+  const hour = new Date().getHours();
+  if (hour < 12) return 'Chào buổi sáng';
+  if (hour < 18) return 'Chào buổi chiều';
+  return 'Chào buổi tối';
 }
 
 function getProjectTheme(value: number) {

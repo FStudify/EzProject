@@ -172,50 +172,7 @@ export default function ProfilePage() {
           </div>
         ) : (
           /* View mode */
-          <div className="flex flex-col gap-6 p-8 md:flex-row md:items-center md:justify-between">
-            {/* Avatar */}
-            <div className="flex items-center gap-5">
-              <div
-                className="relative shrink-0 cursor-pointer"
-                onClick={() => fileInputRef.current?.click()}
-                title="Nhấn để đổi ảnh"
-              >
-                <div className="h-[120px] w-[120px] overflow-hidden rounded-full" style={{ boxShadow: '0 8px 24px rgba(38,24,16,0.2)' }}>
-                  {user?.avatar && !avatarError ? (
-                    <img src={user.avatar} alt="Avatar" onError={() => setAvatarError(true)} className="h-full w-full object-cover" />
-                  ) : (
-                    <div
-                      className="flex h-full w-full items-center justify-center text-4xl font-bold text-white"
-                      style={{ background: 'linear-gradient(135deg, #0651A0, #008DDE)' }}
-                    >
-                      {user?.fullName?.charAt(0) || 'U'}
-                    </div>
-                  )}
-                </div>
-                <div
-                  className="absolute inset-0 flex items-center justify-center rounded-full opacity-0 transition-opacity hover:opacity-100"
-                  style={{ backgroundColor: 'rgba(0,0,0,0.4)' }}
-                >
-                  <svg viewBox="0 0 24 24" fill="white" className="h-8 w-8"><path d="M12 12m-3.2 0a3.2 3.2 0 1 0 6.4 0a3.2 3.2 0 1 0 -6.4 0M9 2L7.17 4H4a2 2 0 0 0-2 2v12a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-3.17L15 2H9zm3 15a5 5 0 1 0 0-10 5 5 0 0 0 0 10z"/></svg>
-                </div>
-                <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
-              </div>
-
-              <div className="space-y-1.5">
-                <div className="flex items-center gap-3">
-                  <h2 className="text-2xl font-extrabold" style={{ color: '#1F1F1F', letterSpacing: '-0.02em' }}>
-                    {user?.fullName || 'Người dùng'}
-                  </h2>
-                  <span
-                    className="rounded-full px-2.5 py-1 text-xs font-semibold"
-                    style={{ backgroundColor: '#e6f2fa', color: '#0651A0' }}
-                  >
-                    @{user?.username || 'user'}
-                  </span>
-                </div>
-              </div>
-            ) : (
-              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">
+          <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8 p-6 md:p-8">
                 {/* Avatar with 3D Ring */}
                 <div className="relative shrink-0 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
                   <div className="absolute inset-0 bg-[var(--color-primary)]/30 rounded-full blur-2xl scale-125"></div>
@@ -272,73 +229,44 @@ export default function ProfilePage() {
                 </div>
               </div>
             )}
-          </section>
-
-          {/* 2. Statistics Row (3D Cards) */}
-          <section className="py-2 animate-slide-up" style={{ animationDelay: '0.2s' }}>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-              <div className="stat-glass flex flex-col items-center group cursor-pointer">
-                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Dự án tham gia</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-primary)]/5 flex items-center justify-center shadow-inner">
-                    <span className="material-symbols-outlined text-[28px] text-[var(--color-primary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(53,37,205,0.3))' }}>folder_open</span>
-                  </div>
-                  <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{projects.length}</span>
-                </div>
-              </div>
-
-              <div className="stat-glass flex flex-col items-center group cursor-pointer">
-                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Task hoàn thành</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-secondary)]/20 to-[var(--color-secondary)]/5 flex items-center justify-center shadow-inner">
-                    <span className="material-symbols-outlined text-[28px] text-[var(--color-secondary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,101,145,0.3))' }}>task_alt</span>
-                  </div>
-                  <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{tasksCompleted}</span>
-                </div>
-              </div>
-
-              <div className="stat-glass flex flex-col items-center group cursor-pointer">
-                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Đúng hạn</span>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center shadow-inner">
-                    <span className="material-symbols-outlined text-emerald-600 text-[28px]" style={{ filter: 'drop-shadow(0 2px 4px rgba(5,150,105,0.3))' }}>trending_up</span>
-                  </div>
-                  <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{onTimeRate}%</span>
-                </div>
-              </div>
-            </div>
-
-            <button
-              onClick={() => setIsEditing(true)}
-              className="btn-accent btn-md self-start md:self-auto flex items-center gap-2"
-            >
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-4 w-4"><path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"/><path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"/></svg>
-              Chỉnh sửa hồ sơ
-            </button>
-          </div>
-        )}
       </div>
 
-      {/* Stats row */}
-      <div className="grid grid-cols-3 gap-4">
-        {[
-          { label: 'Dự án tham gia', value: projects.length, color: '#0651A0', bg: '#e6f2fa' },
-          { label: 'Task hoàn thành', value: tasksCompleted, color: '#D97853', bg: '#FFF5EC' },
-          { label: 'Đúng hạn', value: `${onTimeRate}%`, color: '#53B848', bg: '#EFF9E8' },
-        ].map(({ label, value, color, bg }) => (
-          <div
-            key={label}
-            className="flex flex-col items-center rounded-2xl p-5 text-center"
-            style={{ background: 'linear-gradient(180deg, rgba(255,255,255,0.98) 0%, rgba(255,249,244,0.72) 100%)', border: '1px solid #E8D8CF', boxShadow: '0 18px 30px -24px rgba(38,24,16,0.6)' }}
-          >
-            <div className="mb-3 flex h-11 w-11 items-center justify-center rounded-xl" style={{ backgroundColor: bg }}>
-              <svg viewBox="0 0 24 24" fill={color} className="h-5 w-5"><path d="M12 2C6.48 2 2 6.48 2 12s4.48 10 10 10 10-4.48 10-10S17.52 2 12 2zm-2 14.5v-9l6 4.5-6 4.5z" opacity="0.3"/><path d="M10 17l-4-4 1.41-1.41L10 14.17l6.59-6.59L18 9l-8 8z"/></svg>
+      {/* 2. Statistics Row (3D Cards) */}
+      <section className="py-2 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+          <div className="stat-glass flex flex-col items-center group cursor-pointer">
+            <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Dự án tham gia</span>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-primary)]/5 flex items-center justify-center shadow-inner">
+                <span className="material-symbols-outlined text-[28px] text-[var(--color-primary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(53,37,205,0.3))' }}>folder_open</span>
+              </div>
+              <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{projects.length}</span>
             </div>
-            <p className="text-2xl font-extrabold" style={{ color: '#1F1F1F' }}>{value}</p>
-            <p className="mt-0.5 text-xs font-semibold uppercase tracking-wider" style={{ color: '#7D6F66' }}>{label}</p>
           </div>
-        ))}
-      </div>
+
+          <div className="stat-glass flex flex-col items-center group cursor-pointer">
+            <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Task hoàn thành</span>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-secondary)]/20 to-[var(--color-secondary)]/5 flex items-center justify-center shadow-inner">
+                <span className="material-symbols-outlined text-[28px] text-[var(--color-secondary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,101,145,0.3))' }}>task_alt</span>
+              </div>
+              <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{tasksCompleted}</span>
+            </div>
+          </div>
+
+          <div className="stat-glass flex flex-col items-center group cursor-pointer">
+            <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Đúng hạn</span>
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center shadow-inner">
+                <span className="material-symbols-outlined text-emerald-600 text-[28px]" style={{ filter: 'drop-shadow(0 2px 4px rgba(5,150,105,0.3))' }}>trending_up</span>
+              </div>
+              <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{onTimeRate}%</span>
+            </div>
+          </div>
+        </div>
+      </section>
+
+
 
       {/* Badges */}
       <div>
