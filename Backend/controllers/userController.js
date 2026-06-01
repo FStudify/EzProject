@@ -81,7 +81,7 @@ exports.uploadAvatar = async (req, res, next) => {
       fs.unlink(oldPath, () => {}); // fail silently
     }
 
-    const url = fileUrl(req, req.file.path);
+    const url = req.file.path;
     const user = await User.findByIdAndUpdate(
       req.user.id,
       { $set: { avatar: url } },
