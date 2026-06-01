@@ -9,18 +9,39 @@ import {
   Clock,
   CheckCircle2,
   Users,
-        {[
-          { icon: FolderKanban, label: t('nav_projects'), value: activeProjects.length, sub: t('active'), iconBg: 'bg-primary-50 text-primary' },
-          { icon: ListTodo, label: t('my_tasks'), value: myTasksCount, sub: `${t('completed_tasks')}: ${doneTasks}`, iconBg: 'bg-primary-50 text-primary-dark' },
-          { icon: AlertTriangle, label: t('overdue_tasks'), value: overdueCount, sub: overdueCount > 0 ? t('need_attention') : t('no'), iconBg: 'bg-primary-50 text-primary-dark' },
-          { icon: CalendarCheck, label: t('of_total').replace(':total', ''), value: '88%', sub: t('this_month'), iconBg: 'bg-primary-50 text-primary' },
-        ].map(({ icon: Icon, label, value, sub, iconBg, bg, color }) => (
+  ArrowRight,
+  Loader2,
+} from 'lucide-react';
+import { getProjects } from '@/api/project.api';
+import { getTasks } from '@/api/task.api';
+import { getActivities } from '@/api/member.api';
+import { getMeetings } from '@/api/meeting.api';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTimeGreeting } from '@/lib/greeting';
+import { Card, Button } from '@/components/ui';
+import type { Project, Task, Activity, Meeting, TaskPriority } from '@/api/types';
+
+type Filter = 'all' | 'mine' | 'team';
+
+function priorityLabel(p: TaskPriority) {
+  if (p === 'HIGH') return 'Cao';
+  if (p === 'MEDIUM') return 'TB';
+  return 'Thấp';
+}
+
+function priorityStyle(p: TaskPriority) {
+  if (p === 'HIGH') return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
+  if (p === 'MEDIUM') return { bg: '#FDF0E8', text: '#B76442', border: '#EFC8B4' };
+  return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+}
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
   const h = Math.floor(diff / 3600000);
-            <div
-              className={`mb-3 inline-flex h-10 w-10 items-center justify-center rounded-xl ${iconBg ?? ''}`}
-              style={iconBg ? undefined : bg ? { backgroundColor: bg } : undefined}
-            >
-              <Icon className="h-5 w-5" style={iconBg ? undefined : color ? { color } : undefined} />
+  const d = Math.floor(h / 24);
+  if (m < 1) return 'vừa';
   if (m < 60) return `${m}m`;
   if (h < 24) return `${h}h`;
   return `${d}d`;
