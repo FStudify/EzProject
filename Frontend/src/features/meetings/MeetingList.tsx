@@ -13,9 +13,11 @@ import {
   XCircle,
 } from 'lucide-react';
 import { getMeetings, createMeeting as apiCreateMeeting, updateMeeting as apiUpdateMeeting, deleteMeeting as apiDeleteMeeting, rsvpMeeting } from '@/api/meeting.api';
+import { getProjectMembers } from '@/api/member.api';
 import { projectService } from '@/services';
+import { useAuth } from '@/contexts/AuthContext';
 import type { Meeting, MeetingStatus } from '@/api/types';
-import { Button, Modal, ProjectMemberAvatar } from '@/components/ui';
+import { Button, Modal, ProjectMemberAvatar, useToast } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const STATUS_VARIANTS: Record<MeetingStatus, string> = {
@@ -106,6 +108,8 @@ function localMeetingToApi(
 export default function MeetingList() {
   const { projectId } = useParams<{ projectId: string }>();
   const { t } = useLanguage();
+  const { user: authUser } = useAuth();
+  const { toast } = useToast();
 
   const [meetings, setMeetings] = useState<import('@/types').Meeting[]>([]);
   const [projectMembers, setProjectMembers] = useState<import('@/types').ProjectMember[]>([]);
@@ -128,9 +132,21 @@ export default function MeetingList() {
     return labels[status];
   };
 
-  const handleAdd = (meeting: import('@/types').Meeting) => {
-    setMeetings((prev) => [...prev, meeting]);
+  const refreshMeetings = async () => {
+    if (!projectId) return;
+    try {
+      const meetingsData = await getMeetings(projectId);
+      setMeetings(meetingsData.map(apiMeetingToLocal));
+    } catch (err) {
+      console.error('Failed to refresh meetings after create:', err);
+    }
+  };
+
+  const handleAdd = async (meeting: import('@/types').Meeting) => {
+    setMeetings((prev) => [meeting, ...prev]);
     setIsAddOpen(false);
+    toast('Tạo cuộc họp thành công', 'success');
+    await refreshMeetings();
   };
 
   const handleUpdate = (updated: import('@/types').Meeting) => {
@@ -207,34 +223,71 @@ export default function MeetingList() {
     }
 
     setIsLoading(true);
-    Promise.all([
-      getMeetings(projectId),
-      projectService.getById(projectId),
-    ])
-      .then(([meetingsData, projectData]) => {
-        setMeetings(meetingsData.map(apiMeetingToLocal));
+
+    const loadData = async () => {
+      let meetingsData: Meeting[] | null = null;
+      let projectData: Awaited<ReturnType<typeof projectService.getById>> | null = null;
+
+      try {
+        try {
+          meetingsData = await getMeetings(projectId);
+        } catch (meetErr) {
+          console.error('Failed to load meetings:', meetErr);
+        }
+
+        try {
+          projectData = await projectService.getById(projectId);
+        } catch (projectErr) {
+          console.error('Failed to load project details:', projectErr);
+        }
+
+        if (meetingsData) {
+          setMeetings(meetingsData.map(apiMeetingToLocal));
+        } else {
+          setMeetings([]);
+        }
+
+        const membersPayload = Array.isArray(projectData?.members) ? projectData.members : [];
+        const loadedMembers = membersPayload.map((pm) => ({
+          member: {
+            id: pm.member.id,
+            name: pm.member.fullName,
+            fullName: pm.member.fullName,
+            email: pm.member.email,
+            avatar: pm.member.avatar,
+          },
+          isOwner: pm.isOwner,
+          role: pm.role,
+        }));
+
+        if (loadedMembers.length > 0) {
+          setProjectMembers(loadedMembers);
+          return;
+        }
+
+        const fallbackMembers = await getProjectMembers(projectId);
         setProjectMembers(
-          projectData.members.map((pm) => ({
+          fallbackMembers.map((tm) => ({
             member: {
-              id: pm.member.id,
-              name: pm.member.fullName,
-              fullName: pm.member.fullName,
-              email: pm.member.email,
-              avatar: pm.member.avatar,
+              id: tm.user.id,
+              name: tm.user.fullName,
+              fullName: tm.user.fullName,
+              email: tm.user.email,
+              avatar: tm.user.avatar ?? '',
             },
-            isOwner: pm.isOwner,
-            role: pm.role,
+            isOwner: tm.isOwner,
+            role: tm.role,
           })),
         );
-      })
-      .catch((err) => {
-        console.error('Failed to load meetings or project:', err);
-        setMeetings([]);
+      } catch (fallbackErr) {
+        console.error('Failed to load project members fallback:', fallbackErr);
         setProjectMembers([]);
-      })
-      .finally(() => {
+      } finally {
         setIsLoading(false);
-      });
+      }
+    };
+
+    loadData();
   }, [projectId]);
 
   return (
@@ -407,6 +460,13 @@ export default function MeetingList() {
         onAdd={handleAdd}
         projectId={projectId ?? ''}
         members={projectMembers.map((pm) => pm.member)}
+        currentUser={authUser ? {
+          id: authUser.id,
+          name: authUser.fullName,
+          fullName: authUser.fullName,
+          email: authUser.email ?? '',
+          avatar: authUser.avatar ?? '',
+        } : undefined}
       />
 
       {/* Edit Meeting Modal */}
@@ -726,9 +786,10 @@ function DeclineMeetingModal({
 interface AddMeetingModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: (meeting: import('@/types').Meeting) => void;
+  onAdd: (meeting: import('@/types').Meeting) => Promise<void>;
   projectId: string;
   members: import('@/types').Member[];
+  currentUser?: import('@/types').Member;
 }
 
 function AddMeetingModal({
@@ -737,6 +798,7 @@ function AddMeetingModal({
   onAdd,
   projectId,
   members,
+  currentUser,
 }: AddMeetingModalProps) {
   const { t } = useLanguage();
   const [title, setTitle] = useState('');
@@ -746,21 +808,75 @@ function AddMeetingModal({
   const [meetingType, setMeetingType] = useState<'online' | 'offline'>('online');
   const [location, setLocation] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
-  const [organizerId, setOrganizerId] = useState(members[0]?.id ?? '');
+  const [organizerId, setOrganizerId] = useState('');
   const [attendeeIds, setAttendeeIds] = useState<string[]>([]);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [timeError, setTimeError] = useState('');
 
-  const handleSubmit = async () => {
-    if (!title.trim() || !startTime || !endTime || !organizerId) return;
-    if (meetingType === 'offline' && !location.trim()) return;
-    if (meetingType === 'online' && !meetingLink.trim()) return;
+  const validateMeetingTimes = () => {
+    setTimeError('');
 
-    const organizer = members.find((m) => m.id === organizerId) ?? members[0];
+    if (!startTime || !endTime) {
+      setTimeError('Thời gian bắt đầu và kết thúc là bắt buộc');
+      return false;
+    }
+
+    const start = new Date(startTime);
+    const end = new Date(endTime);
+    const now = new Date();
+
+    if (Number.isNaN(start.valueOf()) || Number.isNaN(end.valueOf())) {
+      setTimeError('Thời gian họp không hợp lệ');
+      return false;
+    }
+
+    if (start <= now) {
+      setTimeError('Thời gian bắt đầu phải ở tương lai');
+      return false;
+    }
+
+    if (end <= start) {
+      setTimeError('Thời gian kết thúc phải sau thời gian bắt đầu');
+      return false;
+    }
+
+    return true;
+  };
+
+  useEffect(() => {
+    if (isOpen) {
+      setOrganizerId(members[0]?.id ?? currentUser?.id ?? '');
+      setTitle('');
+      setDescription('');
+      setStartTime('');
+      setEndTime('');
+      setMeetingType('online');
+      setLocation('');
+      setMeetingLink('');
+      setAttendeeIds([]);
+    }
+  }, [isOpen, currentUser?.id, members]);
+
+  useEffect(() => {
+    if (isOpen && !organizerId) {
+      setOrganizerId(members[0]?.id ?? currentUser?.id ?? '');
+    }
+  }, [isOpen, members, organizerId, currentUser?.id]);
+
+  const handleSubmit = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    if (!organizerId) return;
+    if (!validateMeetingTimes()) return;
+
+    const organizer = members.find((m) => m.id === organizerId) ?? currentUser;
+    if (!organizer) return;
     const attendees = members.filter((m) =>
       attendeeIds.includes(m.id) || m.id === organizerId,
     );
 
     setIsSubmitting(true);
+    let createdSuccessfully = false;
+
     try {
       const created = await apiCreateMeeting(projectId, {
         title: title.trim(),
@@ -772,46 +888,22 @@ function AddMeetingModal({
         meetingLink: meetingType === 'online' ? meetingLink.trim() : undefined,
         attendeeIds: attendees.map((a) => a.id),
       });
-      const localMeeting: import('@/types').Meeting = {
-        id: created.id,
-        projectId: created.projectId,
-        title: created.title,
-        description: created.description ?? undefined,
-        startTime: created.startTime,
-        endTime: created.endTime,
-        type: created.type.toLowerCase() as 'online' | 'offline',
-        location: created.location ?? undefined,
-        meetingLink: created.meetingLink ?? undefined,
-        status: created.status.toLowerCase().replace('_', '_') as import('@/types').MeetingStatus,
-        organizer: {
-          id: created.organizer.id,
-          name: created.organizer.fullName,
-          email: '',
-          avatar: created.organizer.avatar ?? '',
-        },
-        attendees: created.attendees.map((a) => ({
-          id: a.user.id,
-          name: a.user.fullName,
-          email: '',
-          avatar: a.user.avatar ?? '',
-          willAttend: a.willAttend,
-          declineReason: a.declineReason,
-        })),
-        createdAt: created.createdAt,
-      };
-      onAdd(localMeeting);
+      await onAdd(created);
+      createdSuccessfully = true;
     } catch (err) {
       console.error('Failed to create meeting:', err);
     } finally {
       setIsSubmitting(false);
-      setTitle('');
-      setDescription('');
-      setStartTime('');
-      setEndTime('');
-      setLocation('');
-      setMeetingLink('');
-      setAttendeeIds([]);
-      onClose();
+      if (createdSuccessfully) {
+        setTitle('');
+        setDescription('');
+        setStartTime('');
+        setEndTime('');
+        setLocation('');
+        setMeetingLink('');
+        setAttendeeIds([]);
+        onClose();
+      }
     }
   };
 
@@ -821,11 +913,12 @@ function AddMeetingModal({
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={t('new_meeting')} size="lg">
-      <div className="space-y-4">
+      <form onSubmit={handleSubmit} className="space-y-4">
         <div>
           <label className={labelClass}>{t('title')} *</label>
           <input
             type="text"
+            required
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder={t('meeting_topic')}
@@ -847,8 +940,12 @@ function AddMeetingModal({
             <label className={labelClass}>{t('start')} *</label>
             <input
               type="datetime-local"
+              required
               value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
+              onChange={(e) => {
+                setStartTime(e.target.value);
+                setTimeError('');
+              }}
               className={inputClass}
             />
           </div>
@@ -856,12 +953,19 @@ function AddMeetingModal({
             <label className={labelClass}>{t('end')} *</label>
             <input
               type="datetime-local"
+              required
               value={endTime}
-              onChange={(e) => setEndTime(e.target.value)}
+              onChange={(e) => {
+                setEndTime(e.target.value);
+                setTimeError('');
+              }}
               className={inputClass}
             />
           </div>
         </div>
+        {timeError && (
+          <p className="text-sm text-rose-600">{timeError}</p>
+        )}
         <div>
           <label className={labelClass}>{t('meeting_location')}</label>
           <div className="flex gap-4">
@@ -892,6 +996,7 @@ function AddMeetingModal({
             <label className={labelClass}>{t('meeting_link')} *</label>
             <input
               type="url"
+              required
               value={meetingLink}
               onChange={(e) => setMeetingLink(e.target.value)}
               placeholder="https://zoom.us/j/... or https://meet.google.com/..."
@@ -903,6 +1008,7 @@ function AddMeetingModal({
             <label className={labelClass}>{t('address')} *</label>
             <input
               type="text"
+              required
               value={location}
               onChange={(e) => setLocation(e.target.value)}
               placeholder={t('meeting_location')}
@@ -912,68 +1018,74 @@ function AddMeetingModal({
         )}
         <div>
           <label className={labelClass}>{t('organizer')} *</label>
-          <select
-            value={organizerId}
-            onChange={(e) => setOrganizerId(e.target.value)}
-            className={inputClass}
-          >
-            {members.map((m) => (
-              <option key={m.id} value={m.id}>
-                {m.name}
+          {members.length > 0 ? (
+            <select
+              value={organizerId}
+              onChange={(e) => setOrganizerId(e.target.value)}
+              className={inputClass}
+            >
+              <option value="" disabled>
+                Chọn người tổ chức
               </option>
-            ))}
-          </select>
+              {members.map((m) => (
+                <option key={m.id} value={m.id}>
+                  {m.name}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <div className="rounded-lg border border-slate-300 px-3 py-2 text-sm text-slate-700 bg-slate-50">
+              {currentUser ? currentUser.name : 'Người tổ chức'}
+            </div>
+          )}
         </div>
         <div>
           <label className={labelClass}>{t('attendees')}</label>
           <div className="flex flex-wrap gap-2">
-            {members.map((m) => {
-              const checked = attendeeIds.includes(m.id) || m.id === organizerId;
-              return (
-                <label
-                  key={m.id}
-                  className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50"
-                >
-                  <input
-                    type="checkbox"
-                    checked={checked}
-                    disabled={m.id === organizerId}
-                    onChange={(e) => {
-                      if (m.id === organizerId) return;
-                      setAttendeeIds((prev) =>
-                        e.target.checked
-                          ? [...prev, m.id]
-                          : prev.filter((id) => id !== m.id),
-                      );
-                    }}
-                    className="rounded border-slate-300"
-                  />
-                  <span className="text-sm">{m.name}</span>
-                </label>
-              );
-            })}
+            {members.length === 0 ? (
+              <p className="text-sm text-slate-500">Chưa có thành viên dự án.</p>
+            ) : (
+              members.map((m) => {
+                const checked = attendeeIds.includes(m.id) || m.id === organizerId;
+                return (
+                  <label
+                    key={m.id}
+                    className="flex items-center gap-2 rounded-lg border border-slate-200 px-3 py-2 cursor-pointer hover:bg-slate-50"
+                  >
+                    <input
+                      type="checkbox"
+                      checked={checked}
+                      disabled={m.id === organizerId}
+                      onChange={(e) => {
+                        if (m.id === organizerId) return;
+                        setAttendeeIds((prev) =>
+                          e.target.checked
+                            ? [...prev, m.id]
+                            : prev.filter((id) => id !== m.id),
+                        );
+                      }}
+                      className="rounded border-slate-300"
+                    />
+                    <span className="text-sm">{m.name}</span>
+                  </label>
+                );
+              })
+            )}
           </div>
         </div>
         <div className="flex justify-end gap-2 pt-2">
-          <Button variant="ghost" onClick={onClose}>
+          <Button variant="ghost" type="button" onClick={onClose}>
             {t('cancel')}
           </Button>
           <Button
             variant="primary"
-            onClick={handleSubmit}
-            disabled={
-              isSubmitting ||
-              !title.trim() ||
-              !startTime ||
-              !endTime ||
-              (meetingType === 'offline' && !location.trim()) ||
-              (meetingType === 'online' && !meetingLink.trim())
-            }
+            type="submit"
+            disabled={isSubmitting || !organizerId || !!timeError}
           >
             {isSubmitting ? t('creating') : t('create_meeting')}
           </Button>
         </div>
-      </div>
+      </form>
     </Modal>
   );
 }

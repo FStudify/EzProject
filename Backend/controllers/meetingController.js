@@ -7,6 +7,27 @@ const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
 
+function validateMeetingTimes({ startTime, endTime }, { existingStartTime, existingEndTime } = {}) {
+  const now = new Date();
+  const start = startTime ? new Date(startTime) : null;
+  const end = endTime ? new Date(endTime) : null;
+
+  if (startTime && Number.isNaN(start.valueOf())) {
+    throw errors.BadRequest('Invalid startTime');
+  }
+  if (endTime && Number.isNaN(end.valueOf())) {
+    throw errors.BadRequest('Invalid endTime');
+  }
+  if (start && start <= now) {
+    throw errors.BadRequest('Meeting startTime must be in the future');
+  }
+  const comparisonStart = start || existingStartTime || null;
+  const comparisonEnd = end || existingEndTime || null;
+  if (comparisonStart && comparisonEnd && comparisonEnd <= comparisonStart) {
+    throw errors.BadRequest('Meeting endTime must be after startTime');
+  }
+}
+
 async function checkMember(projectId, userId) {
   const project = await Project.findOne({
     _id: new ObjectId(projectId),
@@ -105,6 +126,7 @@ exports.getById = async (req, res, next) => {
 exports.create = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
+    validateMeetingTimes(req.body);
     const meeting = await Meeting.create({
       projectId: new ObjectId(req.params.projectId),
       title: req.body.title,
@@ -117,7 +139,63 @@ exports.create = async (req, res, next) => {
       organizerId: new ObjectId(req.user.id),
       attendees: (req.body.attendeeIds || []).map((uid) => ({ userId: new ObjectId(uid) })),
     });
-    res.status(201).json({ success: true, data: meeting });
+
+    const [created] = await Meeting.aggregate([
+      { $match: { _id: meeting._id } },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'organizerId',
+          foreignField: '_id',
+          as: 'organizer',
+        },
+      },
+      { $unwind: '$organizer' },
+      {
+        $lookup: {
+          from: 'users',
+          localField: 'attendees.userId',
+          foreignField: '_id',
+          as: 'attendeesDetail',
+        },
+      },
+      {
+        $addFields: {
+          attendees: {
+            $map: {
+              input: '$attendees',
+              as: 'a',
+              in: {
+                userId: {
+                  $arrayElemAt: [
+                    {
+                      $map: {
+                        input: {
+                          $filter: {
+                            input: '$attendeesDetail',
+                            as: 'u',
+                            cond: { $eq: ['$$u._id', '$$a.userId'] },
+                          },
+                        },
+                        as: 'uu',
+                        in: { _id: '$$uu._id', fullName: '$$uu.fullName', avatar: '$$uu.avatar' },
+                      },
+                    },
+                    0,
+                  ],
+                },
+                willAttend: '$$a.willAttend',
+                declineReason: '$$a.declineReason',
+                respondedAt: '$$a.respondedAt',
+              },
+            },
+          },
+        },
+      },
+      { $project: { __v: 0, 'organizer.passwordHash': 0, attendeesDetail: 0 } },
+    ]);
+
+    res.status(201).json({ success: true, data: created || meeting });
   } catch (err) {
     next(err);
   }
@@ -133,6 +211,13 @@ exports.update = async (req, res, next) => {
     if (!meeting) throw errors.NotFound('Meeting');
     if (meeting.organizerId.toString() !== req.user.id) {
       throw errors.Forbidden('Only the organizer can update this meeting');
+    }
+
+    if (req.body.startTime || req.body.endTime) {
+      validateMeetingTimes(req.body, {
+        existingStartTime: meeting.startTime,
+        existingEndTime: meeting.endTime,
+      });
     }
 
     const updated = await Meeting.findByIdAndUpdate(

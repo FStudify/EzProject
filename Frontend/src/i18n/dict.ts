@@ -249,7 +249,7 @@ export const vi = {
   delete_and_leave: 'Xóa và rời',
   confirm_leave: 'Xác nhận rời',
   admin: 'Admin',
-  member: 'Thành viên',
+
 
   // Chat
   error_load_data: 'Không thể tải dữ liệu',
@@ -376,7 +376,7 @@ export const vi = {
   leave_channel_action: 'Rời kênh',
   general_channel: 'Chung',
   no_channels: 'Chưa có kênh nào',
-  default_channel: 'Kênh mặc định',
+
   default_channel_subtitle: 'Kênh chung của dự án',
   channel_created: 'Đã tạo kênh',
   no_conversations_yet: 'Chưa có cuộc trò chuyện nào',
@@ -444,7 +444,7 @@ export const vi = {
   due_date: 'Hạn chót',
   priority: 'Độ ưu tiên',
   assignee: 'Người phụ trách',
-  owner: 'Chủ sở hữu',
+
   role: 'Vai trò',
   all: 'Tất cả',
   active: 'Đang hoạt động',
@@ -716,7 +716,7 @@ export const en = {
   delete_and_leave: 'Delete and Leave',
   confirm_leave: 'Confirm Leave',
   admin: 'Admin',
-  member: 'Member',
+
 
   // Chat
   error_load_data: 'Failed to load data',
@@ -843,7 +843,7 @@ export const en = {
   leave_channel_action: 'Leave Channel',
   general_channel: 'General',
   no_channels: 'No channels yet',
-  default_channel: 'Default Channel',
+
   default_channel_subtitle: 'General project channel',
   channel_created: 'Channel created',
   no_conversations_yet: 'No conversations yet',
@@ -911,7 +911,7 @@ export const en = {
   due_date: 'Due Date',
   priority: 'Priority',
   assignee: 'Assignee',
-  owner: 'Owner',
+
   role: 'Role',
   all: 'All',
   active: 'Active',
