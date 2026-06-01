@@ -19,7 +19,7 @@ import { Button, Modal, ProjectMemberAvatar } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 const STATUS_VARIANTS: Record<MeetingStatus, string> = {
-  SCHEDULED: 'bg-blue-100 text-blue-700',
+  SCHEDULED: 'bg-orange-100 text-orange-700',
   IN_PROGRESS: 'bg-amber-100 text-amber-700',
   COMPLETED: 'bg-emerald-100 text-emerald-700',
   CANCELLED: 'bg-slate-100 text-slate-600',

@@ -17,12 +17,12 @@ const config = {
   },
 
   db: {
-    uri: process.env.MONGO_URI || 'mongodb://localhost:27017/ezproject',
+    uri: process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ezproject',
     cluster: (() => {
       try {
         return new URL(process.env.MONGO_URI || '').hostname;
       } catch {
-        return 'localhost';
+        return '127.0.0.1';
       }
     })(),
   },

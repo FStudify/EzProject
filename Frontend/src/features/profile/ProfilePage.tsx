@@ -213,18 +213,97 @@ export default function ProfilePage() {
                     @{user?.username || 'user'}
                   </span>
                 </div>
-                <p className="text-sm font-medium" style={{ color: '#635648' }}>Thành viên EzProject</p>
-                <div className="flex flex-wrap gap-x-5 gap-y-1.5 text-sm" style={{ color: '#7D6F66' }}>
-                  <span className="flex items-center gap-1.5">
-                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><path d="M4 4h16c1.1 0 2 .9 2 2v12c0 1.1-.9 2-2 2H4c-1.1 0-2-.9-2-2V6c0-1.1.9-2 2-2z"/><polyline points="22,6 12,13 2,6"/></svg>
-                    {user?.email || 'Chưa cập nhật email'}
-                  </span>
-                  {user?.phone && (
-                    <span className="flex items-center gap-1.5">
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" className="h-3.5 w-3.5"><path d="M22 16.92v3a2 2 0 0 1-2.18 2 19.79 19.79 0 0 1-8.63-3.07A19.5 19.5 0 0 1 4.69 12 19.79 19.79 0 0 1 1.61 3.37a2 2 0 0 1 1.99-2.18h3a2 2 0 0 1 2 1.72c.127.96.361 1.903.7 2.81a2 2 0 0 1-.45 2.11L7.91 9a16 16 0 0 0 6.06 6.06l1.27-1.34a2 2 0 0 1 2.11-.45c.907.339 1.85.573 2.81.7A2 2 0 0 1 22 16.92z"/></svg>
-                      {user.phone}
-                    </span>
-                  )}
+              </div>
+            ) : (
+              <div className="relative z-10 flex flex-col md:flex-row items-start md:items-center gap-8">
+                {/* Avatar with 3D Ring */}
+                <div className="relative shrink-0 group cursor-pointer" onClick={() => fileInputRef.current?.click()}>
+                  <div className="absolute inset-0 bg-[var(--color-primary)]/30 rounded-full blur-2xl scale-125"></div>
+                  <div className="metallic-ring rounded-full relative z-10 transition-transform group-hover:scale-105">
+                    {user?.avatar && !avatarError ? (
+                      <img
+                        src={user.avatar}
+                        alt="Avatar"
+                        onError={() => setAvatarError(true)}
+                        className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner"
+                      />
+                    ) : (
+                      <div className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center text-white text-4xl font-bold uppercase">
+                        {user?.fullName?.charAt(0) || 'U'}
+                      </div>
+                    )}
+
+                    <div className="absolute inset-0 rounded-full bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                      <span className="material-symbols-outlined text-white text-3xl">photo_camera</span>
+                    </div>
+                  </div>
+                  <input type="file" ref={fileInputRef} className="hidden" accept="image/*" onChange={handleAvatarChange} />
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 w-full">
+                  <div className="flex flex-col gap-2">
+                    <div className="flex items-center gap-3">
+                      <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-gradient-animate font-extrabold lowercase">{user?.fullName || 'Người dùng'}</h2>
+                      <span className="px-2.5 py-1 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-label-sm-caps text-label-sm-caps shadow-sm uppercase">@{user?.username || 'user'}</span>
+                    </div>
+                    <p className="font-body-lg text-body-lg font-semibold text-[var(--color-on-surface)]">Thành viên EzProject</p>
+
+                    <div className="flex flex-wrap gap-x-6 gap-y-2 mt-2 font-body-md text-body-md font-medium text-[var(--color-on-surface-variant)]">
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px]">mail</span>
+                        <span>{user?.email || 'Chưa cập nhật email'}</span>
+                      </div>
+                      <div className="flex items-center gap-1.5">
+                        <span className="material-symbols-outlined text-[18px]">phone</span>
+                        <span>{user?.phone || 'Chưa cập nhật SĐT'}</span>
+                      </div>
+                    </div>
+
+
+                  </div>
+
+                  <div className="flex flex-row md:flex-col gap-3 shrink-0 w-full md:w-auto mt-4 md:mt-0">
+                    <button onClick={() => setIsEditing(true)} className="flex-1 md:flex-none py-2.5 px-6 rounded-full btn-neon font-label-md text-label-md flex items-center justify-center gap-2">
+                      <span className="material-symbols-outlined text-[18px]">edit</span>
+                      Chỉnh sửa hồ sơ
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
+          </section>
+
+          {/* 2. Statistics Row (3D Cards) */}
+          <section className="py-2 animate-slide-up" style={{ animationDelay: '0.2s' }}>
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+              <div className="stat-glass flex flex-col items-center group cursor-pointer">
+                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Dự án tham gia</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-primary)]/20 to-[var(--color-primary)]/5 flex items-center justify-center shadow-inner">
+                    <span className="material-symbols-outlined text-[28px] text-[var(--color-primary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(53,37,205,0.3))' }}>folder_open</span>
+                  </div>
+                  <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{projects.length}</span>
+                </div>
+              </div>
+
+              <div className="stat-glass flex flex-col items-center group cursor-pointer">
+                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Task hoàn thành</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-[var(--color-secondary)]/20 to-[var(--color-secondary)]/5 flex items-center justify-center shadow-inner">
+                    <span className="material-symbols-outlined text-[28px] text-[var(--color-secondary)]" style={{ filter: 'drop-shadow(0 2px 4px rgba(0,101,145,0.3))' }}>task_alt</span>
+                  </div>
+                  <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{tasksCompleted}</span>
+                </div>
+              </div>
+
+              <div className="stat-glass flex flex-col items-center group cursor-pointer">
+                <span className="font-label-md text-label-md uppercase tracking-wider mb-2 font-semibold text-[var(--color-on-surface-variant)]">Đúng hạn</span>
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-full bg-gradient-to-br from-orange-500/20 to-orange-500/5 flex items-center justify-center shadow-inner">
+                    <span className="material-symbols-outlined text-emerald-600 text-[28px]" style={{ filter: 'drop-shadow(0 2px 4px rgba(5,150,105,0.3))' }}>trending_up</span>
+                  </div>
+                  <span className="font-headline-lg text-headline-lg font-extrabold text-[var(--color-on-surface)]" style={{ textShadow: '0 2px 10px rgba(0,0,0,0.1)' }}>{onTimeRate}%</span>
                 </div>
               </div>
             </div>
