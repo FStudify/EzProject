@@ -21,8 +21,8 @@ import {
   MoreVertical,
   Loader2,
 } from 'lucide-react';
-import { getDocuments, createFolder, renameDocument, deleteDocument } from '@/api/document.api';
-import type { Document, Folder as FolderType } from '@/api/types';
+import { getDocuments, createFolder, renameDocument, deleteDocument, uploadDocument } from '@/api/document.api';
+import type { Document } from '@/types';
 import { Button, ProjectMemberAvatar, Badge } from '@/components/ui';
 import DocumentContentArea from './DocumentContentArea';
 import type { DocumentComment, DocumentAuditEntry } from '@/types';
@@ -52,7 +52,7 @@ interface DocumentFolder {
   parentId: string | null;
   name: string;
   createdAt: string;
-  createdBy: { id: string; fullName: string; avatar: string | null };
+  createdBy: { id: string; name: string; avatar: string };
 }
 
 export default function DocumentPage() {
@@ -100,14 +100,32 @@ export default function DocumentPage() {
         folderId: currentFolderId,
         search: searchTerm || undefined,
       });
-      setDocuments(response.files);
+      // Normalize API Documents (@/api/types) to local Documents (@/types)
+      setDocuments(
+        response.files.map((f) => ({
+          id: f.id,
+          projectId: f.projectId,
+          name: f.name,
+          fileType: f.fileType,
+          size: f.size,
+          fileUrl: f.fileUrl ?? undefined,
+          uploadedBy: {
+            id: f.uploadedBy?.id ?? '',
+            name: (f.uploadedBy as any)?.fullName ?? (f.uploadedBy as any)?.name ?? '',
+            email: (f.uploadedBy as any)?.email ?? '',
+            avatar: (f.uploadedBy as any)?.avatar ?? '',
+          },
+          uploadDate: f.uploadDate,
+          folderId: f.folderId,
+        }))
+      );
       setFolders(
         response.folders.map((f) => ({
           id: f.id,
           name: f.name,
           parentId: f.parentId,
           createdAt: f.createdAt,
-          createdBy: { id: '', fullName: '', avatar: null },
+          createdBy: { id: '', name: '', avatar: '' },
         }))
       );
     } catch (error) {
@@ -121,24 +139,38 @@ export default function DocumentPage() {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const handleUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files?.length || !projectId) return;
     for (const file of Array.from(files)) {
-      const id = `upload-${Date.now()}-${file.name}`;
-      const doc: Document = {
-        id,
-        projectId,
-        name: file.name,
-        fileType: getFileType(file.name),
-        size: `${(file.size / 1024).toFixed(0)} KB`,
-        uploadedBy: { id: '', fullName: '', avatar: null },
-        uploadDate: new Date().toISOString(),
-        folderId: currentFolderId,
-      };
-      setDocuments((prev) => [...prev, doc]);
-      uploadedBlobs.set(id, file);
-      setDocumentComments((prev) => ({ ...prev, [id]: [] }));
+      try {
+        const formData = new FormData();
+        formData.append('file', file);
+        if (currentFolderId) formData.append('folderId', currentFolderId);
+        const doc = await uploadDocument(projectId, formData);
+        // Normalize API response to @/types Document
+        const raw = doc as any;
+        const normalized: Document = {
+          id: raw._id ?? raw.id,
+          projectId: raw.projectId ?? projectId,
+          name: raw.name ?? file.name,
+          fileType: raw.fileType ?? getFileType(file.name),
+          size: raw.size ?? `${(file.size / 1024).toFixed(0)} KB`,
+          fileUrl: raw.fileUrl ?? undefined,
+          uploadedBy: {
+            id: raw.uploadedBy?.id ?? raw.uploadedBy?._id ?? '',
+            name: raw.uploadedBy?.fullName ?? raw.uploadedBy?.name ?? '',
+            email: raw.uploadedBy?.email ?? '',
+            avatar: raw.uploadedBy?.avatar ?? '',
+          },
+          uploadDate: raw.uploadDate ?? new Date().toISOString(),
+          folderId: raw.folderId ?? currentFolderId,
+        };
+        setDocuments((prev) => [...prev, normalized]);
+        setDocumentComments((prev) => ({ ...prev, [normalized.id]: [] }));
+      } catch (error) {
+        console.error('Failed to upload file:', file.name, error);
+      }
     }
     e.target.value = '';
   };
@@ -148,7 +180,7 @@ export default function DocumentPage() {
     const comment: DocumentComment = {
       id: `comment-${Date.now()}`,
       content: content.trim(),
-      author: { id: '', fullName: '', avatar: null },
+      author: { id: '', name: '', email: '', avatar: '' },
       createdAt: new Date().toISOString(),
     };
     setDocumentComments((prev) => ({
@@ -172,7 +204,7 @@ export default function DocumentPage() {
           name: newFolder.name,
           parentId: newFolder.parentId,
           createdAt: newFolder.createdAt,
-          createdBy: { id: '', fullName: '', avatar: null },
+          createdBy: { id: '', name: '', avatar: '' },
         },
       ]);
       setNewFolderName('');
@@ -545,7 +577,7 @@ export default function DocumentPage() {
             </div>
             <div className="flex justify-between">
               <dt className="text-ink-muted">{t('uploaded_by')}</dt>
-              <dd className="font-medium text-ink">{selectedDoc?.uploadedBy.fullName}</dd>
+              <dd className="font-medium text-ink">{selectedDoc?.uploadedBy.name}</dd>
             </div>
             <div className="flex justify-between">
               <dt className="text-ink-muted">{t('upload_date')}</dt>
@@ -559,7 +591,7 @@ export default function DocumentPage() {
                 {auditLog.map((entry) => (
                   <li key={entry.id} className="rounded-lg border border-border bg-surface-muted p-2">
                     <Badge variant="default" className="mb-1">{entry.action}</Badge>
-                    <p className="text-xs font-medium text-ink">{entry.user.fullName}</p>
+                    <p className="text-xs font-medium text-ink">{entry.user.name}</p>
                     <p className="text-[10px] text-ink-muted">{formatTime(entry.timestamp)}</p>
                   </li>
                 ))}
@@ -578,7 +610,7 @@ export default function DocumentPage() {
                   <div className="flex items-center gap-2 mb-1.5">
                     <ProjectMemberAvatar member={c.author} projectMembers={[]} size="sm" />
                     <div>
-                      <p className="text-xs font-semibold text-ink">{c.author.fullName}</p>
+                      <p className="text-xs font-semibold text-ink">{c.author.name}</p>
                       <p className="text-[10px] text-ink-muted">{formatTime(c.createdAt)}</p>
                     </div>
                   </div>
