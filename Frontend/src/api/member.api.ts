@@ -13,7 +13,7 @@ import {
 import type { Activity } from '@/types';
 import type { ProjectMemberDetail, MemberPerformance } from './types';
 
-/** ── Members ─────────────────────────────────────────────── */
+/** ── Members ─────────────────────────────────────────── */
 
 /** Lay danh sach thanh vien project */
 export async function getProjectMembers(projectId: string): Promise<ProjectMemberDetail[]> {
@@ -35,7 +35,9 @@ export async function removeMember(projectId: string, userId: string): Promise<v
   return api.delete(Endpoints.MEMBER_REMOVE(projectId, userId));
 }
 
-/** Tao link moi thanh vien */
+/** ── Invite Links ─────────────────────────────────────── */
+
+/** Tao invite link moi (7 ngay) */
 export async function createInviteLink(
   projectId: string,
 ): Promise<{ inviteLink: string; token: string; expiresAt: string }> {
@@ -49,7 +51,75 @@ export async function joinByInvite(
   return api.post(Endpoints.JOIN_PROJECT, { token });
 }
 
-/** ── Performance ─────────────────────────────────────────── */
+/** ── Invitations ─────────────────────────────────────── */
+
+/** Tao invitation bang username hoac email (owner only) */
+export async function createInvitation(
+  projectId: string,
+  data: { username?: string; email?: string },
+): Promise<{
+  id: string;
+  invitedUser: { id: string; fullName: string; email: string; avatar: string | null };
+  status: string;
+  expiresAt: string;
+}> {
+  return api.post(Endpoints.MEMBER_INVITATIONS(projectId), data);
+}
+
+/** Lay danh sach invitation cua project (owner only) */
+export async function getProjectInvitations(projectId: string): Promise<unknown[]> {
+  return api.get(Endpoints.MEMBER_INVITATIONS(projectId));
+}
+
+/** Accept invitation */
+export async function acceptInvitation(
+  invitationId: string,
+): Promise<{ projectId: string; projectName?: string }> {
+  return api.post(Endpoints.INVITATION_ACCEPT(invitationId));
+}
+
+/** Decline invitation */
+export async function declineInvitation(invitationId: string): Promise<void> {
+  return api.post(Endpoints.INVITATION_DECLINE(invitationId));
+}
+
+/** Lay invitation cua minh */
+export async function getMyInvitations(): Promise<unknown[]> {
+  return api.get(Endpoints.MY_INVITATIONS);
+}
+
+/** Revoke invitation (owner only) */
+export async function revokeInvitation(projectId: string, invitationId: string): Promise<void> {
+  return api.delete(Endpoints.INVITATION_DETAIL(projectId, invitationId));
+}
+
+/** ── Leave / Transfer ─────────────────────────────────── */
+
+/** Rời dự án — handle all 3 cases:
+ * 1. MEMBER/SUPERVISOR: remove from members
+ * 2. OWNER + other members: requires newOwnerId (400 if missing)
+ * 3. OWNER last: delete project
+ */
+export async function leaveProject(
+  projectId: string,
+  options?: { newOwnerId?: string },
+): Promise<{ deleted?: boolean; transferredTo?: string }> {
+  const body = options?.newOwnerId ? { newOwnerId: options.newOwnerId } : {};
+  const raw = await api.post<unknown>(Endpoints.PROJECT_LEAVE(projectId), body);
+  const obj = raw as Record<string, unknown>;
+  const data = (obj.data ?? {}) as Record<string, unknown>;
+  return {
+    deleted: data.deleted as boolean | undefined,
+    transferredTo: data.transferredTo as string | undefined,
+  };
+}
+
+/** Chuyển quyền sở hữu (owner only) */
+export async function transferOwnership(projectId: string, newOwnerId: string): Promise<void> {
+  return api.post(Endpoints.PROJECT_TRANSFER(projectId), { newOwnerId });
+}
+
+/** ── Performance ─────────────────────────────────────── */
 
 /** Lay danh sach hieu suat thanh vien */
 export async function getPerformance(projectId: string): Promise<MemberPerformance[]> {
@@ -65,7 +135,7 @@ export async function evaluateMember(
   return api.post(Endpoints.PERFORMANCE_EVALUATE(projectId), data);
 }
 
-/** ── Activity ─────────────────────────────────────────────── */
+/** ── Activity ─────────────────────────────────────────── */
 
 /** Lay feed hoat dong */
 export async function getActivities(

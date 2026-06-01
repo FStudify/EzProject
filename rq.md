@@ -1,528 +1,690 @@
-# REBUILD GROUP MANAGEMENT SYSTEM (OWNER / ADMIN / MEMBER)
+# TASK: IMPLEMENT COMPLETE PROJECT MEMBER MANAGEMENT SYSTEM
 
-## Mục tiêu
+## Objective
 
-Xây dựng lại hoàn toàn chức năng quản lý nhóm theo mô hình Telegram/Discord.
+Implement a complete Project Member Management System for EzProject.
 
-Không sửa vá tạm thời.
+The implementation must include:
 
-Phải kiểm tra toàn bộ Backend, Frontend, API, Database Schema, Permissions, Query và Socket Events liên quan.
+* Backend
+* Database
+* API
+* Frontend
+* State Management
+* Socket Events (if used)
+* Permission System
+* UI/UX
+* Integration Testing
 
-Nếu cấu trúc hiện tại không phù hợp thì được phép thiết kế lại model và migration dữ liệu.
+The solution must be production-ready.
+
+Do NOT create mock implementations.
+
+Do NOT leave TODO/FIXME comments.
+
+Do NOT break existing modules.
+
+Before making changes, analyze the current architecture and reuse existing patterns whenever possible.
 
 ---
 
-# ROLE SYSTEM
+# IMPORTANT REQUIREMENTS
 
-Mỗi thành viên trong nhóm phải có role:
+Before coding:
+
+1. Analyze current database schema.
+2. Analyze current project module.
+3. Analyze authentication and authorization flow.
+4. Analyze current API patterns.
+5. Analyze frontend state management.
+6. Analyze current member/project relationship.
+7. Analyze notification system if available.
+
+After analysis:
+
+* Reuse existing architecture.
+* Avoid duplicate logic.
+* Avoid creating parallel systems.
+* Maintain backward compatibility.
+
+---
+
+# FEATURE OVERVIEW
+
+Implement a full member management system for projects.
+
+Roles:
 
 ```ts
-enum ChannelRole {
-  OWNER = "OWNER",
-  ADMIN = "ADMIN",
-  MEMBER = "MEMBER"
+enum ProjectRole {
+    OWNER = "OWNER",
+    SUPERVISOR = "SUPERVISOR",
+    MEMBER = "MEMBER"
 }
 ```
 
-Quy tắc:
+---
 
-* OWNER: nhóm trưởng
-* ADMIN: quản trị viên
-* MEMBER: thành viên thường
+# OWNER RULES
+
+The creator of a project automatically becomes OWNER.
+
+There must always be exactly ONE OWNER.
+
+OWNER permissions:
+
+* Edit project
+* Delete project
+* Invite members
+* Generate invite links
+* Revoke invitations
+* Change member roles
+* Promote member to supervisor
+* Demote supervisor to member
+* Remove members
+* Transfer ownership
+* Leave project after transferring ownership
 
 ---
 
-# GROUP CREATION
+# SUPERVISOR RULES
 
-Khi tạo nhóm:
+SUPERVISOR permissions:
 
-Người tạo nhóm phải tự động:
+* View all project data
+* Create tasks
+* Edit tasks
+* Assign tasks
+* Manage task workflow
+* View reports
 
-```ts
-role = OWNER
-```
+SUPERVISOR cannot:
 
-Ví dụ:
-
-```text
-Nguyễn Văn A tạo nhóm
-
-=> A là OWNER
-```
-
-Không cần API riêng để set owner.
-
-Thực hiện ngay lúc create channel.
+* Delete project
+* Change member roles
+* Remove owner
+* Transfer ownership
+* Edit project permissions
 
 ---
 
-# PERMISSIONS
+# MEMBER RULES
 
-## OWNER
+MEMBER permissions:
 
-OWNER có quyền:
+* View project
+* View assigned tasks
+* Update own tasks
+* Upload files
+* Comment
+* Participate in discussions
 
-* chỉnh sửa thông tin nhóm
-* đổi tên nhóm
-* đổi avatar nhóm
-* mời thành viên
-* kick thành viên
-* bổ nhiệm ADMIN
-* hạ quyền ADMIN
-* chuyển quyền OWNER
-* rời nhóm
+MEMBER cannot:
 
----
-
-## ADMIN
-
-ADMIN có quyền:
-
-* mời thành viên
-* kick MEMBER
-
-ADMIN KHÔNG được:
-
-* kick OWNER
-* kick ADMIN khác
-* bổ nhiệm ADMIN
-* hạ quyền ADMIN
-* chuyển quyền OWNER
-
----
-
-## MEMBER
-
-MEMBER có quyền:
-
-* xem nhóm
-* chat
-* gửi file
-* rời nhóm
-
-MEMBER không có quyền quản trị.
+* Manage members
+* Manage permissions
+* Delete project
 
 ---
 
 # DATABASE DESIGN
 
-Thiết kế lại nếu cần.
+Review existing schema first.
 
-Ví dụ:
+If necessary, create migrations.
+
+Required structure:
 
 ```ts
-Channel
+Project
 {
-  id
-  name
-  ownerId
-  createdAt
-  updatedAt
+    id
+    name
+    description
+    ownerId
+    createdAt
+    updatedAt
 }
 ```
 
 ```ts
-ChannelMember
+ProjectMember
 {
-  id
-  channelId
-  userId
-  role
-  joinedAt
+    id
+    projectId
+    userId
+    role
+    joinedAt
 }
 ```
 
-ownerId phải luôn đồng bộ với member role OWNER.
-
-Không được tồn tại 2 OWNER trong cùng 1 channel.
-
----
-
-# LEAVE CHANNEL
-
-Thiết kế lại hoàn toàn chức năng leave channel.
-
-Hiện tại API đang báo thành công nhưng dữ liệu không thay đổi.
-
-Phải tìm nguyên nhân và sửa triệt để.
-
----
-
-## CASE 1
-
-MEMBER rời nhóm
-
-Ví dụ:
-
-```text
-Owner
-Admin
-Member A
-```
-
-Member A bấm Leave
-
-Kết quả:
-
-```text
-DELETE channel_member
-```
-
-Sau đó:
-
-* không còn trong danh sách nhóm
-* không truy cập được channel
-* không đọc được tin nhắn
-* không gửi được tin nhắn
-* không xuất hiện trong member list
-
----
-
-## CASE 2
-
-ADMIN rời nhóm
-
-Thực hiện tương tự MEMBER.
-
----
-
-## CASE 3
-
-OWNER rời nhóm khi còn nhiều thành viên
-
-Ví dụ:
-
-```text
-Owner
-Admin
-Member
-```
-
-Khi Owner bấm Leave:
-
-KHÔNG rời ngay.
-
-Hiển thị modal:
-
-```text
-Bạn là nhóm trưởng.
-
-Vui lòng chọn người kế nhiệm trước khi rời nhóm.
-```
-
-Danh sách hiển thị:
-
-```text
-Admin
-Member
-```
-
-Owner chọn 1 người.
-
-Sau khi xác nhận:
-
 ```ts
-oldOwner.role = MEMBER hoặc bị remove khỏi nhóm
-newOwner.role = OWNER
-channel.ownerId = newOwner.id
-```
-
-Sau đó mới thực hiện Leave.
-
-Kết quả:
-
-```text
-Owner cũ biến mất khỏi nhóm.
-
-Người được chọn trở thành OWNER.
-```
-
----
-
-## CASE 4
-
-OWNER là thành viên duy nhất
-
-Ví dụ:
-
-```text
-Owner
-```
-
-Khi bấm Leave:
-
-Không hiển thị modal chọn owner.
-
-Thực hiện:
-
-```ts
-DELETE channel
-DELETE channel_members
-DELETE channel_messages
-DELETE attachments
-```
-
-Toàn bộ nhóm bị xoá khỏi database.
-
----
-
-# TRANSFER OWNER
-
-API mới:
-
-```http
-POST /channels/:id/transfer-owner
-```
-
-Body:
-
-```json
-{
-  "newOwnerId": "..."
+enum ProjectRole {
+    OWNER,
+    SUPERVISOR,
+    MEMBER
 }
 ```
 
-Validation:
+Enforce:
 
-* chỉ OWNER được gọi
-* newOwner phải thuộc nhóm
-* newOwner không được là chính OWNER hiện tại
-
-Sau khi thành công:
-
-```ts
-oldOwner.role = ADMIN
-newOwner.role = OWNER
-channel.ownerId = newOwnerId
-```
+* One OWNER per project.
+* No duplicate memberships.
+* ownerId must match OWNER role.
 
 ---
 
-# KICK MEMBER
+# INVITATION SYSTEM
+
+Implement two invitation methods.
+
+---
+
+## METHOD 1: INVITE LINK
+
+### Create Invite Link
+
+Only OWNER.
 
 API:
 
 ```http
-DELETE /channels/:id/members/:userId
+POST /projects/:projectId/invite-links
 ```
 
-Rule:
+Response:
 
-OWNER:
-
-* kick ADMIN
-* kick MEMBER
-
-ADMIN:
-
-* chỉ kick MEMBER
-
-MEMBER:
-
-* không được kick ai
+```json
+{
+    "inviteLink": "https://domain.com/invite/xxxxx"
+}
+```
 
 ---
 
-# PROMOTE ADMIN
+Invite link table:
+
+```ts
+ProjectInviteLink
+{
+    id
+    projectId
+    token
+    createdBy
+    expiresAt
+    maxUses
+    currentUses
+    isActive
+}
+```
+
+Requirements:
+
+* Unique token.
+* Expiration support.
+* Usage limit support.
+* Ability to revoke.
+
+---
+
+### Join By Invite Link
 
 API:
 
 ```http
-POST /channels/:id/promote
+POST /projects/invite/:token/join
 ```
 
-Body:
+Requirements:
 
-```json
-{
-  "userId": "..."
-}
-```
+* User must be authenticated.
+* Cannot join twice.
+* Expired links rejected.
+* Revoked links rejected.
 
-Chỉ OWNER được thực hiện.
-
-Sau khi promote:
+Default role:
 
 ```ts
-role = ADMIN
-```
-
----
-
-# DEMOTE ADMIN
-
-API:
-
-```http
-POST /channels/:id/demote
-```
-
-Body:
-
-```json
-{
-  "userId": "..."
-}
-```
-
-Chỉ OWNER được thực hiện.
-
-Sau khi demote:
-
-```ts
-role = MEMBER
-```
-
----
-
-# API SECURITY
-
-Tất cả API phải validate:
-
-```ts
-isMember
-isAdmin
-isOwner
-```
-
-Không được tin dữ liệu frontend.
-
-Mọi permission phải kiểm tra ở backend.
-
----
-
-# SOCKET EVENTS
-
-Khi:
-
-* leave
-* kick
-* promote
-* demote
-* transfer owner
-
-Phải emit socket event.
-
-Ví dụ:
-
-```ts
-channel.member.left
-channel.member.kicked
-channel.owner.changed
-channel.member.promoted
-channel.member.demoted
-```
-
-Frontend phải cập nhật realtime.
-
----
-
-# FRONTEND
-
-Kiểm tra và sửa toàn bộ UI.
-
----
-
-## Member List
-
-Hiển thị badge:
-
-```text
-OWNER
-ADMIN
 MEMBER
 ```
 
 ---
 
-## Context Menu
+# METHOD 2: MANUAL INVITATION
 
-OWNER nhìn thấy:
+Only OWNER.
 
-```text
-Promote Admin
-Demote Admin
-Transfer Ownership
-Kick Member
-```
+Owner can invite by:
 
-ADMIN nhìn thấy:
-
-```text
-Kick Member
-```
-
-MEMBER:
-
-```text
-Không thấy action quản trị
-```
+* Username
+* Email
 
 ---
 
-## Leave Channel Modal
+API:
 
-Nếu OWNER và còn thành viên khác:
+```http
+POST /projects/:projectId/invitations
+```
 
-Hiển thị modal chọn owner mới.
+Request:
 
-Nếu MEMBER hoặc ADMIN:
+```json
+{
+    "username": "abc"
+}
+```
 
-Hiển thị confirm đơn giản.
+or
 
-Nếu OWNER là người cuối cùng:
-
-Hiển thị cảnh báo:
-
-```text
-Nhóm sẽ bị xoá vĩnh viễn.
+```json
+{
+    "email": "abc@gmail.com"
+}
 ```
 
 ---
 
-# CHANNEL VISIBILITY
+Invitation table:
 
-Sau khi leave hoặc bị kick:
+```ts
+ProjectInvitation
+{
+    id
+    projectId
+    invitedBy
+    invitedUserId
+    invitedEmail
+    status
+    expiresAt
+    createdAt
+}
+```
 
-Người dùng phải:
-
-* mất channel khỏi sidebar
-* mất channel khỏi danh sách joined groups
-* không thể mở URL channel
-* API trả 403 hoặc 404
-* websocket bị remove khỏi room
-
----
-
-# TESTING
-
-Tạo test đầy đủ:
-
-1. Member leave
-2. Admin leave
-3. Owner leave + transfer owner
-4. Owner leave + delete channel
-5. Promote admin
-6. Demote admin
-7. Kick member
-8. Kick admin
-9. Unauthorized actions
-10. Sidebar refresh after leave
-11. Socket sync
-12. Database consistency
+```ts
+enum InvitationStatus {
+    PENDING,
+    ACCEPTED,
+    DECLINED,
+    EXPIRED
+}
+```
 
 ---
 
-# EXPECTED RESULT
+# ACCEPT INVITATION
 
-Sau khi hoàn thành:
+API:
 
-* Chức năng leave hoạt động thật sự
-* Database cập nhật chính xác
-* Sidebar cập nhật chính xác
-* Không còn nhóm ma
-* Không còn thành viên ma
-* Không còn trường hợp báo thành công nhưng dữ liệu không thay đổi
-* Permission OWNER/ADMIN/MEMBER hoạt động đúng
-* Code production-ready
-* Không được để TODO, FIXME hoặc mock implementation
+```http
+POST /project-invitations/:id/accept
+```
+
+Requirements:
+
+* Add user to project.
+* Create ProjectMember.
+* Set role MEMBER.
+* Update invitation status.
+
+---
+
+# DECLINE INVITATION
+
+API:
+
+```http
+POST /project-invitations/:id/decline
+```
+
+---
+
+# MEMBER MANAGEMENT
+
+Owner can access:
+
+```text
+Project Settings
+→ Members
+```
+
+Display:
+
+* Avatar
+* Name
+* Email
+* Role
+* Join Date
+
+---
+
+# CHANGE ROLE
+
+Only OWNER.
+
+API:
+
+```http
+PATCH /projects/:projectId/members/:memberId/role
+```
+
+Request:
+
+```json
+{
+    "role": "SUPERVISOR"
+}
+```
+
+or
+
+```json
+{
+    "role": "MEMBER"
+}
+```
+
+Rules:
+
+* Cannot assign OWNER.
+* Cannot demote current OWNER.
+* Cannot create multiple owners.
+
+---
+
+# REMOVE MEMBER
+
+Only OWNER.
+
+API:
+
+```http
+DELETE /projects/:projectId/members/:memberId
+```
+
+Rules:
+
+* Cannot remove OWNER.
+* Cannot remove non-member.
+* Remove access immediately.
+
+After removal:
+
+* Project disappears from sidebar.
+* User cannot access project routes.
+* API returns 403.
+
+---
+
+# TRANSFER OWNERSHIP
+
+Only OWNER.
+
+API:
+
+```http
+POST /projects/:projectId/transfer-ownership
+```
+
+Request:
+
+```json
+{
+    "newOwnerId": "..."
+}
+```
+
+Rules:
+
+* New owner must already be a member.
+* New owner cannot be current owner.
+* Transfer must be atomic.
+
+After transfer:
+
+```text
+Old Owner → SUPERVISOR
+New Owner → OWNER
+Project.ownerId updated
+```
+
+---
+
+# LEAVE PROJECT
+
+Implement complete leave flow.
+
+---
+
+## MEMBER leaves
+
+Remove membership.
+
+Project disappears immediately.
+
+---
+
+## SUPERVISOR leaves
+
+Remove membership.
+
+Project disappears immediately.
+
+---
+
+## OWNER leaves
+
+If other members exist:
+
+Show modal:
+
+```text
+Select a new project owner before leaving.
+```
+
+Require ownership transfer first.
+
+Do not allow leave until transfer completed.
+
+---
+
+## OWNER is last member
+
+Show warning:
+
+```text
+You are the last member.
+Leaving will permanently delete this project.
+```
+
+After confirmation:
+
+* Delete project
+* Delete memberships
+* Delete invite links
+* Delete invitations
+
+Handle related records safely.
+
+Use existing cascade strategy if available.
+
+---
+
+# FRONTEND REQUIREMENTS
+
+Create complete UI.
+
+---
+
+## Members Page
+
+Display:
+
+```text
+Name
+Email
+Role
+Joined Date
+Actions
+```
+
+---
+
+## Owner Actions
+
+* Invite Member
+* Generate Invite Link
+* Copy Invite Link
+* Change Role
+* Remove Member
+* Transfer Ownership
+
+---
+
+## Supervisor Actions
+
+No member-management actions.
+
+Read-only.
+
+---
+
+## Member Actions
+
+Read-only.
+
+---
+
+# INVITATION UI
+
+Create:
+
+```text
+Invite Member Modal
+```
+
+Tabs:
+
+```text
+Invite by Username
+Invite by Email
+Invite Link
+```
+
+---
+
+# INVITATIONS PAGE
+
+Display:
+
+* Pending invitations
+* Accepted invitations
+* Declined invitations
+* Expired invitations
+
+Allow owner to revoke pending invitations.
+
+---
+
+# PROJECT SIDEBAR
+
+After:
+
+* Leave
+* Remove member
+* Ownership transfer
+
+Refresh state immediately.
+
+No page reload required.
+
+---
+
+# API INTEGRATION
+
+Connect all frontend screens to real backend APIs.
+
+No mock data.
+
+No fake success messages.
+
+All mutations must:
+
+* Update cache
+* Refresh affected queries
+* Update sidebar state
+* Handle errors correctly
+
+---
+
+# AUTHORIZATION
+
+Enforce permissions BOTH:
+
+* Frontend
+* Backend
+
+Backend is the source of truth.
+
+Never trust frontend role values.
+
+---
+
+# SOCKET SUPPORT
+
+If socket architecture exists:
+
+Emit events:
+
+```text
+project.member.joined
+project.member.left
+project.member.removed
+project.member.role_changed
+project.owner.changed
+project.invitation.created
+```
+
+Update UI in realtime.
+
+If socket module does not exist, do not introduce unnecessary complexity.
+
+---
+
+# TESTING REQUIREMENTS
+
+Verify:
+
+1. Create project.
+2. Owner assignment.
+3. Invite by username.
+4. Invite by email.
+5. Invite by link.
+6. Accept invitation.
+7. Decline invitation.
+8. Change role.
+9. Remove member.
+10. Transfer ownership.
+11. Leave project.
+12. Delete project when last owner leaves.
+13. Sidebar updates.
+14. Authorization rules.
+15. Existing modules remain functional.
+
+---
+
+# FINAL VALIDATION
+
+Before finishing:
+
+1. Run application.
+2. Test all APIs.
+3. Test all UI flows.
+4. Test permissions.
+5. Test project sidebar.
+6. Test database updates.
+7. Test ownership transfer.
+8. Test leave project flow.
+9. Ensure no regression in existing modules.
+
+Provide a summary of all modified files and explain why each change was made.

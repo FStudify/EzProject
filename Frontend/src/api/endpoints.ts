@@ -68,6 +68,16 @@ export const Endpoints = {
   MEMBER_REMOVE: (projectId: string, userId: string) =>
     `${BASE}/projects/${projectId}/members/${userId}`,
   MEMBER_INVITE: (projectId: string) => `${BASE}/projects/${projectId}/members/invite`,
+  MEMBER_INVITATIONS: (projectId: string) => `${BASE}/projects/${projectId}/members/invitations`,
+  INVITATION_ACCEPT: (invitationId: string) =>
+    `${BASE}/projects/:projectId/members/invitations/${invitationId}/accept`,
+  INVITATION_DECLINE: (invitationId: string) =>
+    `${BASE}/projects/:projectId/members/invitations/${invitationId}/decline`,
+  INVITATION_DETAIL: (projectId: string, invitationId: string) =>
+    `${BASE}/projects/${projectId}/members/invitations/${invitationId}`,
+  PROJECT_LEAVE: (projectId: string) => `${BASE}/projects/${projectId}/members/leave`,
+  PROJECT_TRANSFER: (projectId: string) => `${BASE}/projects/${projectId}/members/transfer-ownership`,
+  MY_INVITATIONS: `${BASE}/users/me/invitations`,
 
   // ── Performance ──────────────────────────────────────────
   PERFORMANCE_LIST: (projectId: string) => `${BASE}/projects/${projectId}/performance`,

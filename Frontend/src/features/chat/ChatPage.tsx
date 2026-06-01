@@ -157,7 +157,7 @@ export default function ChatPage() {
         if (savedRoomId && restoredRoomId === savedRoomId) skipPersist.current = true;
         setActiveRoomId(restoredRoomId);
       })
-      .catch(() => { toast(t('error_load_data') || 'Không thể tải dữ liệu', 'error'); })
+      .catch(() => { toast(t('error_load_data'), 'error'); })
       .finally(() => setLoadingRooms(false));
   }, [projectId, t, currentUserId, user]);
 
@@ -267,7 +267,7 @@ export default function ChatPage() {
       const room = await createChatRoom(projectId, { name, type: 'channel', memberIds });
       setRooms((prev) => [...prev, room]);
       setActiveRoomId(room.id);
-    } catch (e: any) { toast(e?.message || 'Không thể tạo kênh', 'error'); }
+    } catch (e: any) { toast(e?.message || t('cannot_create_channel'), 'error'); }
     setShowCreateModal(false);
   }, [projectId, toast]);
 
@@ -276,7 +276,7 @@ export default function ChatPage() {
     try {
       const updated = await renameChatRoom(projectId, roomId, newName.trim());
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
-    } catch (e: any) { toast(e?.message || 'Không thể đổi tên', 'error'); }
+    } catch (e: any) { toast(e?.message || t('cannot_rename'), 'error'); }
   }, [projectId, toast]);
 
   const handleDeleteRoom = useCallback(async (roomId: string) => {
@@ -287,7 +287,7 @@ export default function ChatPage() {
       if (activeRoomId === roomId) {
         setActiveRoomId(makeGeneralRoomId(projectId));
       }
-    } catch (e: any) { toast(e?.message || 'Không thể xóa kênh', 'error'); }
+    } catch (e: any) { toast(e?.message || t('cannot_delete_channel'), 'error'); }
     setRoomMenuState(null);
   }, [projectId, activeRoomId, toast]);
 
@@ -300,16 +300,16 @@ export default function ChatPage() {
       const result = await leaveChatRoom(projectId, roomId, newOwnerId ? { newOwnerId } : undefined);
       if (result.deleted) {
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
-        toast('Đã rời kênh', 'success');
+        toast(t('leave_channel'), 'success');
       } else if (result.transferredTo) {
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
-        toast('Đã chuyển nhóm trưởng và rời kênh', 'success');
+        toast(t('ownership_transferred'), 'success');
       } else if (result.room) {
         setRooms((prev) => prev.map((r) => (r.id === roomId ? result.room! : r)));
-        toast('Đã rời kênh', 'success');
+        toast(t('leave_channel'), 'success');
       }
     } catch (e: any) {
-      toast(e?.message || 'Không thể rời kênh', 'error');
+      toast(e?.message || t('cannot_leave_channel'), 'error');
     }
   }, [projectId, toast]);
 
@@ -318,7 +318,7 @@ export default function ChatPage() {
     try {
       const updated = await updateChatRoomSettings(projectId, roomId, { inviteLocked: locked });
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
-    } catch (e: any) { toast(e?.message || 'Không thể cập nhật cài đặt', 'error'); }
+    } catch (e: any) { toast(e?.message || t('cannot_update_settings'), 'error'); }
   }, [projectId, toast]);
 
   const handlePromoteMember = useCallback(async (roomId: string, userId: string) => {
@@ -326,8 +326,8 @@ export default function ChatPage() {
     try {
       const updated = await promoteChatAdmin(projectId, roomId, userId);
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
-      toast('Đã phong cấp thành công', 'success');
-    } catch (e: any) { toast(e?.message || 'Không thể phong cấp', 'error'); }
+      toast(t('promoted_successfully'), 'success');
+    } catch (e: any) { toast(e?.message || t('cannot_promote'), 'error'); }
   }, [projectId, toast]);
 
   const handleDemoteMember = useCallback(async (roomId: string, userId: string) => {
@@ -335,8 +335,8 @@ export default function ChatPage() {
     try {
       const updated = await demoteChatAdmin(projectId, roomId, userId);
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
-      toast('Đã hạ cấp thành công', 'success');
-    } catch (e: any) { toast(e?.message || 'Không thể hạ cấp', 'error'); }
+      toast(t('demoted_successfully'), 'success');
+    } catch (e: any) { toast(e?.message || t('cannot_demote'), 'error'); }
   }, [projectId, toast]);
 
   const handleKickMember = useCallback(async (roomId: string, userId: string) => {
@@ -349,8 +349,8 @@ export default function ChatPage() {
       } else if (result.room) {
         setRooms((prev) => prev.map((r) => (r.id === roomId ? result.room! : r)));
       }
-      toast('Đã xóa thành viên', 'success');
-    } catch (e: any) { toast(e?.message || 'Không thể xóa thành viên', 'error'); }
+      toast(t('member_kicked'), 'success');
+    } catch (e: any) { toast(e?.message || t('cannot_kick_member'), 'error'); }
   }, [projectId, activeRoomId, toast]);
 
   const handleInviteMembers = useCallback(async (roomId: string, memberIds: string[]) => {
@@ -358,8 +358,8 @@ export default function ChatPage() {
     try {
       const updated = await addChatRoomMembers(projectId, roomId, memberIds);
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
-      toast('Đã mời thành viên', 'success');
-    } catch (e: any) { toast(e?.message || 'Không thể mời thành viên', 'error'); }
+      toast(t('member_invited'), 'success');
+    } catch (e: any) { toast(e?.message || t('cannot_invite_member'), 'error'); }
   }, [projectId, toast]);
 
   const handleTransferOwner = useCallback(async (roomId: string, userId: string) => {
@@ -367,8 +367,8 @@ export default function ChatPage() {
     try {
       const updated = await transferChatOwner(projectId, roomId, userId);
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
-      toast('Đã chuyển giao nhóm trưởng', 'success');
-    } catch (e: any) { toast(e?.message || 'Không thể chuyển giao', 'error'); }
+      toast(t('ownership_transferred'), 'success');
+    } catch (e: any) { toast(e?.message || t('cannot_transfer_ownership'), 'error'); }
   }, [projectId, toast]);
 
   const handleOpenDM = useCallback((member: Member) => {
@@ -490,7 +490,7 @@ export default function ChatPage() {
               type="text"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
-              placeholder="Tìm cuộc trò chuyện..."
+              placeholder={t('search_conversation')}
               className="w-full rounded-xl border py-2 pl-9 pr-3 text-sm transition-all focus:outline-none focus:ring-2"
               style={{ backgroundColor: '#F8F3EE', color: '#1F1F1F', borderColor: '#E8C7AE' }}
               onFocus={e => { e.currentTarget.style.borderColor = '#D97853'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,120,83,0.16)'; }}
@@ -502,9 +502,9 @@ export default function ChatPage() {
         {/* Room list */}
         <div className="flex-1 overflow-y-auto px-2 py-1">
 
-          {/* KÊNH */}
+          {/* CHANNELS */}
           <p className="mb-1 mt-2 px-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#9a9086' }}>
-            KÊNH
+            {t('channels')}
           </p>
           {filteredGeneral.map(r => renderChannelRow(r))}
           {filteredChannels.map(room => (
@@ -533,12 +533,12 @@ export default function ChatPage() {
             </div>
           ))}
           {filteredChannels.length === 0 && (
-            <p className="px-3 py-2 text-xs" style={{ color: '#9a9086' }}>Chưa có kênh nào</p>
+            <p className="px-3 py-2 text-xs" style={{ color: '#9a9086' }}>{t('no_channels')}</p>
           )}
 
-          {/* TIN NHẮN TRỰC TIẾP */}
+          {/* DIRECT MESSAGES */}
           <p className="mb-1 mt-4 px-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#9a9086' }}>
-            TIN NHẮN TRỰC TIẾP
+            {t('direct_messages')}
           </p>
           {filteredDmMembers.map(member => renderDMRow(member))}
         </div>
@@ -568,8 +568,8 @@ export default function ChatPage() {
                   {activeRoom.type === 'direct'
                     ? (activeRoom.members.find((m) => m.id !== currentUserId)?.name ?? t('direct_message'))
                     : activeRoom.type === 'general'
-                    ? 'Kênh mặc định'
-                    : `${activeRoom.members.length} thành viên`}
+                    ? t('default_channel')
+                    : `${activeRoom.members.length} ${t('member')}`}
                 </p>
               </button>
             </div>
@@ -737,8 +737,8 @@ function RoomMenuModal({
                 <Crown className="h-5 w-5" style={{ color: '#D97853' }} />
               </div>
               <div>
-                <h3 className="text-base font-bold" style={{ color: '#1F1F1F' }}>Bạn là nhóm trưởng</h3>
-                <p className="text-xs" style={{ color: '#7D6F66' }}>Chọn người kế nhiệm trước khi rời nhóm</p>
+                <h3 className="text-base font-bold" style={{ color: '#1F1F1F' }}>{t('you_are_owner')}</h3>
+                <p className="text-xs" style={{ color: '#7D6F66' }}>{t('select_new_owner_before_leave')}</p>
               </div>
             </div>
           </div>
@@ -762,7 +762,7 @@ function RoomMenuModal({
                   <div className="flex-1 min-w-0">
                     <p className="text-sm font-semibold truncate" style={{ color: '#1F1F1F' }}>{m.name}</p>
                     <p className="text-xs" style={{ color: role === 'ADMIN' ? '#53B848' : '#9a9086' }}>
-                      {role === 'ADMIN' ? 'Admin' : 'Thành viên'}
+                      {role === 'ADMIN' ? t('admin') : t('member')}
                     </p>
                   </div>
                   {selected && <Check className="h-5 w-5 shrink-0" style={{ color: '#D97853' }} />}
@@ -869,20 +869,20 @@ function RoomMenuModal({
                 onMouseEnter={e => { e.currentTarget.style.borderColor = '#D97853'; }}
                 onMouseLeave={e => { e.currentTarget.style.borderColor = '#E8D8CF'; }}
               >
-                {room.inviteLocked
-                  ? <Lock className="h-5 w-5 shrink-0" style={{ color: '#ef4444' }} />
-                  : <Unlock className="h-5 w-5 shrink-0" style={{ color: '#53B848' }} />}
-                <div className="flex-1 text-left">
-                  <p className="font-semibold">Khoá mời thành viên</p>
-                  <p className="text-xs mt-0.5" style={{ color: '#7D6F66' }}>
-                    {room.inviteLocked ? 'Chỉ nhóm trưởng mới mời được' : 'Tất cả thành viên đều có thể mời'}
+                    {room.inviteLocked
+                      ? <Lock className="h-5 w-5 shrink-0" style={{ color: '#ef4444' }} />
+                      : <Unlock className="h-5 w-5 shrink-0" style={{ color: '#53B848' }} />}
+                    <div className="flex-1 text-left">
+                      <p className="font-semibold">{t('lock_invite')}</p>
+                      <p className="text-xs mt-0.5" style={{ color: '#7D6F66' }}>
+                        {room.inviteLocked ? t('only_owner_can_invite') : t('all_can_invite')}
                   </p>
                 </div>
                 <span
                   className="rounded-full px-2.5 py-1 text-xs font-bold text-white shrink-0"
                   style={{ backgroundColor: room.inviteLocked ? '#ef4444' : '#53B848' }}
                 >
-                  {room.inviteLocked ? 'Khoá' : 'Mở'}
+                  {room.inviteLocked ? t('invite_locked') : t('invite_open')}
                 </span>
               </button>
             </div>
@@ -895,7 +895,7 @@ function RoomMenuModal({
                 Mời thành viên
               </div>
               {nonMembers.length === 0 ? (
-                <p className="text-xs px-3 py-2" style={{ color: '#9a9086' }}>Tất cả thành viên đã ở trong kênh</p>
+                <p className="text-xs px-3 py-2" style={{ color: '#9a9086' }}>{t('all_members_invited')}</p>
               ) : (
                 <>
                   <div className="max-h-36 overflow-y-auto rounded-xl border p-2 space-y-1 mb-2" style={{ borderColor: '#E8D8CF' }}>
@@ -931,7 +931,7 @@ function RoomMenuModal({
                     onMouseEnter={e => { if (inviteIds.length > 0) e.currentTarget.style.backgroundColor = '#B76442'; }}
                     onMouseLeave={e => { if (inviteIds.length > 0) e.currentTarget.style.backgroundColor = '#D97853'; }}
                   >
-                    Mời {inviteIds.length > 0 ? `${inviteIds.length} người` : 'thành viên'}
+                    {t('invite')}
                   </button>
                 </>
               )}
@@ -941,7 +941,7 @@ function RoomMenuModal({
           {/* Member list with inline actions */}
           <div className="px-6 py-3" style={{ borderBottom: '1px solid #E8D8CF' }}>
             <div className="mb-2 text-xs font-semibold uppercase tracking-wider" style={{ color: '#7D6F66' }}>
-              Thành viên ({room.members.length})
+              {t('team_members')} ({room.members.length})
             </div>
             <div className="space-y-1 max-h-52 overflow-y-auto">
               {room.members.map((m) => {
@@ -978,8 +978,8 @@ function RoomMenuModal({
                         {m.name}
                         {isSelf && <span className="ml-1 text-xs" style={{ color: '#9a9086' }}>(bạn)</span>}
                       </p>
-                      {isMemberOwner && <p className="text-[10px] font-bold text-white" style={{ color: '#D97853' }}>Nhóm trưởng</p>}
-                      {isMemberAdmin && !isMemberOwner && <p className="text-[10px] font-bold text-white" style={{ color: '#53B848' }}>Admin</p>}
+                      {isMemberOwner && <p className="text-[10px] font-bold" style={{ color: '#D97853' }}>{t('owner')}</p>}
+                      {isMemberAdmin && !isMemberOwner && <p className="text-[10px] font-bold" style={{ color: '#53B848' }}>{t('admin')}</p>}
                     </div>
 
                     {/* Actions */}
@@ -994,7 +994,7 @@ function RoomMenuModal({
                           onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#EFF9E8'; }}
                         >
                           <Shield className="h-3 w-3" />
-                          Thăng Admin
+                          {t('promote_to_admin')}
                         </button>
                       )}
                       {canDemoteAdmin && (
@@ -1007,7 +1007,7 @@ function RoomMenuModal({
                           onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FEF0E8'; }}
                         >
                           <ShieldOff className="h-3 w-3" />
-                          Hạ cấp
+                          {t('demote_from_admin')}
                         </button>
                       )}
                       {canTransfer && (
@@ -1020,7 +1020,7 @@ function RoomMenuModal({
                           onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FFF5EC'; }}
                         >
                           <Crown className="h-3 w-3" />
-                          Chuyển nhóm trưởng
+                          {t('transfer_channel_owner')}
                         </button>
                       )}
                       {canKickMember && (
@@ -1098,7 +1098,7 @@ function CreateChannelModal({ members, currentUserId, onClose, onCreate }: Creat
       <div className="w-full max-w-md overflow-hidden rounded-2xl shadow-2xl" style={{ backgroundColor: '#FFFDFB', border: '1px solid #E8D8CF' }}>
         {/* Header */}
         <div className="flex items-center justify-between px-6 py-4" style={{ borderBottom: '1px solid #E8D8CF' }}>
-          <h3 className="text-lg font-bold" style={{ color: '#1F1F1F' }}>Tạo Kênh mới</h3>
+          <h3 className="text-lg font-bold" style={{ color: '#1F1F1F' }}>{t('create_channel')}</h3>
           <button type="button" onClick={onClose}
             className="flex h-8 w-8 items-center justify-center rounded-xl transition-colors"
             style={{ color: '#7D6F66' }}
@@ -1110,14 +1110,14 @@ function CreateChannelModal({ members, currentUserId, onClose, onCreate }: Creat
 
         <div className="px-6 py-4">
           <div className="mb-4">
-            <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#1F1F1F' }}>Tên kênh</label>
+            <label className="mb-1.5 block text-sm font-semibold" style={{ color: '#1F1F1F' }}>{t('channel_name')}</label>
             <div className="relative">
               <span className="absolute left-4 top-1/2 -translate-y-1/2 text-sm" style={{ color: '#9a9086' }}>#</span>
               <input
                 type="text"
                 value={name}
                 onChange={(e) => setName(e.target.value)}
-                placeholder="ví dụ: thiết-kế"
+                placeholder={t('channel_name_placeholder')}
                 className="w-full rounded-xl border py-2.5 pl-8 pr-4 text-sm transition-all focus:outline-none focus:ring-2"
                 style={{ backgroundColor: '#FFFDFB', color: '#1F1F1F', borderColor: '#E8C7AE' }}
                 onFocus={e => { e.currentTarget.style.borderColor = '#D97853'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,120,83,0.16)'; }}
@@ -1127,7 +1127,7 @@ function CreateChannelModal({ members, currentUserId, onClose, onCreate }: Creat
           </div>
 
           <div>
-            <label className="mb-2 block text-sm font-semibold" style={{ color: '#1F1F1F' }}>Thêm thành viên</label>
+            <label className="mb-2 block text-sm font-semibold" style={{ color: '#1F1F1F' }}>{t('add_members')}</label>
             <div className="max-h-48 space-y-1 overflow-y-auto rounded-xl border p-2" style={{ borderColor: '#E8D8CF' }}>
               {otherMembers.map((m) => {
                 const selected = selectedIds.includes(m.id);
@@ -1159,9 +1159,9 @@ function CreateChannelModal({ members, currentUserId, onClose, onCreate }: Creat
         </div>
 
         <div className="flex justify-end gap-2 px-6 py-4" style={{ borderTop: '1px solid #E8D8CF', backgroundColor: '#FFF8F3' }}>
-          <Button variant="secondary" size="md" onClick={onClose}>Hủy</Button>
+          <Button variant="secondary" size="md" onClick={onClose}>{t('cancel')}</Button>
           <Button variant="accent" size="md" onClick={handleSubmit} disabled={!name.trim() || selectedIds.length === 0}>
-            Tạo kênh
+            {t('create_channel_btn')}
           </Button>
         </div>
       </div>
