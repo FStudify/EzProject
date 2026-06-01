@@ -24,6 +24,7 @@ export type DictKey =
   | 'loading' | 'error' | 'success' | 'confirm' | 'yes' | 'no' | 'ok' | 'close' | 'back' | 'next' | 'previous' | 'total' | 'name' | 'date' | 'description' | 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'assignee' | 'role' | 'all' | 'active' | 'inactive' | 'today' | 'yesterday' | 'this_week' | 'this_month'
   | 'new_task_assigned' | 'task_due_soon' | 'meeting_reminder' | 'document_shared' | 'member_joined'
   | 'demo_account' | 'demo_account_desc'
+  | 'ezproject_member' | 'phone_not_updated' | 'email_not_updated' | 'on_time_rate' | 'outstanding_achievements' | 'no_recent_activity' | 'avatar_update_success' | 'avatar_update_error' | 'profile_update_success' | 'profile_update_error'
   | string;
 
 export const vi = {
@@ -423,6 +424,22 @@ export const vi = {
   phone: 'Số điện thoại',
   bio: 'Giới thiệu',
   save_changes: 'Lưu thay đổi',
+  ezproject_member: 'Thành viên EzProject',
+  phone_not_updated: 'Chưa cập nhật SĐT',
+  email_not_updated: 'Chưa cập nhật email',
+  on_time_rate: 'Đúng hạn',
+  outstanding_achievements: 'Thành tích nổi bật',
+  no_recent_activity: 'Chưa có hoạt động nào.',
+  avatar_update_success: 'Đã cập nhật ảnh đại diện thành công',
+  avatar_update_error: 'Không thể cập nhật ảnh đại diện',
+  profile_update_success: 'Đã cập nhật thông tin thành công',
+  profile_update_error: 'Không thể cập nhật thông tin',
+  update_personal_info: 'Cập nhật thông tin cá nhân của bạn',
+  system_interaction: 'Tương tác với hệ thống',
+  badge_1: 'Đúng hạn liên tiếp 7 task',
+  badge_2: 'Nhóm trưởng đầu tiên',
+  badge_3: '100% review pass',
+  default_user: 'Người dùng',
 
   // Common
   loading: 'Đang tải...',
@@ -890,6 +907,22 @@ export const en = {
   phone: 'Phone',
   bio: 'Bio',
   save_changes: 'Save Changes',
+  ezproject_member: 'EzProject Member',
+  phone_not_updated: 'Phone not updated',
+  email_not_updated: 'Email not updated',
+  on_time_rate: 'On Time',
+  outstanding_achievements: 'Outstanding Achievements',
+  no_recent_activity: 'No recent activity.',
+  avatar_update_success: 'Avatar updated successfully',
+  avatar_update_error: 'Failed to update avatar',
+  profile_update_success: 'Profile updated successfully',
+  profile_update_error: 'Failed to update profile',
+  update_personal_info: 'Update your personal information',
+  system_interaction: 'System interaction',
+  badge_1: 'On time for 7 consecutive tasks',
+  badge_2: 'First-time Leader',
+  badge_3: '100% review pass',
+  default_user: 'User',
 
   // Common
   loading: 'Loading...',

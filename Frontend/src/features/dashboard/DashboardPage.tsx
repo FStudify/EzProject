@@ -10,50 +10,41 @@ import {
   CheckCircle2,
   Users,
   ArrowRight,
-  Loader2
+  Loader2,
 } from 'lucide-react';
-
-import { Button, Card } from '@/components/ui';
-import { useLanguage } from '@/contexts/LanguageContext';
-import { useAuth } from '@/contexts/AuthContext';
 import { getProjects } from '@/api/project.api';
 import { getTasks } from '@/api/task.api';
 import { getActivities } from '@/api/member.api';
 import { getMeetings } from '@/api/meeting.api';
-import type { Project, Task, Activity, Meeting } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { getTimeGreeting } from '@/lib/greeting';
+import { Card, Button } from '@/components/ui';
+import type { Project, Task, Activity, Meeting, TaskPriority } from '@/api/types';
 
 type Filter = 'all' | 'mine' | 'team';
 
-function timeAgo(date: string | Date | number) {
-  const dObj = new Date(date);
-  const now = new Date();
-  const diff = now.getTime() - dObj.getTime();
-  const m = Math.floor(diff / 60000);
-  const h = Math.floor(diff / 3600000);
-  const d = Math.floor(diff / 86400000);
-
-  if (m < 60) return `${m}m`;
-  if (h < 24) return `${h}h`;
-  return `${d}d`;
-}
-
-function priorityStyle(priority: string) {
-  if (priority === 'HIGH') return { bg: '#FDF0E8', text: '#B76442', border: '#EFC8B4' };
-  if (priority === 'MEDIUM') return { bg: '#EFF9E8', text: '#4B9331', border: '#CDE8BF' };
-  return { bg: '#EDF3FB', text: '#31527F', border: '#C9D6E8' };
-}
-
-function priorityLabel(priority: string) {
-  if (priority === 'HIGH') return 'Cao';
-  if (priority === 'MEDIUM') return 'Trung bình';
+function priorityLabel(p: TaskPriority) {
+  if (p === 'HIGH') return 'Cao';
+  if (p === 'MEDIUM') return 'TB';
   return 'Thấp';
 }
 
-function getTimeGreeting() {
-  const hour = new Date().getHours();
-  if (hour < 12) return 'Chào buổi sáng';
-  if (hour < 18) return 'Chào buổi chiều';
-  return 'Chào buổi tối';
+function priorityStyle(p: TaskPriority) {
+  if (p === 'HIGH') return { bg: '#fef2f2', text: '#dc2626', border: '#fecaca' };
+  if (p === 'MEDIUM') return { bg: '#FDF0E8', text: '#B76442', border: '#EFC8B4' };
+  return { bg: '#f1f5f9', text: '#475569', border: '#e2e8f0' };
+}
+
+function timeAgo(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(h / 24);
+  if (m < 1) return 'vừa';
+  if (m < 60) return `${m}m`;
+  if (h < 24) return `${h}h`;
+  return `${d}d`;
 }
 
 function getProjectTheme(value: number) {

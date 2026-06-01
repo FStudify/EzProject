@@ -5,6 +5,14 @@ const path = require('path');
 const fs = require('fs');
 const { errors } = require('./errorHandler');
 
+// Export cloudinary v2 so controllers can use it directly
+const cloudinary = require('cloudinary').v2;
+cloudinary.config({
+  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+  api_key: process.env.CLOUDINARY_API_KEY,
+  api_secret: process.env.CLOUDINARY_API_SECRET,
+});
+
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
 function ensureDir(dir) {
@@ -36,7 +44,7 @@ function diskStorage(subdir) {
 // ── File filter factories ─────────────────────────────────────────────────────
 
 const IMAGE_TYPES = /jpeg|jpg|png|gif|webp/;
-const DOC_TYPES   = /pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|txt|png|jpg|jpeg|gif|webp/;
+const DOC_TYPES = /pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|txt|png|jpg|jpeg|gif|webp/;
 
 function imageFilter(req, file, cb) {
   const ext = IMAGE_TYPES.test(path.extname(file.originalname).toLowerCase());
@@ -55,15 +63,12 @@ function documentFilter(req, file, cb) {
 
 const MAX_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760', 10); // 10 MB default
 
-// ── Exported upload middlewares ───────────────────────────────────────────────
-
-/**
- * Single avatar image upload — field name: "avatar"
- */
+// ── Avatar upload — memory storage, Cloudinary upload done in controller ──────
+// Using memoryStorage avoids the multer-storage-cloudinary adapter entirely.
 const uploadAvatar = multer({
-  storage: diskStorage('avatars'),
+  storage: multer.memoryStorage(),
   fileFilter: imageFilter,
-  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB for avatars
+  limits: { fileSize: 2 * 1024 * 1024 }, // 2 MB
 }).single('avatar');
 
 /**
@@ -84,7 +89,9 @@ function handleUpload(uploader) {
       if (!err) return next();
       if (err instanceof multer.MulterError) {
         if (err.code === 'LIMIT_FILE_SIZE') {
-          return next(errors.BadRequest(`File too large. Max allowed size is ${MAX_SIZE / 1024 / 1024} MB`));
+          return next(
+            errors.BadRequest(`File too large. Max allowed size is ${MAX_SIZE / 1024 / 1024} MB`),
+          );
         }
         return next(errors.BadRequest(err.message));
       }
@@ -102,4 +109,21 @@ function fileUrl(req, filePath) {
   return `${base}/public/${relative}`;
 }
 
-module.exports = { handleUpload, uploadAvatar, uploadDocument, fileUrl };
+/**
+ * Upload a buffer to Cloudinary and return the secure_url.
+ * @param {Buffer} buffer
+ * @param {object} options  — Cloudinary upload options (folder, public_id, …)
+ * @returns {Promise<string>} secure_url
+ */
+function uploadToCloudinary(buffer, options = {}) {
+  return new Promise((resolve, reject) => {
+    const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
+      if (err) return reject(err);
+      if (!result?.secure_url) return reject(new Error('Cloudinary upload returned no URL'));
+      resolve(result.secure_url);
+    });
+    stream.end(buffer);
+  });
+}
+
+module.exports = { handleUpload, uploadAvatar, uploadDocument, fileUrl, uploadToCloudinary };

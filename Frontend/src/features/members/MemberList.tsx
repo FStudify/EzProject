@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Modal, Badge, useToast } from '@/components/ui';
+import { Button, Modal, Badge, useToast, Avatar } from '@/components/ui';
 import { UserPlus, LogOut, Link2, Crown } from 'lucide-react';
 import type { ProjectRole } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -284,20 +284,11 @@ export default function MemberList() {
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-3">
                           <div className="relative shrink-0">
-                            {user.avatar ? (
-                              <img
-                                src={user.avatar}
-                                alt={user.fullName}
-                                className="h-9 w-9 rounded-full object-cover"
-                              />
-                            ) : (
-                              <div
-                                className="flex h-9 w-9 items-center justify-center rounded-full text-sm font-bold text-white"
-                                style={{ background: 'linear-gradient(135deg, #0651A0, #008DDE)' }}
-                              >
-                                {user.fullName?.charAt(0) ?? '?'}
-                              </div>
-                            )}
+                            <Avatar
+                              src={user.avatar ?? undefined}
+                              name={user.fullName ?? '?'}
+                              size="sm"
+                            />
                             {isMemberOwner && (
                               <div
                                 className="absolute -bottom-0.5 -right-0.5 flex h-4 w-4 items-center justify-center rounded-full"
