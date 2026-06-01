@@ -1,675 +1,299 @@
-# TASK: IMPLEMENT COMPLETE PROJECT MEMBER MANAGEMENT SYSTEM
+# BUG FIX TASK: GROUP STILL APPEARS AFTER LEAVING AND RELOADING
 
-## Objective
+## BUG DESCRIPTION
 
-Implement a complete Project Member Management System for EzProject.
+Current behavior:
 
-The implementation must include:
+1. User joins a group.
+2. User clicks "Leave Group".
+3. Group disappears immediately from sidebar.
+4. User refreshes page.
+5. Group appears again in sidebar.
 
-* Backend
-* Database
-* API
-* Frontend
-* State Management
-* Socket Events (if used)
-* Permission System
-* UI/UX
-* Integration Testing
+This is incorrect.
 
-The solution must be production-ready.
+Expected behavior:
 
-Do NOT create mock implementations.
+After a user leaves a group:
 
-Do NOT leave TODO/FIXME comments.
+* Membership must be removed from database.
+* User must no longer belong to that group.
+* Sidebar must not show the group.
+* API must not return the group.
+* Refreshing page must not restore the group.
+* Re-login must not restore the group.
 
-Do NOT break existing modules.
-
-Before making changes, analyze the current architecture and reuse existing patterns whenever possible.
-
----
-
-# IMPORTANT REQUIREMENTS
-
-Before coding:
-
-1. Analyze current database schema.
-2. Analyze current project module.
-3. Analyze authentication and authorization flow.
-4. Analyze current API patterns.
-5. Analyze frontend state management.
-6. Analyze current member/project relationship.
-7. Analyze notification system if available.
-
-After analysis:
-
-* Reuse existing architecture.
-* Avoid duplicate logic.
-* Avoid creating parallel systems.
-* Maintain backward compatibility.
+The leave operation must be permanent.
 
 ---
 
-# FEATURE OVERVIEW
+# IMPORTANT
 
-Implement a full member management system for projects.
+Do NOT patch the UI only.
 
-Roles:
+Do NOT hide the group with frontend filtering.
 
-```ts
-enum ProjectRole {
-    OWNER = "OWNER",
-    SUPERVISOR = "SUPERVISOR",
-    MEMBER = "MEMBER"
-}
-```
+Find and fix the root cause.
 
 ---
 
-# OWNER RULES
+# ROOT CAUSE ANALYSIS REQUIRED
 
-The creator of a project automatically becomes OWNER.
+Before changing code:
 
-There must always be exactly ONE OWNER.
+Analyze:
 
-OWNER permissions:
+1. Leave Group API
+2. Group Membership table
+3. Group queries
+4. Sidebar queries
+5. React Query cache
+6. Socket updates
+7. Backend services
+8. Database transactions
 
-* Edit project
-* Delete project
-* Invite members
-* Generate invite links
-* Revoke invitations
-* Change member roles
-* Promote member to supervisor
-* Demote supervisor to member
-* Remove members
-* Transfer ownership
-* Leave project after transferring ownership
+Determine:
 
----
+* Is membership actually deleted?
+* Is membership soft deleted?
+* Is membership restored accidentally?
+* Is query returning all groups instead of joined groups?
+* Is cache stale?
+* Is General sync logic recreating memberships?
+* Is group membership filtering broken?
 
-# SUPERVISOR RULES
-
-SUPERVISOR permissions:
-
-* View all project data
-* Create tasks
-* Edit tasks
-* Assign tasks
-* Manage task workflow
-* View reports
-
-SUPERVISOR cannot:
-
-* Delete project
-* Change member roles
-* Remove owner
-* Transfer ownership
-* Edit project permissions
+Document findings before fixing.
 
 ---
 
-# MEMBER RULES
+# DATABASE VALIDATION
 
-MEMBER permissions:
+Verify GroupMember records.
 
-* View project
-* View assigned tasks
-* Update own tasks
-* Upload files
-* Comment
-* Participate in discussions
+Example:
 
-MEMBER cannot:
+Before leave:
 
-* Manage members
-* Manage permissions
-* Delete project
+GroupMember
 
----
-
-# DATABASE DESIGN
-
-Review existing schema first.
-
-If necessary, create migrations.
-
-Required structure:
-
-```ts
-Project
 {
-    id
-    name
-    description
-    ownerId
-    createdAt
-    updatedAt
+groupId: 1
+userId: 10
+role: MEMBER
 }
-```
 
-```ts
-ProjectMember
-{
-    id
-    projectId
-    userId
-    role
-    joinedAt
-}
-```
+After leave:
 
-```ts
-enum ProjectRole {
-    OWNER,
-    SUPERVISOR,
-    MEMBER
-}
-```
+Record must be removed
+OR
 
-Enforce:
+marked inactive according to existing architecture.
 
-* One OWNER per project.
-* No duplicate memberships.
-* ownerId must match OWNER role.
+Verify database state directly.
+
+Do not assume.
 
 ---
 
-# INVITATION SYSTEM
+# BACKEND VALIDATION
 
-Implement two invitation methods.
+Audit:
 
----
+Leave Group endpoint.
 
-## METHOD 1: INVITE LINK
+Possible issues:
 
-### Create Invite Link
+* Membership not deleted.
+* Transaction rollback.
+* Wrong userId.
+* Wrong groupId.
+* Soft delete not respected.
+* Cache layer issue.
 
-Only OWNER.
-
-API:
-
-```http
-POST /projects/:projectId/invite-links
-```
-
-Response:
-
-```json
-{
-    "inviteLink": "https://domain.com/invite/xxxxx"
-}
-```
+Fix root cause.
 
 ---
 
-Invite link table:
+# GROUP QUERY VALIDATION
 
-```ts
-ProjectInviteLink
-{
-    id
-    projectId
-    token
-    createdBy
-    expiresAt
-    maxUses
-    currentUses
-    isActive
-}
-```
+Audit all group-fetching APIs.
 
-Requirements:
+Common bug:
 
-* Unique token.
-* Expiration support.
-* Usage limit support.
-* Ability to revoke.
+Current query:
 
----
+SELECT * FROM ChatGroup
 
-### Join By Invite Link
+Expected:
 
-API:
+Only return groups where:
 
-```http
-POST /projects/invite/:token/join
-```
+Current user is active member.
 
-Requirements:
+Pseudo:
 
-* User must be authenticated.
-* Cannot join twice.
-* Expired links rejected.
-* Revoked links rejected.
+SELECT groups
+FROM ChatGroup
+JOIN GroupMember
+ON ...
+WHERE userId = currentUser
+AND membership is active
 
-Default role:
-
-```ts
-MEMBER
-```
+Verify all APIs.
 
 ---
 
-# METHOD 2: MANUAL INVITATION
+# SIDEBAR VALIDATION
 
-Only OWNER.
+Sidebar must use:
 
-Owner can invite by:
+Current user's memberships.
 
-* Username
-* Email
+Never use:
 
----
+All project groups.
 
-API:
+Never use:
 
-```http
-POST /projects/:projectId/invitations
-```
+Groups created by project.
 
-Request:
+Never use:
 
-```json
-{
-    "username": "abc"
-}
-```
+Unfiltered group lists.
 
-or
-
-```json
-{
-    "email": "abc@gmail.com"
-}
-```
+Verify query source.
 
 ---
 
-Invitation table:
+# REACT QUERY VALIDATION
 
-```ts
-ProjectInvitation
-{
-    id
-    projectId
-    invitedBy
-    invitedUserId
-    invitedEmail
-    status
-    expiresAt
-    createdAt
-}
-```
+After leave:
 
-```ts
-enum InvitationStatus {
-    PENDING,
-    ACCEPTED,
-    DECLINED,
-    EXPIRED
-}
-```
+Must:
 
----
-
-# ACCEPT INVITATION
-
-API:
-
-```http
-POST /project-invitations/:id/accept
-```
-
-Requirements:
-
-* Add user to project.
-* Create ProjectMember.
-* Set role MEMBER.
-* Update invitation status.
-
----
-
-# DECLINE INVITATION
-
-API:
-
-```http
-POST /project-invitations/:id/decline
-```
-
----
-
-# MEMBER MANAGEMENT
-
-Owner can access:
-
-```text
-Project Settings
-→ Members
-```
-
-Display:
-
-* Avatar
-* Name
-* Email
-* Role
-* Join Date
-
----
-
-# CHANGE ROLE
-
-Only OWNER.
-
-API:
-
-```http
-PATCH /projects/:projectId/members/:memberId/role
-```
-
-Request:
-
-```json
-{
-    "role": "SUPERVISOR"
-}
-```
-
-or
-
-```json
-{
-    "role": "MEMBER"
-}
-```
-
-Rules:
-
-* Cannot assign OWNER.
-* Cannot demote current OWNER.
-* Cannot create multiple owners.
-
----
-
-# REMOVE MEMBER
-
-Only OWNER.
-
-API:
-
-```http
-DELETE /projects/:projectId/members/:memberId
-```
-
-Rules:
-
-* Cannot remove OWNER.
-* Cannot remove non-member.
-* Remove access immediately.
-
-After removal:
-
-* Project disappears from sidebar.
-* User cannot access project routes.
-* API returns 403.
-
----
-
-# TRANSFER OWNERSHIP
-
-Only OWNER.
-
-API:
-
-```http
-POST /projects/:projectId/transfer-ownership
-```
-
-Request:
-
-```json
-{
-    "newOwnerId": "..."
-}
-```
-
-Rules:
-
-* New owner must already be a member.
-* New owner cannot be current owner.
-* Transfer must be atomic.
-
-After transfer:
-
-```text
-Old Owner → SUPERVISOR
-New Owner → OWNER
-Project.ownerId updated
-```
-
----
-
-# LEAVE PROJECT
-
-Implement complete leave flow.
-
----
-
-## MEMBER leaves
-
-Remove membership.
-
-Project disappears immediately.
-
----
-
-## SUPERVISOR leaves
-
-Remove membership.
-
-Project disappears immediately.
-
----
-
-## OWNER leaves
-
-If other members exist:
-
-Show modal:
-
-```text
-Select a new project owner before leaving.
-```
-
-Require ownership transfer first.
-
-Do not allow leave until transfer completed.
-
----
-
-## OWNER is last member
-
-Show warning:
-
-```text
-You are the last member.
-Leaving will permanently delete this project.
-```
-
-After confirmation:
-
-* Delete project
-* Delete memberships
-* Delete invite links
-* Delete invitations
-
-Handle related records safely.
-
-Use existing cascade strategy if available.
-
----
-
-# FRONTEND REQUIREMENTS
-
-Create complete UI.
-
----
-
-## Members Page
-
-Display:
-
-```text
-Name
-Email
-Role
-Joined Date
-Actions
-```
-
----
-
-## Owner Actions
-
-* Invite Member
-* Generate Invite Link
-* Copy Invite Link
-* Change Role
-* Remove Member
-* Transfer Ownership
-
----
-
-## Supervisor Actions
-
-No member-management actions.
-
-Read-only.
-
----
-
-## Member Actions
-
-Read-only.
-
----
-
-# INVITATION UI
-
-Create:
-
-```text
-Invite Member Modal
-```
-
-Tabs:
-
-```text
-Invite by Username
-Invite by Email
-Invite Link
-```
-
----
-
-# INVITATIONS PAGE
-
-Display:
-
-* Pending invitations
-* Accepted invitations
-* Declined invitations
-* Expired invitations
-
-Allow owner to revoke pending invitations.
-
----
-
-# PROJECT SIDEBAR
-
-After:
-
-* Leave
-* Remove member
-* Ownership transfer
-
-Refresh state immediately.
-
-No page reload required.
-
----
-
-# API INTEGRATION
-
-Connect all frontend screens to real backend APIs.
-
-No mock data.
-
-No fake success messages.
-
-All mutations must:
-
-* Update cache
-* Refresh affected queries
-* Update sidebar state
-* Handle errors correctly
-
----
-
-# AUTHORIZATION
-
-Enforce permissions BOTH:
-
-* Frontend
-* Backend
-
-Backend is the source of truth.
-
-Never trust frontend role values.
-
----
-
-# SOCKET SUPPORT
-
-If socket architecture exists:
-
-Emit events:
-
-```text
-project.member.joined
-project.member.left
-project.member.removed
-project.member.role_changed
-project.owner.changed
-project.invitation.created
-```
-
-Update UI in realtime.
-
-If socket module does not exist, do not introduce unnecessary complexity.
-
----
-
-# TESTING REQUIREMENTS
+* Invalidate group queries
+* Invalidate sidebar queries
+* Refresh memberships
 
 Verify:
 
-1. Create project.
-2. Owner assignment.
-3. Invite by username.
-4. Invite by email.
-5. Invite by link.
-6. Accept invitation.
-7. Decline invitation.
-8. Change role.
-9. Remove member.
-10. Transfer ownership.
-11. Leave project.
-12. Delete project when last owner leaves.
-13. Sidebar updates.
-14. Authorization rules.
-15. Existing modules remain functional.
+query keys
+
+cache invalidation
+
+optimistic updates
+
+stale data handling
+
+---
+
+# SOCKET VALIDATION
+
+If sockets exist:
+
+After leave emit:
+
+group.member.left
+
+Clients must:
+
+Remove group from sidebar immediately.
+
+Verify socket flow.
+
+---
+
+# GENERAL GROUP EXCEPTION
+
+General group rules remain unchanged.
+
+Do NOT break:
+
+Automatic membership sync.
+
+Do NOT break:
+
+Project member synchronization.
+
+Only fix normal groups.
+
+---
+
+# TEST CASES
+
+Case 1
+
+User joins group.
+
+User leaves group.
+
+Refresh page.
+
+Expected:
+
+Group does not return.
+
+---
+
+Case 2
+
+Leave group.
+
+Logout.
+
+Login.
+
+Expected:
+
+Group does not return.
+
+---
+
+Case 3
+
+Leave group.
+
+Open another browser.
+
+Expected:
+
+Group not visible.
+
+---
+
+Case 4
+
+Leave group.
+
+Check database.
+
+Expected:
+
+Membership removed.
+
+---
+
+Case 5
+
+Leave group.
+
+Call group list API.
+
+Expected:
+
+Group not returned.
+
+---
+
+Case 6
+
+Leave group.
+
+Socket update received.
+
+Expected:
+
+Sidebar updates instantly.
 
 ---
 
@@ -677,14 +301,18 @@ Verify:
 
 Before finishing:
 
-1. Run application.
-2. Test all APIs.
-3. Test all UI flows.
-4. Test permissions.
-5. Test project sidebar.
-6. Test database updates.
-7. Test ownership transfer.
-8. Test leave project flow.
-9. Ensure no regression in existing modules.
+1. Verify database state.
+2. Verify API response.
+3. Verify sidebar state.
+4. Verify React Query cache.
+5. Verify refresh behavior.
+6. Verify re-login behavior.
+7. Verify socket behavior.
+8. Verify no regression in chat module.
 
-Provide a summary of all modified files and explain why each change was made.
+Provide:
+
+* Root cause found
+* Files modified
+* Why each file changed
+* Evidence that membership no longer returns after reload

@@ -10,12 +10,12 @@ const Project = require('./models/Project');
 const ObjectId = mongoose.Types.ObjectId;
 
 /**
- * Khởi tạo Socket.io handlers.
+ * Initialize Socket.io handlers.
  * @param {import('socket.io').Server} io
  */
 function initSocket(io) {
 
-  // ── JWT Auth middleware cho socket ──────────────────────────────────────────
+  // ── JWT Auth middleware for socket ──────────────────────────────────────────
   io.use(async (socket, next) => {
     try {
       const token =
@@ -35,7 +35,7 @@ function initSocket(io) {
     }
   });
 
-  // ── Helper: kiểm tra user có thuộc project không ────────────────────────────
+  // ── Helper: check if user belongs to project ────────────────────────────
   async function isMember(projectId, userId) {
     const project = await Project.findOne({
       _id: new ObjectId(projectId),
@@ -47,8 +47,26 @@ function initSocket(io) {
   io.on('connection', (socket) => {
     console.log(`[Socket] connected: ${socket.user.id} (${socket.user.fullName})`);
 
-    // ── join_room ─────────────────────────────────────────────────────────────
-    // Client gửi { projectId, roomId } để subscribe vào room chat
+    // ── join_project ────────────────────────────────────────────────────────
+    // Client joins project room to receive all project-level events (chat, meetings, etc.)
+    socket.on('join_project', async ({ projectId }) => {
+      try {
+        if (!await isMember(projectId, socket.user.id)) {
+          return socket.emit('error', { message: 'Not a project member' });
+        }
+        socket.join(`project:${projectId}`);
+        socket.emit('project_joined', { projectId });
+      } catch (err) {
+        socket.emit('error', { message: err.message });
+      }
+    });
+
+    // ── leave_project ────────────────────────────────────────────────────
+    socket.on('leave_project', ({ projectId }) => {
+      socket.leave(`project:${projectId}`);
+    });
+
+    // ── join_room (chat) ─────────────────────────────────────────────────
     socket.on('join_room', async ({ projectId, roomId }) => {
       try {
         if (!await isMember(projectId, socket.user.id)) {
@@ -67,14 +85,12 @@ function initSocket(io) {
       }
     });
 
-    // ── leave_room ────────────────────────────────────────────────────────────
+    // ── leave_room ────────────────────────────────────────────────────────
     socket.on('leave_room', ({ roomId }) => {
       socket.leave(roomId);
     });
 
-    // ── send_message ──────────────────────────────────────────────────────────
-    // Client gửi { roomId, projectId, content, channel?, targetId? }
-    // Server lưu DB, broadcast cho tất cả trong room
+    // ── send_message ──────────────────────────────────────────────────────
     socket.on('send_message', async ({ roomId, projectId, content, channel, targetId }) => {
       try {
         if (!content?.trim()) return socket.emit('error', { message: 'Message cannot be empty' });
@@ -98,7 +114,6 @@ function initSocket(io) {
 
         await msg.populate('senderId', 'id fullName avatar');
 
-        // Broadcast đến mọi người trong room (kể cả sender)
         io.to(roomId).emit('new_message', {
           _id: msg._id,
           roomId,
@@ -113,8 +128,7 @@ function initSocket(io) {
       }
     });
 
-    // ── typing ────────────────────────────────────────────────────────────────
-    // Client gửi { roomId, isTyping } — broadcast cho room
+    // ── typing ────────────────────────────────────────────────────────────
     socket.on('typing', ({ roomId, isTyping }) => {
       socket.to(roomId).emit('user_typing', {
         userId: socket.user.id,
@@ -123,7 +137,7 @@ function initSocket(io) {
       });
     });
 
-    // ── disconnect ────────────────────────────────────────────────────────────
+    // ── disconnect ────────────────────────────────────────────────────────
     socket.on('disconnect', (reason) => {
       console.log(`[Socket] disconnected: ${socket.user.id} — ${reason}`);
     });

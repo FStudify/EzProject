@@ -52,6 +52,12 @@ interface TypingCallback {
 }
 
 interface ChatSocketValue {
+  /** Raw socket for project-level events (meetings, etc.) */
+  socket: Socket | null;
+  /** Join a chat room to receive messages for that room only */
+  joinRoom: (roomId: string, projectId: string) => void;
+  /** Leave a chat room */
+  leaveRoom: (roomId: string) => void;
   /** Send a message via socket (saves to DB + broadcasts) */
   sendMessage: (roomId: string, projectId: string, content: string, channel?: string) => void;
   /** Register a callback for incoming messages */
@@ -121,6 +127,16 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  const joinRoom = useCallback((roomId: string, projectId: string) => {
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit('join_room', { roomId, projectId });
+  }, []);
+
+  const leaveRoom = useCallback((roomId: string) => {
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit('leave_room', { roomId });
+  }, []);
+
   const sendMessage = useCallback(
     (roomId: string, projectId: string, content: string, channel = 'GROUP') => {
       if (!socketRef.current?.connected) {
@@ -152,7 +168,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ChatSocketContext.Provider value={{ sendMessage, onNewMessage, onTyping, emitTyping, isConnected }}>
+    <ChatSocketContext.Provider value={{ socket: socketRef.current, joinRoom, leaveRoom, sendMessage, onNewMessage, onTyping, emitTyping, isConnected }}>
       {children}
     </ChatSocketContext.Provider>
   );

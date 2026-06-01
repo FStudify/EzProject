@@ -4,9 +4,65 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const Project = require('../models/Project');
 const InviteLink = require('../models/InviteLink');
+const { ChatRoom, ChatMessage } = require('../models/Chat');
 const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
+
+async function syncMemberToGeneral(projectId, userId, action) {
+  const general = await ChatRoom.findOne({ projectId: new ObjectId(projectId), type: 'GENERAL' });
+  if (!general) return;
+
+  if (action === 'join') {
+    const already = general.members.map((m) => m.toString()).includes(userId);
+    if (!already) {
+      general.members.push(new ObjectId(userId));
+      general.memberRoles = general.memberRoles.filter((r) => r.userId.toString() !== userId);
+      general.memberRoles.push({ userId: new ObjectId(userId), role: 'MEMBER', joinedAt: new Date() });
+      await general.save();
+    }
+  } else if (action === 'leave') {
+    general.members = general.members.filter((m) => m.toString() !== userId);
+    general.memberRoles = general.memberRoles.filter((r) => r.userId.toString() !== userId);
+    general.chatAdmins = general.chatAdmins.filter((a) => a.toString() !== userId);
+
+    if (general.members.length === 0) {
+      await ChatMessage.deleteMany({ roomId: general._id });
+      await ChatRoom.findByIdAndDelete(general._id);
+    } else {
+      await general.save();
+    }
+  }
+}
+
+async function syncMemberToAllChats(projectId, userId, action) {
+  const projectObjId = new ObjectId(projectId);
+  const userObjId = new ObjectId(userId);
+  const rooms = await ChatRoom.find({ projectId: projectObjId });
+
+  for (const room of rooms) {
+    const isMember = room.members.map((m) => m.toString()).includes(userId);
+
+    if (action === 'join' && !isMember && room.type === 'GENERAL') {
+      // Only auto-join General on project join (rq.md spec)
+      continue;
+    }
+    if (action === 'join') continue;
+
+    if (action === 'leave' && isMember) {
+      room.members = room.members.filter((m) => m.toString() !== userId);
+      room.memberRoles = room.memberRoles.filter((r) => r.userId.toString() !== userId);
+      room.chatAdmins = room.chatAdmins.filter((a) => a.toString() !== userId);
+
+      if (room.members.length === 0) {
+        await ChatMessage.deleteMany({ roomId: room._id });
+        await ChatRoom.findByIdAndDelete(room._id);
+      } else {
+        await room.save();
+      }
+    }
+  }
+}
 
 async function checkMember(projectId, userId) {
   const project = await Project.findOne({
@@ -94,6 +150,8 @@ exports.remove = async (req, res, next) => {
     await Project.findByIdAndUpdate(req.params.projectId, {
       $pull: { members: { userId: new ObjectId(req.params.userId) } },
     });
+
+    await syncMemberToAllChats(req.params.projectId, req.params.userId, 'leave');
     res.status(204).send();
   } catch (err) {
     next(err);
@@ -170,6 +228,8 @@ exports.joinByInvite = async (req, res, next) => {
       joinedAt: new Date(),
     });
     await project.save();
+
+    await syncMemberToGeneral(project._id, req.user.id, 'join');
 
     res.status(201).json({
       success: true,
@@ -251,6 +311,8 @@ exports.leaveProject = async (req, res, next) => {
     if (isOwner && memberCount === 1) {
       const Invitation = require('../models/Invitation');
       const InviteLink = require('../models/InviteLink');
+      await ChatMessage.deleteMany({ roomId: { $in: (await ChatRoom.find({ projectId: project._id }, '_id')).map((r) => r._id) } });
+      await ChatRoom.deleteMany({ projectId: project._id });
       await Invitation.deleteMany({ projectId: project._id });
       await InviteLink.deleteMany({ projectId: project._id });
       await Project.findByIdAndDelete(project._id);
@@ -283,6 +345,7 @@ exports.leaveProject = async (req, res, next) => {
       project.members = project.members.filter((m) => m.userId.toString() !== userId);
 
       await project.save();
+      await syncMemberToAllChats(projectId, userId, 'leave');
       return res.json({ success: true, data: { transferredTo: newOwnerId } });
     }
 
@@ -292,6 +355,8 @@ exports.leaveProject = async (req, res, next) => {
     if (project.members.length === 0) {
       const Invitation = require('../models/Invitation');
       const InviteLink = require('../models/InviteLink');
+      await ChatMessage.deleteMany({ roomId: { $in: (await ChatRoom.find({ projectId: project._id }, '_id')).map((r) => r._id) } });
+      await ChatRoom.deleteMany({ projectId: project._id });
       await Invitation.deleteMany({ projectId: project._id });
       await InviteLink.deleteMany({ projectId: project._id });
       await Project.findByIdAndDelete(project._id);
@@ -299,6 +364,7 @@ exports.leaveProject = async (req, res, next) => {
     }
 
     await project.save();
+    await syncMemberToAllChats(projectId, userId, 'leave');
     return res.json({ success: true, data: {} });
   } catch (err) {
     next(err);

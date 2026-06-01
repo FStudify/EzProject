@@ -11,7 +11,6 @@ import {
   Edit2,
   Trash2,
   Download,
-  PanelLeftClose,
   PanelLeftOpen,
   X,
   MessageSquare,
@@ -729,13 +728,6 @@ export default function DocumentPage() {
           {rightPanel && <RightPanel mode={rightPanel} />}
         </div>
       </div>
-      <button
-        type="button"
-        onClick={() => setSidebarOpen(false)}
-        className="absolute left-56 top-1/2 z-10 flex h-10 w-6 items-center justify-center rounded-r-lg border border-l-0 border-border bg-surface shadow-md hover:bg-surface-muted"
-      >
-        <PanelLeftClose className="h-4 w-4 text-ink-muted" />
-      </button>
     </div>
   );
 }

@@ -3,9 +3,34 @@
 const mongoose = require('mongoose');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
+const { ChatRoom } = require('../models/Chat');
 const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
+
+async function ensureGeneralRoom(project) {
+  const existing = await ChatRoom.findOne({
+    projectId: project._id,
+    type: 'GENERAL',
+  }).lean();
+  if (existing) return existing;
+
+  const allMemberIds = project.members.map((m) => m.userId);
+  const room = await ChatRoom.create({
+    projectId: project._id,
+    name: 'General',
+    type: 'GENERAL',
+    members: allMemberIds,
+    createdBy: project.ownerId,
+    chatAdmins: [],
+    memberRoles: project.members.map((m) => ({
+      userId: m.userId,
+      role: m.isOwner ? 'OWNER' : 'MEMBER',
+      joinedAt: m.joinedAt || new Date(),
+    })),
+  });
+  return room;
+}
 
 exports.list = async (req, res, next) => {
   try {
@@ -116,6 +141,8 @@ exports.create = async (req, res, next) => {
       members,
     });
 
+    await ensureGeneralRoom(project);
+
     res.status(201).json({ success: true, data: project });
   } catch (err) {
     next(err);
@@ -153,6 +180,10 @@ exports.delete = async (req, res, next) => {
     });
     if (!project) throw errors.Forbidden('Only the owner can delete this project');
 
+    const ChatMessage = require('../models/Chat').ChatMessage;
+    const ChatRoom = require('../models/Chat').ChatRoom;
+    await ChatMessage.deleteMany({ roomId: { $in: (await ChatRoom.find({ projectId: project._id }, '_id')).map((r) => r._id) } });
+    await ChatRoom.deleteMany({ projectId: project._id });
     await Project.findByIdAndDelete(req.params.projectId);
     res.status(204).send();
   } catch (err) {

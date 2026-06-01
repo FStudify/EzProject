@@ -31,6 +31,7 @@ import {
   demoteChatAdmin,
   addChatRoomMembers,
   transferChatOwner,
+  openDirectMessage,
 } from '@/api/chat.api';
 import { getProjectMembers } from '@/api/member.api';
 import { useAuth } from '@/contexts/AuthContext';
@@ -60,7 +61,7 @@ export default function ChatPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sendMessage: socketSendMessage, onNewMessage } = useChatSocket();
+  const { sendMessage: socketSendMessage, onNewMessage, joinRoom, leaveRoom } = useChatSocket();
   const currentUserId = user?.id ?? '';
 
   const [loadingRooms, setLoadingRooms] = useState(false);
@@ -75,8 +76,17 @@ export default function ChatPage() {
   const [allMembers, setAllMembers] = useState<Member[]>([]);
   const listRef = useRef<HTMLDivElement>(null);
   const skipPersist = useRef(false);
+  const prevRoomIdRef = useRef<string>('');
 
   const setActiveRoomId = (id: string) => {
+    if (!projectId) return;
+    if (prevRoomIdRef.current && prevRoomIdRef.current !== id) {
+      leaveRoom(prevRoomIdRef.current);
+    }
+    if (id && id !== prevRoomIdRef.current) {
+      joinRoom(id, projectId);
+      prevRoomIdRef.current = id;
+    }
     _setActiveRoomId(id);
     if (!skipPersist.current && projectId) saveRoomId(projectId, id);
     skipPersist.current = false;
@@ -305,7 +315,7 @@ export default function ChatPage() {
         setRooms((prev) => prev.filter((r) => r.id !== roomId));
         toast(t('ownership_transferred'), 'success');
       } else if (result.room) {
-        setRooms((prev) => prev.map((r) => (r.id === roomId ? result.room! : r)));
+        setRooms((prev) => prev.filter((r) => r.id !== roomId));
         toast(t('leave_channel'), 'success');
       }
     } catch (e: any) {
@@ -371,27 +381,21 @@ export default function ChatPage() {
     } catch (e: any) { toast(e?.message || t('cannot_transfer_ownership'), 'error'); }
   }, [projectId, toast]);
 
-  const handleOpenDM = useCallback((member: Member) => {
-    const dmId = `dm-${member.id}`;
-    const existing = rooms.find((r) => r.id === dmId);
-    if (existing) { setActiveRoomId(dmId); return; }
-    const currentUser: Member = allMembers.find((m) => m.id === currentUserId) ?? {
-      id: currentUserId, name: user?.fullName ?? 'User', email: user?.email ?? '', avatar: user?.avatar ?? null,
-    };
-    const newRoom: ChatRoom = {
-      id: dmId, projectId: projectId!, name: member.name,
-      type: 'direct',
-      members: [
-        { id: currentUser.id, name: currentUser.name, fullName: currentUser.name, avatar: currentUser.avatar },
-        { id: member.id, name: member.name, fullName: member.name, avatar: member.avatar },
-      ],
-      createdAt: new Date().toISOString(),
-      chatAdmins: [],
-      inviteLocked: false,
-    };
-    setRooms((prev) => [...prev, newRoom]);
-    setActiveRoomId(dmId);
-  }, [rooms, allMembers, currentUserId, projectId, user]);
+  const handleOpenDM = useCallback(async (member: Member) => {
+    if (!projectId) return;
+    const existing = rooms.find((r) => r.type === 'direct' && r.members.some((m) => m.id === member.id));
+    if (existing) {
+      setActiveRoomId(existing.id);
+      return;
+    }
+    try {
+      const room = await openDirectMessage(projectId, member.id);
+      setRooms((prev) => [...prev, room]);
+      setActiveRoomId(room.id);
+    } catch (e: any) {
+      toast(e?.message || t('cannot_open_dm'), 'error');
+    }
+  }, [projectId, rooms, toast, t]);
 
   // ── Render room row ──────────────────────────────────────────
 
@@ -1080,6 +1084,7 @@ interface CreateChannelModalProps {
 }
 
 function CreateChannelModal({ members, currentUserId, onClose, onCreate }: CreateChannelModalProps) {
+  const { t } = useLanguage();
   const [name, setName] = useState('');
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
   const otherMembers = members.filter((m) => m.id !== currentUserId);

@@ -28,5 +28,22 @@ router.put(
   validate(validators.rsvp),
   meetingController.rsvp,
 );
+router.post(
+  '/:meetingId/attendees',
+  requireAuth,
+  validate(validators.addAttendees),
+  meetingController.addAttendees,
+);
+router.delete(
+  '/:meetingId/attendees/:userId',
+  requireAuth,
+  meetingController.removeAttendee,
+);
+router.put(
+  '/:meetingId/summary',
+  requireAuth,
+  validate(validators.updateSummary),
+  meetingController.updateSummary,
+);
 
 module.exports = router;

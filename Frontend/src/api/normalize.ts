@@ -104,6 +104,22 @@ function normalizeTask(raw: Record<string, unknown>): Task {
 function normalizeMeeting(raw: Record<string, unknown>): Meeting {
   const organizerDoc = (raw.organizer ?? raw.organizerId) as Record<string, unknown>;
   const attendeesArr = (raw.attendees ?? []) as Record<string, unknown>[];
+
+  // Build attendeeResponses map for quick lookup
+  const attendeeResponses: Record<string, { willAttend: boolean | null; declineReason?: string | null }> = {};
+  for (const a of attendeesArr) {
+    const userDoc = a.userId as Record<string, unknown>;
+    if (userDoc?._id) {
+      const uid = (userDoc._id as string) ?? (userDoc.id as string) ?? '';
+      if (uid) {
+        attendeeResponses[uid] = {
+          willAttend: a.willAttend ?? null,
+          declineReason: a.declineReason ?? undefined,
+        };
+      }
+    }
+  }
+
   return {
     id: normalizeId(raw),
     projectId: (raw.projectId as string) ?? '',
@@ -114,9 +130,12 @@ function normalizeMeeting(raw: Record<string, unknown>): Meeting {
     type: ((raw.type as string) ?? 'ONLINE').toLowerCase() as Meeting['type'],
     location: (raw.location as string) ?? undefined,
     meetingLink: (raw.meetingLink as string) ?? undefined,
-    status: ((raw.status as string) ?? 'SCHEDULED').toLowerCase().replace('_', '_') as Meeting['status'],
+    timezone: (raw.timezone as string) ?? 'Asia/Ho_Chi_Minh',
+    status: ((raw.status as string) ?? 'SCHEDULED').toLowerCase().replace('_', '-') as Meeting['status'],
     organizer: normalizeUser(organizerDoc ?? raw),
     attendees: attendeesArr.map((a) => normalizeUser((a.userId ?? a.user ?? a) as Record<string, unknown>)),
+    attendeeResponses,
+    summary: (raw.summary as string) ?? undefined,
     createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
   };
 }

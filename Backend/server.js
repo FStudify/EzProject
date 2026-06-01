@@ -28,6 +28,9 @@ async function bootstrap() {
 
   initSocket(io);
 
+  // Make io accessible to controllers via req.app.get('io')
+  app.set('io', io);
+
   // ── Start server ───────────────────────────────────────────────────────────
   server.listen(config.port, () => {
     console.log(`[EZProject] Server running at http://localhost:${config.port}`);

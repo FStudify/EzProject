@@ -7,6 +7,11 @@ const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
 
+function emitRoomEvent(io, projectId, event, data) {
+  if (!io) return;
+  io.to(`project:${projectId}`).emit(event, data);
+}
+
 async function checkMember(projectId, userId) {
   const project = await Project.findOne({
     _id: new ObjectId(projectId),
@@ -42,7 +47,10 @@ async function populateMembers(room) {
 exports.getRooms = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
-    const rooms = await ChatRoom.find({ projectId: new ObjectId(req.params.projectId) })
+    const rooms = await ChatRoom.find({
+      projectId: new ObjectId(req.params.projectId),
+      members: req.user.id,
+    })
       .populate('members', 'id fullName avatar')
       .populate('createdBy', 'id fullName avatar')
       .lean();
@@ -134,10 +142,59 @@ exports.createRoom = async (req, res, next) => {
     const userId = req.user.id;
     const memberIds = (req.body.memberIds || []).map((id) => new ObjectId(id));
 
+    // For DIRECT rooms: find existing or create new
+    if (rawType === 'DIRECT' && memberIds.length === 1) {
+      const targetId = memberIds[0].toString();
+      const existing = await ChatRoom.findOne({
+        projectId: new ObjectId(req.params.projectId),
+        type: 'DIRECT',
+        members: { $all: [new ObjectId(userId), new ObjectId(targetId)], $size: 2 },
+      }).lean();
+      if (existing) {
+        const populated = await ChatRoom.findById(existing._id)
+          .populate('members', 'id fullName avatar')
+          .populate('createdBy', 'id fullName avatar');
+        return res.json({ success: true, data: populated });
+      }
+      const room = await ChatRoom.create({
+        projectId: new ObjectId(req.params.projectId),
+        name: req.body.name || 'Direct Message',
+        type: 'DIRECT',
+        members: [new ObjectId(userId), new ObjectId(targetId)],
+        createdBy: new ObjectId(userId),
+        chatAdmins: [],
+        memberRoles: [
+          { userId: new ObjectId(userId), role: 'MEMBER', joinedAt: new Date() },
+          { userId: new ObjectId(targetId), role: 'MEMBER', joinedAt: new Date() },
+        ],
+      });
+      await room.populate('members', 'id fullName avatar');
+      await room.populate('createdBy', 'id fullName avatar');
+      const io = req.app.get('io');
+      emitRoomEvent(io, req.params.projectId, 'group.created', room);
+      emitRoomEvent(io, req.params.projectId, 'group.member.joined', { _id: room._id, memberId: new ObjectId(targetId) });
+      return res.status(201).json({ success: true, data: room });
+    }
+
+    // GENERAL room: do not allow via API
+    if (rawType === 'GENERAL') {
+      return res.status(400).json({ success: false, message: 'Cannot create General room via API' });
+    }
+
+    // CHANNEL: validate unique name within project
+    const duplicate = await ChatRoom.findOne({
+      projectId: new ObjectId(req.params.projectId),
+      type: 'CHANNEL',
+      name: req.body.name,
+    }).lean();
+    if (duplicate) {
+      return res.status(400).json({ success: false, message: 'Channel name already exists in this project' });
+    }
+
     const room = await ChatRoom.create({
       projectId: new ObjectId(req.params.projectId),
       name: req.body.name,
-      type: rawType,
+      type: 'CHANNEL',
       createdBy: new ObjectId(userId),
       members: [new ObjectId(userId), ...memberIds],
       chatAdmins: [],
@@ -149,6 +206,11 @@ exports.createRoom = async (req, res, next) => {
 
     await room.populate('members', 'id fullName avatar');
     await room.populate('createdBy', 'id fullName avatar');
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.created', room);
+    for (const mid of memberIds) {
+      emitRoomEvent(io, req.params.projectId, 'group.member.joined', { _id: room._id, memberId: mid });
+    }
     res.status(201).json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -170,6 +232,8 @@ exports.renameRoom = async (req, res, next) => {
     room.name = req.body.name;
     await room.save();
     await populateMembers(room);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.updated', { _id: room._id, name: room.name });
     res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -192,16 +256,23 @@ exports.addMembers = async (req, res, next) => {
     if (role === 'MEMBER') throw errors.Forbidden('You do not have permission to add members');
 
     const userIds = req.body.memberIds || [];
+    const addedIds = [];
     for (const uid of userIds) {
       const oid = new ObjectId(uid);
       if (!room.members.map((m) => m.toString()).includes(uid)) {
         room.members.push(oid);
         room.memberRoles = room.memberRoles.filter((r) => r.userId.toString() !== uid);
         room.memberRoles.push({ userId: oid, role: 'MEMBER', joinedAt: new Date() });
+        addedIds.push(oid);
       }
     }
     await room.save();
     await populateMembers(room);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.updated', room);
+    for (const mid of addedIds) {
+      emitRoomEvent(io, req.params.projectId, 'group.member.joined', { _id: room._id, memberId: mid });
+    }
     res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -236,6 +307,8 @@ exports.leaveChannel = async (req, res, next) => {
     if (role === 'OWNER' && memberCount === 1) {
       await ChatMessage.deleteMany({ roomId: room._id });
       await ChatRoom.findByIdAndDelete(room._id);
+      const io = req.app.get('io');
+      emitRoomEvent(io, projectId, 'group.deleted', { _id: room._id });
       return res.json({ success: true, data: { deleted: true, reason: 'last_owner' } });
     }
 
@@ -254,7 +327,6 @@ exports.leaveChannel = async (req, res, next) => {
       const newOwnerInRoom = await checkRoomMember(room, newOwnerId);
       if (!newOwnerInRoom) throw errors.NotFound('New owner is not a member of this room');
 
-      // Update memberRoles: demote old owner, promote new owner
       room.memberRoles = room.memberRoles.map((r) => {
         if (r.userId.toString() === userId) return { ...r, role: 'MEMBER' };
         if (r.userId.toString() === newOwnerId) return { ...r, role: 'OWNER' };
@@ -262,12 +334,14 @@ exports.leaveChannel = async (req, res, next) => {
       });
       room.createdBy = new ObjectId(newOwnerId);
 
-      // Remove the old owner from room members
       room.members = room.members.filter((m) => m.toString() !== userId);
       room.chatAdmins = room.chatAdmins.filter((a) => a.toString() !== userId);
 
       await room.save();
       await populateMembers(room);
+      const io = req.app.get('io');
+      emitRoomEvent(io, projectId, 'group.owner.changed', { _id: room._id, newOwnerId });
+      emitRoomEvent(io, projectId, 'group.member.left', { _id: room._id, userId });
       return res.json({ success: true, data: { room, transferredTo: newOwnerId } });
     }
 
@@ -279,11 +353,15 @@ exports.leaveChannel = async (req, res, next) => {
     if (room.members.length === 0) {
       await ChatMessage.deleteMany({ roomId: room._id });
       await ChatRoom.findByIdAndDelete(room._id);
+      const io = req.app.get('io');
+      emitRoomEvent(io, projectId, 'group.deleted', { _id: room._id });
       return res.json({ success: true, data: { deleted: true, reason: 'last_member' } });
     }
 
     await room.save();
     await populateMembers(room);
+    const ioLeave = req.app.get('io');
+    emitRoomEvent(ioLeave, projectId, 'group.member.left', { _id: room._id, userId });
     return res.json({ success: true, data: { room } });
   } catch (err) {
     next(err);
@@ -333,11 +411,15 @@ exports.kickMember = async (req, res, next) => {
     if (room.members.length === 0) {
       await ChatMessage.deleteMany({ roomId: room._id });
       await ChatRoom.findByIdAndDelete(room._id);
+      const io = req.app.get('io');
+      emitRoomEvent(io, projectId, 'group.deleted', { _id: room._id });
       return res.json({ success: true, data: { deleted: true } });
     }
 
     await room.save();
     await populateMembers(room);
+    const ioKick = req.app.get('io');
+    emitRoomEvent(ioKick, projectId, 'group.member.removed', { _id: room._id, userId });
     return res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -377,6 +459,8 @@ exports.promoteChatAdmin = async (req, res, next) => {
 
     await room.save();
     await populateMembers(room);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.role.changed', { _id: room._id, userId, role: 'ADMIN' });
     return res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -407,6 +491,8 @@ exports.demoteChatAdmin = async (req, res, next) => {
 
     await room.save();
     await populateMembers(room);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.role.changed', { _id: room._id, userId, role: 'MEMBER' });
     return res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -446,6 +532,8 @@ exports.transferOwner = async (req, res, next) => {
 
     await room.save();
     await populateMembers(room);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.owner.changed', { _id: room._id, newOwnerId: userId });
     return res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -472,6 +560,8 @@ exports.updateRoomSettings = async (req, res, next) => {
     }
     await room.save();
     await populateMembers(room);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.updated', { _id: room._id, settings: room.settings });
     return res.json({ success: true, data: room });
   } catch (err) {
     next(err);
@@ -496,6 +586,8 @@ exports.deleteRoom = async (req, res, next) => {
 
     await ChatMessage.deleteMany({ roomId: room._id });
     await ChatRoom.findByIdAndDelete(room._id);
+    const io = req.app.get('io');
+    emitRoomEvent(io, req.params.projectId, 'group.deleted', { _id: room._id });
     return res.status(204).send();
   } catch (err) {
     next(err);

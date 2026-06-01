@@ -58,15 +58,28 @@ export async function getChatMessages(
   };
 }
 
-/** Tao kenh moi */
+/** Tao kenh (CHANNEL) hoac nhan tin truc tiep (DIRECT) */
 export async function createChatRoom(
   projectId: string,
-  data: { name: string; type: 'channel' | 'group'; memberIds?: string[] },
+  data: { name: string; type: 'channel' | 'direct'; memberIds?: string[] },
 ): Promise<ChatRoom> {
   const raw = await api.post<unknown>(Endpoints.CHAT_ROOM_CREATE(projectId), {
     name: data.name,
-    type: 'CHANNEL',
+    type: data.type === 'direct' ? 'DIRECT' : 'CHANNEL',
     memberIds: data.memberIds,
+  });
+  return normalizeChatRoom(raw as Record<string, unknown>);
+}
+
+/** Mo hoặc tao DM voi 1 thanh vien — neu da ton tai thi tra ve phong cu */
+export async function openDirectMessage(
+  projectId: string,
+  targetUserId: string,
+): Promise<ChatRoom> {
+  const raw = await api.post<unknown>(Endpoints.CHAT_ROOM_CREATE(projectId), {
+    name: 'Direct Message',
+    type: 'DIRECT',
+    memberIds: [targetUserId],
   });
   return normalizeChatRoom(raw as Record<string, unknown>);
 }
@@ -206,4 +219,18 @@ export async function sendMessage(
   const raw = await api.post<unknown>(Endpoints.CHAT_SEND_MESSAGE(projectId, roomId), data);
   const normalized = normalizeChatMessages([raw]);
   return normalized[0];
+}
+
+/** Chat voi AI — tra loi theo project context */
+export async function chatAI(
+  projectId: string,
+  message: string,
+): Promise<{ content: string; timestamp: string }> {
+  const raw = await api.post<unknown>(Endpoints.AI_CHAT, { projectId, message });
+  const obj = raw as Record<string, unknown>;
+  const data = (obj.data ?? obj) as Record<string, unknown>;
+  return {
+    content: (data.content as string) ?? '',
+    timestamp: (data.timestamp as string) ?? new Date().toISOString(),
+  };
 }

@@ -14,6 +14,7 @@ const activityRouter = require('./activity');
 const adminRouter = require('./admin');
 const memberController = require('../controllers/memberController');
 const { requireAuth } = require('../middlewares/auth');
+const aiController = require('../controllers/aiController');
 
 const router = express.Router();
 
@@ -26,6 +27,9 @@ router.post('/join', requireAuth, memberController.joinByInvite);
 
 // ── User ───────────────────────────────────────────────
 router.use('/users', userRouter);
+
+// ── AI Chat ─────────────────────────────────────────────────
+router.post('/ai/chat', requireAuth, aiController.chat);
 
 // ── Admin (Gap 1) ──────────────────────────────────────
 router.use('/admin', adminRouter);

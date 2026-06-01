@@ -1,6 +1,7 @@
-import { Outlet, NavLink } from 'react-router-dom';
+import { Outlet, NavLink, useParams } from 'react-router-dom';
 import { Info, CheckSquare, FileText, Users, Video, TrendingUp, MessageCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
+import AIChatDialog from '@/features/chat/AIChatDialog';
 
 const projectTabs = [
   { to: '', icon: Info, labelKey: 'nav_overview' },
@@ -14,6 +15,7 @@ const projectTabs = [
 
 export default function ProjectLayout() {
   const { t } = useLanguage();
+  const { projectId } = useParams<{ projectId: string }>();
 
   return (
     <div className="flex flex-col">
@@ -40,6 +42,7 @@ export default function ProjectLayout() {
         </ul>
       </nav>
       <Outlet />
+      {projectId && <AIChatDialog projectId={projectId} />}
     </div>
   );
 }

@@ -91,10 +91,12 @@ export interface Meeting {
   type: MeetingType2;
   location?: string;
   meetingLink?: string;
+  timezone?: string;
   status: MeetingStatus2;
   organizer: Member;
   attendees: Member[];
   attendeeResponses?: Record<string, { willAttend: boolean | null; declineReason?: string | null }>;
+  summary?: string;
   createdAt: string;
 }
 

@@ -19,13 +19,14 @@ const meetingSchema = new mongoose.Schema({
     ref: 'Project',
     required: true,
   },
-  title: { type: String, required: true, trim: true },
-  description: { type: String, default: null },
+  title: { type: String, required: true, trim: true, maxlength: 200 },
+  description: { type: String, default: null, maxlength: 2000 },
   type: { type: String, enum: ['ONLINE', 'OFFLINE'], required: true },
   startTime: { type: Date, required: true },
   endTime: { type: Date, required: true },
-  location: { type: String, default: null },
-  meetingLink: { type: String, default: null },
+  location: { type: String, default: null, maxlength: 500 },
+  meetingLink: { type: String, default: null, maxlength: 1000 },
+  timezone: { type: String, default: 'Asia/Ho_Chi_Minh' },
   status: {
     type: String,
     enum: ['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'],
@@ -37,6 +38,7 @@ const meetingSchema = new mongoose.Schema({
     required: true,
   },
   attendees: { type: [meetingAttendeeSchema], default: [] },
+  summary: { type: String, default: null, maxlength: 5000 },
 }, { timestamps: true });
 
 meetingSchema.index({ projectId: 1, startTime: 1 });

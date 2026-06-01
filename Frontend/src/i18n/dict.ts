@@ -15,9 +15,12 @@ export type DictKey =
   | 'invite_members' | 'invite_by_account' | 'invite_by_email' | 'invite_by_link' | 'invite_list' | 'send_invitation' | 'generate_link' | 'no_invitations' | 'revoke' | 'link_expires_note' | 'enter_username' | 'enter_email' | 'generating_link' | 'copy'
   | 'you_are_owner' | 'select_new_owner_before_leave' | 'warning_delete_project' | 'last_member_warning' | 'last_member_delete_warning' | 'select_new_owner' | 'will_lose_access' | 'delete_and_leave' | 'confirm_leave' | 'admin'
   | 'meetings' | 'schedule_meeting' | 'meeting_topic' | 'meeting_date' | 'meeting_time' | 'meeting_duration' | 'meeting_location' | 'meeting_link' | 'meeting_notes' | 'attendees' | 'join' | 'will_attend' | 'decline' | 'pending' | 'no_meetings' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'online' | 'offline'
+  | 'calendar' | 'list' | 'month' | 'week' | 'day'
+  | 'start_end_required' | 'invalid_date' | 'start_must_be_future' | 'end_after_start' | 'start_time_cannot_change' | 'task_created' | 'required'
+  | 'invite_selected_members' | 'select_attendees' | 'all_members_invited' | 'meeting_created' | 'meeting_deleted' | 'attendees_label' | 'pending_label' | 'declined_label' | 'no_attendees' | 'no_pending' | 'no_declined' | 'location_label' | 'meeting_link_label' | 'duration' | 'time' | 'status' | 'create_meeting' | 'edit_meeting' | 'delete_meeting' | 'decline_meeting' | 'decline_modal_text' | 'reason' | 'reason_placeholder' | 'confirm_decline' | 'decline_reason' | 'meeting_summary' | 'create_task_from_meeting' | 'summary_placeholder' | 'follow_up_task' | 'follow_up_task_created' | 'start' | 'end' | 'title' | 'address' | 'cant_change_owner_role_meeting' | 'description' | 'attendees_count' | 'will_attend_label' | 'decline_label' | 'meeting_delete_confirm' | 'meeting_deleted' | 'online_label' | 'offline_label'
   | 'chat' | 'channels' | 'direct_messages' | 'create_channel' | 'channel_name' | 'add_members' | 'selected' | 'search_conversation' | 'no_messages' | 'start_conversation' | 'select_conversation' | 'rename_channel' | 'leave_channel' | 'delete_channel' | 'new_channel_name' | 'channel_general_cant_edit' | 'direct_message' | 'create_channel_btn'
   | 'no_channels' | 'default_channel' | 'default_channel_subtitle'
-  | 'error_load_data' | 'cannot_create_channel' | 'cannot_rename' | 'cannot_delete_channel' | 'cannot_leave_channel' | 'cannot_update_settings' | 'promoted_successfully' | 'cannot_promote' | 'demoted_successfully' | 'cannot_demote' | 'member_kicked' | 'cannot_kick_member' | 'member_invited' | 'cannot_invite_member' | 'ownership_transferred' | 'cannot_transfer_ownership' | 'default_channel' | 'promote_to_admin' | 'demote_from_admin' | 'transfer_channel_owner' | 'kick' | 'leave' | 'lock_invite' | 'unlock_invite' | 'only_owner_can_invite' | 'all_can_invite' | 'invite_locked' | 'invite_open' | 'owner' | 'all_members_invited' | 'invite_selected_members' | 'invite_th_members'
+  | 'error_load_data' | 'cannot_create_channel' | 'cannot_open_dm' | 'cannot_rename' | 'cannot_delete_channel' | 'cannot_leave_channel' | 'cannot_update_settings' | 'promoted_successfully' | 'cannot_promote' | 'demoted_successfully' | 'cannot_demote' | 'member_kicked' | 'cannot_kick_member' | 'member_invited' | 'cannot_invite_member' | 'ownership_transferred' | 'cannot_transfer_ownership' | 'default_channel' | 'promote_to_admin' | 'demote_from_admin' | 'transfer_channel_owner' | 'kick' | 'leave' | 'lock_invite' | 'unlock_invite' | 'only_owner_can_invite' | 'all_can_invite' | 'invite_locked' | 'invite_open' | 'owner' | 'all_members_invited' | 'invite_selected_members' | 'invite_th_members'
   | 'performance' | 'completed_tasks' | 'pending_tasks' | 'overdue_tasks' | 'progress' | 'of_total' | 'in_progress_label' | 'need_attention' | 'member_performance' | 'evaluate' | 'update_evaluation' | 'rating' | 'feedback' | 'evaluated_feedback' | 'write_feedback' | 'submit_evaluation'
   | 'theme' | 'theme_light' | 'theme_dark' | 'language' | 'account' | 'security' | 'notifications_settings' | 'appearance' | 'general'
   | 'profile' | 'edit_profile' | 'department' | 'position' | 'phone' | 'bio' | 'save_changes'
@@ -255,6 +258,7 @@ export const vi = {
   // Chat
   error_load_data: 'Không thể tải dữ liệu',
   cannot_create_channel: 'Không thể tạo kênh',
+  cannot_open_dm: 'Không thể mở tin nhắn trực tiếp',
   cannot_rename: 'Không thể đổi tên',
   cannot_delete_channel: 'Không thể xóa kênh',
   cannot_leave_channel: 'Không thể rời kênh',
@@ -312,6 +316,18 @@ export const vi = {
   no_meetings_yet: 'Chưa có cuộc họp nào',
   create_meeting_to_start: 'Tạo cuộc họp để bắt đầu',
   schedule_and_manage: 'Lên lịch và quản lý các cuộc họp dự án',
+  calendar: 'Lịch',
+  list: 'Danh sách',
+  month: 'Tháng',
+  week: 'Tuần',
+  day: 'Ngày',
+  start_end_required: 'Thời gian bắt đầu và kết thúc là bắt buộc',
+  invalid_date: 'Thời gian không hợp lệ',
+  start_must_be_future: 'Thời gian bắt đầu phải ở tương lai',
+  end_after_start: 'Thời gian kết thúc phải sau thời gian bắt đầu',
+  start_time_cannot_change: 'Cuộc họp đã bắt đầu, không thể đổi giờ bắt đầu',
+  task_created: 'Đã tạo công việc',
+  required: 'bắt buộc',
   organizer: 'Người tổ chức',
   attendees_count: 'tham gia',
   will_attend_label: 'Tham gia',
@@ -352,6 +368,9 @@ export const vi = {
   meeting_created: 'Cuộc họp đã được tạo',
   cant_change_owner_role_meeting: 'Không thể hạ vai trò chủ dự án — hãy chuyển nhóm trưởng trước',
   description: 'Mô tả',
+  invite_selected_members: 'Mời {count} người',
+  select_attendees: 'Chọn người tham gia',
+  all_members_invited: 'Tất cả thành viên đã ở trong cuộc họp',
 
   // Chat
   chat: 'Trò chuyện',
@@ -738,6 +757,7 @@ export const en = {
   // Chat
   error_load_data: 'Failed to load data',
   cannot_create_channel: 'Cannot create channel',
+  cannot_open_dm: 'Cannot open direct message',
   cannot_rename: 'Cannot rename',
   cannot_delete_channel: 'Cannot delete channel',
   cannot_leave_channel: 'Cannot leave channel',
@@ -795,6 +815,18 @@ export const en = {
   no_meetings_yet: 'No meetings yet',
   create_meeting_to_start: 'Create a meeting to start',
   schedule_and_manage: 'Schedule and manage project meetings',
+  calendar: 'Calendar',
+  list: 'List',
+  month: 'Month',
+  week: 'Week',
+  day: 'Day',
+  start_end_required: 'Start and end times are required',
+  invalid_date: 'Invalid date',
+  start_must_be_future: 'Start time must be in the future',
+  end_after_start: 'End time must be after start time',
+  start_time_cannot_change: 'Meeting already started, cannot change start time',
+  task_created: 'Task created',
+  required: 'required',
   organizer: 'Organizer',
   attendees_count: 'attendees',
   will_attend_label: 'Attend',
@@ -835,6 +867,9 @@ export const en = {
   meeting_created: 'Meeting created',
   cant_change_owner_role_meeting: "Cannot change owner's role — transfer leader position first",
   description: 'Description',
+  invite_selected_members: 'Invite {count} members',
+  select_attendees: 'Select attendees',
+  all_members_invited: 'All members are already in the meeting',
 
   // Chat
   chat: 'Chat',

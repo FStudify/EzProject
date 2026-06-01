@@ -92,13 +92,14 @@ const validators = {
   // ── Meetings ────────────────────────────────────────────
   createMeeting: z
     .object({
-      title: z.string().min(1, 'Meeting title is required'),
-      description: z.string().optional(),
+      title: z.string().min(1, 'Meeting title is required').max(200),
+      description: z.string().max(2000).optional(),
       type: z.enum(['ONLINE', 'OFFLINE']),
       startTime: z.string(),
       endTime: z.string(),
-      location: z.string().optional(),
-      meetingLink: z.string().optional(),
+      location: z.string().max(500).optional(),
+      meetingLink: z.string().max(1000).optional(),
+      timezone: z.string().optional(),
       attendeeIds: z.array(z.string()),
     })
     .refine((data) => {
@@ -123,14 +124,16 @@ const validators = {
 
   updateMeeting: z
     .object({
-      title: z.string().min(1).optional(),
-      description: z.string().optional(),
+      title: z.string().min(1).max(200).optional(),
+      description: z.string().max(2000).optional(),
       type: z.enum(['ONLINE', 'OFFLINE']).optional(),
       startTime: z.string().optional(),
       endTime: z.string().optional(),
-      location: z.string().optional(),
-      meetingLink: z.string().optional(),
+      location: z.string().max(500).optional(),
+      meetingLink: z.string().max(1000).optional(),
+      timezone: z.string().optional(),
       attendeeIds: z.array(z.string()).optional(),
+      status: z.enum(['SCHEDULED', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED']).optional(),
     })
     .refine((data) => {
       if (!data.startTime) return true;
@@ -157,6 +160,14 @@ const validators = {
   rsvp: z.object({
     willAttend: z.boolean(),
     declineReason: z.string().optional(),
+  }),
+
+  addAttendees: z.object({
+    attendeeIds: z.array(z.string()).min(1, 'At least one attendee is required'),
+  }),
+
+  updateSummary: z.object({
+    summary: z.string().max(5000).optional(),
   }),
 
   // ── Chat ────────────────────────────────────────────────
