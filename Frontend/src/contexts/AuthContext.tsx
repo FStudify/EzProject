@@ -40,6 +40,8 @@ interface AuthContextValue {
   }) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
+  /** Merge a partial update into the current user without a round-trip to the server. */
+  patchUser: (patch: Partial<User>) => void;
 }
 
 const AuthContext = createContext<AuthContextValue | null>(null);
@@ -127,6 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  /** Instantly update specific user fields in context + localStorage (no API call). */
+  const patchUser = useCallback((patch: Partial<User>) => {
+    setUser((prev) => {
+      if (!prev) return prev;
+      const updated = { ...prev, ...patch };
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(updated));
+      return updated;
+    });
+  }, []);
+
   // Refresh user profile tu API (goi sau khi update profile)
   const refreshUser = useCallback(async () => {
     if (refreshInProgress.current) return;
@@ -152,6 +164,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         register,
         logout,
         refreshUser,
+        patchUser,
       }}
     >
       {children}

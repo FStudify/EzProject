@@ -1,3 +1,4 @@
+import { useState } from 'react';
 import { Crown } from 'lucide-react';
 
 interface AvatarProps {
@@ -17,10 +18,12 @@ const sizeStyles = {
 const crownSizes = { sm: 'h-2.5 w-2.5', md: 'h-3.5 w-3.5', lg: 'h-4 w-4' };
 
 function getInitials(name: string): string {
+  if (!name?.trim()) return '?';
   return name
     .trim()
     .split(/\s+/)
     .map((part) => part[0])
+    .filter(Boolean)
     .slice(0, 2)
     .join('')
     .toUpperCase();
@@ -33,6 +36,7 @@ export default function Avatar({
   showCrown = false,
   online,
 }: AvatarProps) {
+  const [imgError, setImgError] = useState(false);
   const sizeClass = sizeStyles[size];
   const ringClass = online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
 
@@ -41,8 +45,13 @@ export default function Avatar({
       className={`relative flex overflow-hidden ${sizeClass} ${ringClass}`.trim()}
       style={{ borderRadius: '50%' }}
     >
-      {src ? (
-        <img src={src} alt={name} className="h-full w-full object-cover" />
+      {src && !imgError ? (
+        <img
+          src={src}
+          alt={name}
+          className="h-full w-full object-cover"
+          onError={() => setImgError(true)}
+        />
       ) : (
         <div
           className="flex h-full w-full items-center justify-center font-semibold"

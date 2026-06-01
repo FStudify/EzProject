@@ -14,7 +14,7 @@ const BADGES = [
 ];
 
 export default function ProfilePage() {
-  const { user, refreshUser } = useAuth();
+  const { user, refreshUser, patchUser } = useAuth();
   const { t, lang } = useLanguage();
   const { toast } = useToast();
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -22,10 +22,12 @@ export default function ProfilePage() {
   const handleAvatarChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
+    // Reset input so the same file can be selected again later
+    e.target.value = '';
     try {
-      await uploadAvatar(file);
+      const result = await uploadAvatar(file);
+      patchUser({ avatar: result.avatar });   // instant context update — no extra API call
       setAvatarError(false);
-      await refreshUser();
       toast(t('avatar_update_success'), 'success');
     } catch (err) {
       console.error('Failed to upload avatar', err);
