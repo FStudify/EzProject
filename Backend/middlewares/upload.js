@@ -5,7 +5,7 @@ const path = require('path');
 const fs = require('fs');
 const { errors } = require('./errorHandler');
 const cloudinary = require('cloudinary').v2;
-const { CloudinaryStorage } = require('multer-storage-cloudinary');
+const cloudinaryStorage = require('multer-storage-cloudinary');
 
 cloudinary.config({
   cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
@@ -68,12 +68,10 @@ const MAX_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760', 10); // 10 MB
 /**
  * Single avatar image upload — field name: "avatar"
  */
-const avatarStorage = new CloudinaryStorage({
+const avatarStorage = cloudinaryStorage({
   cloudinary: cloudinary,
-  params: {
-    folder: 'avatars',
-    allowed_formats: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
-  },
+  folder: 'avatars',
+  allowedFormats: ['jpg', 'png', 'jpeg', 'gif', 'webp'],
 });
 
 const uploadAvatar = multer({
