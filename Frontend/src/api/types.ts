@@ -26,6 +26,7 @@ export interface User {
   email: string;
   username: string;
   fullName: string;
+  name?: string;
   avatar: string | null;
   phone: string | null;
   department: string | null;
@@ -67,13 +68,13 @@ export interface Project {
   subject: string | null;
   status: ProjectStatus;
   progress: number;
-  owner: Pick<User, 'id' | 'fullName' | 'avatar'>;
+  owner?: Pick<User, 'id' | 'fullName' | 'avatar'>;
   members: ProjectMember[];
   deadline: string | null;
   totalTasks: number;
   completedTasks: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 // ── Tasks ────────────────────────────────────────────────────
@@ -86,7 +87,7 @@ export interface TaskComment {
   id: string;
   content: string;
   author: Pick<User, 'id' | 'fullName' | 'avatar'>;
-  mentions: string[];
+  mentions?: string[];
   createdAt: string;
 }
 
@@ -98,14 +99,14 @@ export interface Task {
   status: TaskStatus;
   priority: TaskPriority;
   assignee: Pick<User, 'id' | 'fullName' | 'avatar'> | null;
-  creator: Pick<User, 'id' | 'fullName' | 'avatar'>;
+  creator?: Pick<User, 'id' | 'fullName' | 'avatar'>;
   deadline: string | null;
-  requestType: RequestType | null;
-  requestNote: string | null;
-  comments: TaskComment[];
-  commentsCount: number;
+  requestType?: RequestType | null;
+  requestNote?: string | null;
+  comments?: TaskComment[];
+  commentsCount?: number;
   createdAt: string;
-  updatedAt: string;
+  updatedAt?: string;
 }
 
 // ── Documents ────────────────────────────────────────────────
@@ -152,7 +153,7 @@ export interface Meeting {
   id: string;
   projectId: string;
   title: string;
-  description: string | null;
+  description?: string | null;
   type: MeetingType;
   startTime: string;
   endTime: string;
@@ -236,7 +237,7 @@ export interface MemberEvaluation {
 }
 
 export interface MemberPerformance {
-  member: Pick<User, 'id' | 'fullName' | 'avatar'>;
+  member: Pick<User, 'id' | 'fullName' | 'avatar' | 'name' | 'email'>;
   role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   tasksCompleted: number;
@@ -256,7 +257,7 @@ export interface Activity {
   user: Pick<User, 'id' | 'fullName' | 'avatar'>;
   action: string;
   target: string;
-  targetType: string | null;
-  targetId: string | null;
+  targetType?: string | null;
+  targetId?: string | null;
   timestamp: string;
 }

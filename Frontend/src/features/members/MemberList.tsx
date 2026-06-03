@@ -3,8 +3,8 @@ import { useParams, useNavigate } from 'react-router-dom';
 import { Button, Modal, Badge, useToast, Avatar } from '@/components/ui';
 import { UserPlus, LogOut, Link2, Crown } from 'lucide-react';
 import type { ProjectRole } from '@/types';
-import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
+import { useLanguage } from '@/contexts/LanguageContext';
 import type { DictKey } from '@/i18n/dict';
 import {
   getProjectMembers,
@@ -28,9 +28,6 @@ function roleBadgeVariant(role: ProjectRole): 'primary' | 'warning' | 'default' 
   if (role === 'SUPERVISOR') return 'warning';
   return 'default';
 }
-
-// No conversion needed — API and UI both use uppercase: 'LEADER' | 'SUPERVISOR' | 'MEMBER'
-type UIRole = ProjectRole;
 
 export default function MemberList() {
   const { projectId } = useParams<{ projectId: string }>();
@@ -272,7 +269,7 @@ export default function MemberList() {
               </thead>
               <tbody>
                 {members.map(({ user, role, isOwner: isMemberOwner }) => {
-                  const activeTasks = user.tasksAssigned ?? 0;
+                  const activeTasks = 0;
                   const isSelf = user.id === authUser?.id;
 
                   return (

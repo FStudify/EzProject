@@ -37,6 +37,9 @@ function generateContributions(
 export const mockPerformance: MemberPerformance[] = [
   {
     member: mockMembers[0],
+    role: 'MEMBER',
+    isOwner: false,
+    evaluation: null,
     tasksCompleted: 8,
     tasksInProgress: 2,
     tasksTodo: 1,
@@ -47,6 +50,9 @@ export const mockPerformance: MemberPerformance[] = [
   },
   {
     member: mockMembers[1],
+    role: 'MEMBER',
+    isOwner: false,
+    evaluation: null,
     tasksCompleted: 6,
     tasksInProgress: 1,
     tasksTodo: 2,
@@ -57,6 +63,9 @@ export const mockPerformance: MemberPerformance[] = [
   },
   {
     member: mockMembers[2],
+    role: 'MEMBER',
+    isOwner: false,
+    evaluation: null,
     tasksCompleted: 5,
     tasksInProgress: 2,
     tasksTodo: 1,
@@ -67,6 +76,9 @@ export const mockPerformance: MemberPerformance[] = [
   },
   {
     member: mockMembers[3],
+    role: 'MEMBER',
+    isOwner: false,
+    evaluation: null,
     tasksCompleted: 4,
     tasksInProgress: 1,
     tasksTodo: 2,
@@ -77,6 +89,9 @@ export const mockPerformance: MemberPerformance[] = [
   },
   {
     member: mockMembers[4],
+    role: 'MEMBER',
+    isOwner: false,
+    evaluation: null,
     tasksCompleted: 3,
     tasksInProgress: 1,
     tasksTodo: 1,

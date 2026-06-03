@@ -27,7 +27,7 @@ function normalizeId(doc: Record<string, unknown>): string {
   return (doc._id as string) ?? (doc.id as string);
 }
 
-function normalizeUser(doc: Record<string, unknown>): { id: string; name: string; fullName?: string; email: string; avatar: string | null } {
+function normalizeUser(doc: Record<string, unknown>): { id: string; name: string; fullName: string; email: string; avatar: string | null } {
   const fullName = (doc.fullName as string) ?? 'Unknown';
   return {
     id: normalizeId(doc),
@@ -113,8 +113,8 @@ function normalizeMeeting(raw: Record<string, unknown>): Meeting {
       const uid = (userDoc._id as string) ?? (userDoc.id as string) ?? '';
       if (uid) {
         attendeeResponses[uid] = {
-          willAttend: a.willAttend ?? null,
-          declineReason: a.declineReason ?? undefined,
+          willAttend: (a.willAttend as boolean | null) ?? null,
+          declineReason: (a.declineReason as string | null | undefined) ?? null,
         };
       }
     }
@@ -237,7 +237,7 @@ export function normalizeChatMessages(data: unknown): ChatMessage[] {
   return arr.map((item) => normalizeChatMessage(item as Record<string, unknown>));
 }
 
-export function normalizeMemberList(data: unknown): { user: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'leader' | 'supervisor' | 'member'; isOwner: boolean; tasksAssigned: number; tasksCompleted: number }[] {
+export function normalizeMemberList(data: unknown): { user: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksAssigned: number; tasksCompleted: number }[] {
   const arr = Array.isArray(data) ? data : ((data as Record<string, unknown>).data as unknown[]) ?? [];
   return arr.map((item) => {
     const raw = item as Record<string, unknown>;
@@ -252,7 +252,7 @@ export function normalizeMemberList(data: unknown): { user: { id: string; name: 
         email: (userDoc?.email as string) ?? '',
         avatar: (userDoc?.avatar as string | null) ?? null,
       },
-      role: roleStr as 'leader' | 'supervisor' | 'member',
+      role: roleStr as 'LEADER' | 'SUPERVISOR' | 'MEMBER',
       isOwner: Boolean(raw.isOwner),
       tasksAssigned: (raw.tasksAssigned as number) ?? 0,
       tasksCompleted: (raw.tasksCompleted as number) ?? 0,
@@ -260,7 +260,7 @@ export function normalizeMemberList(data: unknown): { user: { id: string; name: 
   });
 }
 
-export function normalizePerformanceList(data: unknown): { member: { id: string; name: string; fullName: string; avatar: string | null }; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksCompleted: number; tasksInProgress: number; tasksTodo: number; documentsUploaded: number; commentsCount: number; score: number; contributions: { date: string; count: number }[]; evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null }[] {
+export function normalizePerformanceList(data: unknown): { member: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksCompleted: number; tasksInProgress: number; tasksTodo: number; documentsUploaded: number; commentsCount: number; score: number; contributions: { date: string; count: number }[]; evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null }[] {
   const arr = Array.isArray(data) ? data : ((data as Record<string, unknown>).data as unknown[]) ?? [];
   return arr.map((item) => {
     const raw = item as Record<string, unknown>;
@@ -274,6 +274,7 @@ export function normalizePerformanceList(data: unknown): { member: { id: string;
         id: normalizeId(memberDoc ?? raw),
         name: fullName,
         fullName,
+        email: (memberDoc?.email as string) ?? '',
         avatar: (memberDoc?.avatar as string | null) ?? null,
       },
       role: roleStr as 'LEADER' | 'SUPERVISOR' | 'MEMBER',

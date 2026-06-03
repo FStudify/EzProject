@@ -41,7 +41,7 @@ interface IncomingSocketMessage {
 type NewMessageCallback = (msg: {
   id: string;
   roomId: string;
-  sender: { id: string; name: string; fullName: string; avatar: string | null };
+  sender: { id: string; name: string; fullName: string; email?: string; avatar: string | null };
   content: string;
   channel: string;
   timestamp: string;

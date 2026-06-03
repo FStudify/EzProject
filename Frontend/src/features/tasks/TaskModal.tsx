@@ -74,10 +74,10 @@ function TaskModalContent({
   const [description, setDescription] = useState(task.description ?? '');
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
-  const [assigneeId, setAssigneeId] = useState(task.assignee.id);
+  const [assigneeId, setAssigneeId] = useState(task.assignee?.id ?? '');
   const [startDate, setStartDate] = useState(task.createdAt.slice(0, 10));
-  const [deadline, setDeadline] = useState(task.deadline.slice(0, 10));
-  const [requestType, setRequestType] = useState<'none' | 'review' | 'pause'>(task.requestType ?? 'none');
+  const [deadline, setDeadline] = useState((task.deadline ?? '').slice(0, 10));
+  const [requestType, setRequestType] = useState<'none' | 'review' | 'pause' | string>((task.requestType as string) ?? 'none');
   const [requestNote, setRequestNote] = useState(task.requestNote ?? '');
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<TaskComment[]>(task.comments ?? []);
@@ -92,7 +92,7 @@ function TaskModalContent({
   const handleSave = () => {
     const assignee = members.find((member) => member.id === assigneeId) ?? task.assignee;
     const safeStartDate = startDate || task.createdAt.slice(0, 10);
-    const safeDeadline = deadline || task.deadline.slice(0, 10);
+    const safeDeadline = deadline || (task.deadline ?? '').slice(0, 10);
 
     const updated: Task = {
       ...task,
@@ -102,9 +102,9 @@ function TaskModalContent({
       priority,
       assignee,
       createdAt: new Date(safeStartDate).toISOString(),
-      deadline: new Date(safeDeadline).toISOString(),
-      requestType: requestType !== 'none' ? requestType : undefined,
-      requestNote: requestNote.trim() || undefined,
+      deadline: safeDeadline ? new Date(safeDeadline).toISOString() : null,
+      requestType: requestType !== 'none' ? requestType : null,
+      requestNote: requestNote.trim() || null,
       comments,
     };
 

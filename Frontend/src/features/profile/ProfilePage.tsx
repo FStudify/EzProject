@@ -273,7 +273,7 @@ export default function ProfilePage() {
       {/* 3. Achievements (Premium Badges) */}
       <section className="animate-slide-up" style={{ animationDelay: '0.3s' }}>
         <h3 className="font-headline-md text-headline-md mb-6 flex items-center gap-2 font-bold drop-shadow-sm text-[var(--color-on-surface)]">
-          <span className="material-symbols-outlined text-amber-500" style={{ filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.5))' }} style={{ fontVariationSettings: "'FILL' 1" }}>military_tech</span>
+                  <span className="material-symbols-outlined text-amber-500" style={{ filter: 'drop-shadow(0 0 5px rgba(245,158,11,0.5))', fontVariationSettings: "'FILL' 1" }}>military_tech</span>
           {t('outstanding_achievements')}
         </h3>
         <div className="flex flex-wrap gap-4">

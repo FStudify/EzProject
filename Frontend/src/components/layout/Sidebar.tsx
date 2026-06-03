@@ -229,7 +229,7 @@ export default function Sidebar() {
             `flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-all duration-200 ${isActive ? 'bg-[#FFF5EC] text-[#8B4A2F]' : 'hover:bg-[rgba(255,255,255,0.18)]'}`
           }
         >
-          <Avatar src={user?.avatar} name={user?.fullName ?? 'User'} size="sm" />
+          <Avatar src={user?.avatar ?? undefined} name={user?.fullName ?? 'User'} size="sm" />
           {!collapsed && (
             <div className="min-w-0">
               <p className="truncate text-sm font-semibold text-on-sidebar">

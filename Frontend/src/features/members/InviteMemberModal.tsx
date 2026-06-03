@@ -34,7 +34,7 @@ interface PendingInvitation {
 }
 
 export default function InviteMemberModal({
-  projectId, members, isOwner, onClose, onInvited,
+  projectId, onClose, onInvited,
 }: InviteMemberModalProps) {
   const { t } = useLanguage();
   const { toast } = useToast();
@@ -279,7 +279,7 @@ export default function InviteMemberModal({
                   {copied ? t('copied') : t('copy')}
                 </Button>
               </div>
-              <Button variant="outline" size="sm" onClick={generateLink} disabled={loadingLink} className="w-full">
+              <Button variant="ghost" size="sm" onClick={generateLink} disabled={loadingLink} className="w-full">
                 {loadingLink ? <Loader2 className="h-4 w-4 animate-spin" /> : <Link2 className="h-4 w-4" />}
                 {t('generate_link')}
               </Button>

@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import type { Task, TaskStatus, ProjectMember } from '@/types';
+import type { Task, TaskStatus } from '@/types';
 import TaskCard from './TaskCard';
 
 const statusColors: Record<TaskStatus, string> = {
@@ -15,7 +15,6 @@ interface TaskColumnProps {
   title: string;
   tasks: Task[];
   status: TaskStatus;
-  projectMembers?: ProjectMember[];
   onTaskClick?: (task: Task) => void;
   onDrop?: (taskId: string, newStatus: TaskStatus) => void;
 }
@@ -24,7 +23,6 @@ export default function TaskColumn({
   title,
   tasks,
   status,
-  projectMembers = [],
   onTaskClick,
   onDrop,
 }: TaskColumnProps) {
@@ -82,7 +80,6 @@ export default function TaskColumn({
           <TaskCard
             key={task.id}
             task={task}
-            projectMembers={projectMembers}
             onClick={() => onTaskClick?.(task)}
           />
         ))}

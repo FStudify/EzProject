@@ -13,7 +13,7 @@ import {
 import { getProject } from '@/api/project.api';
 import { getTasks } from '@/api/task.api';
 import { getActivities } from '@/api/member.api';
-import type { Project, Task, Activity } from '@/api/types';
+import type { Project, Task, Activity } from '@/types';
 import { Card, ProgressBar, MemberAvatar } from '@/components/ui';
 import { getRoleLabel } from '@/components/ui/RoleIcons';
 
@@ -44,8 +44,8 @@ export default function ProjectOverview() {
       getTasks(projectId),
       getActivities(projectId),
     ]).then(([projectData, tasksData, activitiesData]) => {
-      setProject(projectData);
-      setTasks(tasksData);
+      setProject(projectData as Project | null);
+      setTasks(tasksData as Task[]);
       setActivities(activitiesData);
     }).catch(() => {
       setProject(null);
@@ -90,7 +90,7 @@ export default function ProjectOverview() {
     );
   }
 
-  const daysLeft = Math.ceil((new Date(project.deadline).getTime() - Date.now()) / 86400000);
+  const daysLeft = Math.ceil((new Date(project.deadline ?? '').getTime() - Date.now()) / 86400000);
   const deadlineColor = daysLeft < 0 ? 'text-danger' : daysLeft <= 3 ? 'text-warning' : 'text-success';
 
   const quickLinks = [

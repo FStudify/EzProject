@@ -368,9 +368,7 @@ export const vi = {
   meeting_created: 'Cuộc họp đã được tạo',
   cant_change_owner_role_meeting: 'Không thể hạ vai trò chủ dự án — hãy chuyển nhóm trưởng trước',
   description: 'Mô tả',
-  invite_selected_members: 'Mời {count} người',
   select_attendees: 'Chọn người tham gia',
-  all_members_invited: 'Tất cả thành viên đã ở trong cuộc họp',
 
   // Chat
   chat: 'Trò chuyện',
@@ -867,9 +865,7 @@ export const en = {
   meeting_created: 'Meeting created',
   cant_change_owner_role_meeting: "Cannot change owner's role — transfer leader position first",
   description: 'Description',
-  invite_selected_members: 'Invite {count} members',
   select_attendees: 'Select attendees',
-  all_members_invited: 'All members are already in the meeting',
 
   // Chat
   chat: 'Chat',

@@ -69,8 +69,9 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
       assignee,
       deadline: new Date(deadline).toISOString(),
       createdAt: new Date(startDate).toISOString(),
-      requestType: requestType !== 'none' ? requestType : undefined,
-      requestNote: requestNote.trim() || undefined,
+      requestType: requestType !== 'none' ? requestType : null,
+      requestNote: requestNote.trim() || null,
+      comments: [],
     };
     onAdd(newTask);
     setTitle('');

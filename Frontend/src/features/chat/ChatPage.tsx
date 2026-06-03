@@ -2,7 +2,6 @@ import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   Hash,
-  Users,
   MessageCircle,
   Send,
   Plus,
@@ -16,14 +15,12 @@ import {
   Lock,
   Unlock,
   Crown,
-  UserPlus,
 } from 'lucide-react';
 import {
   getChatRooms,
   getChatMessages,
   createChatRoom,
   renameChatRoom,
-  deleteChatRoom,
   leaveChatRoom,
   kickChatRoomMember,
   updateChatRoomSettings,
@@ -36,7 +33,7 @@ import {
 import { getProjectMembers } from '@/api/member.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatSocket } from '@/contexts/ChatSocketContext';
-import type { ChatMessage, ChatRoom, Member, ProjectMember, ChannelRole } from '@/types';
+import type { ChatMessage, ChatRoom, Member, ProjectMember } from '@/types';
 import ChatMessageBubble from './ChatMessage';
 import { ProjectMemberAvatar, Button } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -64,7 +61,7 @@ export default function ChatPage() {
   const { sendMessage: socketSendMessage, onNewMessage, joinRoom, leaveRoom } = useChatSocket();
   const currentUserId = user?.id ?? '';
 
-  const [loadingRooms, setLoadingRooms] = useState(false);
+  const [, setLoadingRooms] = useState(false);
   const [loadingMessages, setLoadingMessages] = useState(false);
   const [rooms, setRooms] = useState<ChatRoom[]>([]);
   const [activeRoomId, _setActiveRoomId] = useState<string>('');
@@ -135,6 +132,7 @@ export default function ChatPage() {
                   id: m.user.id,
                   name: m.user.fullName,
                   fullName: m.user.fullName,
+                  email: m.user.email ?? '',
                   avatar: m.user.avatar ?? null,
                 })),
                 createdAt: new Date().toISOString(),
@@ -142,6 +140,7 @@ export default function ChatPage() {
                   id: currentUserId,
                   name: user?.fullName ?? 'User',
                   fullName: user?.fullName ?? 'User',
+                  email: user?.email ?? '',
                   avatar: user?.avatar ?? null,
                 },
                 inviteLocked: false,
@@ -192,27 +191,16 @@ export default function ChatPage() {
       setAllMessages((prev) => {
         if (msg.sender.id === currentUserId) {
           const noTemp = prev.filter((m) => !m.id.startsWith('temp-'));
-          return noTemp.some((m) => m.id === msg.id) ? prev : [...noTemp, msg];
+          return noTemp.some((m) => m.id === msg.id) ? prev : [...noTemp, msg as ChatMessage];
         }
         if (prev.some((m) => m.id === msg.id)) return prev;
-        return [...prev, msg];
+        return [...prev, msg as ChatMessage];
       });
     });
     return unsub;
   }, [onNewMessage, currentUserId]);
 
   // ── Room helpers ────────────────────────────────────────────
-
-  const getMemberRole = useCallback((room: ChatRoom, userId: string): ChannelRole => {
-    const entry = room.memberRoles?.find((r) => r.userId === userId);
-    return entry?.role ?? 'MEMBER';
-  }, []);
-
-  const isRoomOwner = useCallback((room: ChatRoom) => getMemberRole(room, currentUserId) === 'OWNER', [currentUserId, getMemberRole]);
-  const isRoomAdmin = useCallback((room: ChatRoom) => {
-    const role = getMemberRole(room, currentUserId);
-    return role === 'OWNER' || role === 'ADMIN';
-  }, [currentUserId, getMemberRole]);
 
   const getRoomIcon = (room: ChatRoom) => {
     if (room.type === 'direct') {
@@ -288,18 +276,6 @@ export default function ChatPage() {
       setRooms((prev) => prev.map((r) => (r.id === roomId ? updated : r)));
     } catch (e: any) { toast(e?.message || t('cannot_rename'), 'error'); }
   }, [projectId, toast]);
-
-  const handleDeleteRoom = useCallback(async (roomId: string) => {
-    if (!projectId) return;
-    try {
-      await deleteChatRoom(projectId, roomId);
-      setRooms((prev) => prev.filter((r) => r.id !== roomId));
-      if (activeRoomId === roomId) {
-        setActiveRoomId(makeGeneralRoomId(projectId));
-      }
-    } catch (e: any) { toast(e?.message || t('cannot_delete_channel'), 'error'); }
-    setRoomMenuState(null);
-  }, [projectId, activeRoomId, toast]);
 
   const handleLeaveRoom = useCallback(async (roomId: string, newOwnerId?: string) => {
     if (!projectId) return;

@@ -24,6 +24,7 @@ import {
   removeMeetingAttendee,
 } from '@/api/meeting.api';
 import { getProjectMembers } from '@/api/member.api';
+import { createTask } from '@/api/task.api';
 import { projectService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meeting, ProjectMember } from '@/types';
@@ -73,14 +74,12 @@ export default function MeetingList() {
   const [declineTarget, setDeclineTarget] = useState<Meeting | null>(null);
 
   // canCreate is true when we have resolved role info and user is OWNER/SUPERVISOR
-  const canCreate = currentUserRole !== '' && (currentUserIsOwner || currentUserRole === 'SUPERVISOR');
   const canEdit = (meeting: Meeting) => {
     if (currentUserRole === '' || currentUserRole === 'MEMBER') return false;
     if (currentUserIsOwner) return true;
     if (currentUserRole === 'SUPERVISOR') return meeting.organizer.id === authUser?.id;
     return false;
   };
-  const canDelete = canEdit;
 
   const getStatusLabel = (status: string) => {
     const map: Record<string, string> = {
@@ -237,13 +236,11 @@ export default function MeetingList() {
   };
 
   const handleCreateTaskFromMeeting = (meeting: Meeting) => {
-    import('@/services').taskService.addTask({
-      projectId: meeting.projectId,
+    createTask(meeting.projectId, {
       title: `${t('follow_up_task')}: ${meeting.title}`,
       description: meeting.description ? `${t('follow_up_task_created')}: ${meeting.description}` : t('follow_up_task_created'),
-      status: 'BACKLOG',
       priority: 'MEDIUM',
-      assignee: meeting.organizer,
+      assigneeId: meeting.organizer.id,
       deadline: new Date(new Date(meeting.endTime).getTime() + 7 * 24 * 60 * 60 * 1000).toISOString(),
     });
     toast(t('task_created'), 'success');
@@ -770,7 +767,6 @@ interface AddMeetingModalProps {
 
 function AddMeetingModal({ isOpen, onClose, onAdd, projectId, members, currentUserId }: AddMeetingModalProps) {
   const { t } = useLanguage();
-  const { toast } = useToast();
 
   const [title, setTitle] = useState('');
   const [description, setDescription] = useState('');
@@ -1058,6 +1054,12 @@ function EditMeetingModal({ meeting, isOpen, onClose, onSave, members, projectId
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
+    const apiStatus =
+      status === 'scheduled' ? 'SCHEDULED'
+      : status === 'in_progress' ? 'IN_PROGRESS'
+      : status === 'completed' ? 'COMPLETED'
+      : status === 'cancelled' ? 'CANCELLED'
+      : 'SCHEDULED';
     try {
       const updated = await apiUpdateMeeting(projectId, meeting.id, {
         title: title.trim(),
@@ -1067,7 +1069,7 @@ function EditMeetingModal({ meeting, isOpen, onClose, onSave, members, projectId
         endTime: new Date(`${endDate}T${endTimeInput}`).toISOString(),
         location: meetingType === 'offline' ? location.trim() : undefined,
         meetingLink: meetingType === 'online' ? meetingLink.trim() : undefined,
-        status: status.toUpperCase() as Meeting['status'],
+        status: apiStatus,
         attendeeIds,
       });
       onSave(updated);

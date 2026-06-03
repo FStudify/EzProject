@@ -3,7 +3,7 @@ import { useParams } from 'react-router-dom';
 import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock } from 'lucide-react';
 import { projectService } from '@/services';
 import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
-import type { Task, TaskStatus, TaskPriority } from '@/api/types';
+import type { Task, TaskStatus } from '@/types';
 import { Button } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
 import { ChatPanel } from '@/features/chat';
@@ -45,7 +45,7 @@ export default function TaskBoard() {
   const { projectId } = useParams<{ projectId: string }>();
 
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [project, setProject] = useState<Awaited<ReturnType<typeof projectService.getById>>>(null);
+  const [project, setProject] = useState<Awaited<ReturnType<typeof projectService.getById>> | null>(null);
   const [isLoading, setIsLoading] = useState(false);
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
@@ -499,7 +499,6 @@ export default function TaskBoard() {
                   status={status}
                   title={t(titleKey)}
                   tasks={getTasksByStatus(status)}
-                  projectMembers={project?.members ?? []}
                   onTaskClick={(task) => {
                     setSelectedTask(task);
                     setIsDetailOpen(true);
@@ -516,9 +515,8 @@ export default function TaskBoard() {
             {project && (
               <TaskTimeline
                 tasks={filteredTasks}
-                projectStart={project.createdAt}
-                projectDeadline={project.deadline}
-                projectMembers={project.members}
+                projectStart={project.createdAt ?? ''}
+                projectDeadline={project.deadline ?? ''}
                 onTaskClick={(task) => {
                   setSelectedTask(task);
                   setIsDetailOpen(true);

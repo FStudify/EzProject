@@ -20,7 +20,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTimeGreeting } from '@/lib/greeting';
 import { Card, Button } from '@/components/ui';
-import type { Project, Task, Activity, Meeting, TaskPriority } from '@/api/types';
+import type { Project, Task, Activity, Meeting, TaskPriority } from '@/types';
 
 type Filter = 'all' | 'mine' | 'team';
 
@@ -45,12 +45,6 @@ function timeAgo(ts: string) {
   if (m < 60) return `${m}m`;
   if (h < 24) return `${h}h`;
   return `${d}d`;
-}
-
-function getProjectTheme(value: number) {
-  if (value >= 70) return { bar: '#6DBE45', text: '#4B9331', pillBg: '#EFF9E8', pillBorder: '#CDE8BF' };
-  if (value >= 40) return { bar: '#D97853', text: '#B76442', pillBg: '#FDF0E8', pillBorder: '#EFC8B4' };
-  return { bar: '#274C7D', text: '#31527F', pillBg: '#EDF3FB', pillBorder: '#C9D6E8' };
 }
 
 export default function DashboardPage() {
@@ -129,7 +123,7 @@ export default function DashboardPage() {
   const upcomingMeetingsSorted = meetings
     .filter((m) => {
       const start = new Date(m.startTime).getTime();
-      return m.status === 'SCHEDULED' && start >= now && start <= now + 48 * 3600000;
+      return m.status === 'scheduled' && start >= now && start <= now + 48 * 3600000;
     })
     .sort((a, b) => new Date(a.startTime).getTime() - new Date(b.startTime).getTime())
     .slice(0, 2);

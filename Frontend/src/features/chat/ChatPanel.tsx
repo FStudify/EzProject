@@ -17,7 +17,7 @@ const channelLabels: Record<'task' | 'document', string> = {
 export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<ChatMessage[]>([]);
-  const [loading, setLoading] = useState(false);
+  const [, setLoading] = useState(false);
   const [input, setInput] = useState('');
   const listRef = useRef<HTMLDivElement>(null);
 

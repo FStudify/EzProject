@@ -133,7 +133,7 @@ function NotificationRow({
   onRead,
   onNavigate,
 }: {
-  item: ApiAppNotification;
+  item: AppNotification;
   onRead: () => void;
   onNavigate: () => void;
 }) {

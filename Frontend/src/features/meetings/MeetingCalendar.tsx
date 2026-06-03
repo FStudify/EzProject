@@ -1,12 +1,13 @@
 import { useState, useMemo } from 'react';
 import { ChevronLeft, ChevronRight, CalendarDays, CalendarRange, LayoutList } from 'lucide-react';
-import type { Meeting, MeetingStatus } from '@/types';
+import type { Meeting } from '@/types';
+import type { MeetingStatus2 } from '@/types';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button } from '@/components/ui';
 
 type CalendarView = 'month' | 'week' | 'day';
 
-const STATUS_COLORS: Record<MeetingStatus, { bg: string; text: string; dot: string }> = {
+const STATUS_COLORS: Record<MeetingStatus2, { bg: string; text: string; dot: string }> = {
   scheduled: { bg: 'bg-orange-100', text: 'text-orange-700', dot: 'bg-orange-500' },
   in_progress: { bg: 'bg-amber-100', text: 'text-amber-700', dot: 'bg-amber-500' },
   completed: { bg: 'bg-emerald-100', text: 'text-emerald-700', dot: 'bg-emerald-500' },

@@ -1,5 +1,4 @@
 import { Crown, Flame, BookOpen, Pickaxe } from 'lucide-react';
-import type { ProjectRole } from '@/types';
 import Avatar from './Avatar';
 
 interface MemberAvatarProps {

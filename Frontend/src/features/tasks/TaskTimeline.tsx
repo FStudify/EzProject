@@ -1,12 +1,11 @@
 import { useMemo } from 'react';
-import type { Task, TaskStatus, ProjectMember } from '@/types';
+import type { Task, TaskStatus } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 
 interface TaskTimelineProps {
   tasks: Task[];
   projectDeadline: string;
   projectStart: string;
-  projectMembers?: ProjectMember[];
   onTaskClick?: (task: Task) => void;
 }
 
@@ -19,7 +18,7 @@ function getTaskBarStyle(
   const rangeEnd = endDate.getTime();
   const rangeTotal = rangeEnd - rangeStart;
   const taskStart = Math.max(new Date(task.createdAt).getTime(), rangeStart);
-  const taskEnd = Math.min(new Date(task.deadline).getTime(), rangeEnd);
+  const taskEnd = Math.min(new Date(task.deadline ?? task.createdAt).getTime(), rangeEnd);
   const left = ((taskStart - rangeStart) / rangeTotal) * 100;
   const width = Math.max(3, ((taskEnd - taskStart) / rangeTotal) * 100);
 
@@ -42,7 +41,6 @@ export default function TaskTimeline({
   tasks,
   projectDeadline,
   projectStart,
-  projectMembers = [],
   onTaskClick,
 }: TaskTimelineProps) {
   const startDate = useMemo(() => new Date(projectStart), [projectStart]);

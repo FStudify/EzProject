@@ -147,7 +147,7 @@ export default function ProjectCard({ project }: ProjectCardProps) {
             <div
               key={member.id}
               className="rounded-full ring-2"
-              style={{ ringColor: '#ffffff' }}
+              style={{ borderColor: '#ffffff' }}
               title={member.fullName}
             >
               <MemberAvatar

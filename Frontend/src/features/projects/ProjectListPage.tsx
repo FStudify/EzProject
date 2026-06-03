@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { getProjects, createProject } from '@/api/project.api';
-import { createTask } from '@/api/task.api';
 import type { ProjectStatus } from '@/api/types';
 import { Button, Modal, useToast } from '@/components/ui';
 import ProjectCard from './ProjectCard';
@@ -203,7 +202,7 @@ export default function ProjectListPage() {
     
     try {
       setIsSubmitting(true);
-      const newProj = await createProject({
+      await createProject({
         name: createForm.name,
         subject: createForm.subject,
         description: createForm.description,
@@ -295,7 +294,7 @@ export default function ProjectListPage() {
       if (sortBy === 'progress') {
         return a.progress - b.progress;
       }
-      return new Date(b.createdAt).getTime() - new Date(a.createdAt).getTime();
+      return new Date(b.createdAt ?? '').getTime() - new Date(a.createdAt ?? '').getTime();
     });
   }, [displayedProjects, sortBy]);
 

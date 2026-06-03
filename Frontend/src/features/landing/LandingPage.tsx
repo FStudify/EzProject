@@ -188,7 +188,7 @@ export default function LandingPage() {
           <p className="mt-2" style={{ color: '#7D6F66' }}>{t('landing_features_subtitle')}</p>
         </div>
         <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-          {features.map(({ icon: Icon, titleKey, descKey, bg, iconColor, color }) => (
+          {features.map(({ icon: Icon, titleKey, descKey, color }) => (
             <div
               key={titleKey}
               className="group flex flex-col rounded-2xl p-6 transition-all duration-200"
@@ -210,9 +210,9 @@ export default function LandingPage() {
             >
               <div
                 className={`mb-4 inline-flex h-12 w-12 items-center justify-center rounded-xl ${color ? `bg-gradient-to-br ${color} text-white` : ''}`}
-                style={bg ? { background: bg, boxShadow: '0 4px 12px rgba(38,24,16,0.12)' } : { boxShadow: '0 4px 12px rgba(38,24,16,0.12)' }}
+                style={undefined}
               >
-                <Icon className="h-5 w-5" style={iconColor ? { color: iconColor } : undefined} />
+                <Icon className="h-5 w-5" />
               </div>
               <h3 className="mb-2 text-base font-bold" style={{ color: '#1F1F1F' }}>{t(titleKey)}</h3>
               <p className="text-sm leading-relaxed" style={{ color: '#635648' }}>{t(descKey)}</p>

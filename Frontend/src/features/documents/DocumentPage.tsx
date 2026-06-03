@@ -111,6 +111,7 @@ export default function DocumentPage() {
           uploadedBy: {
             id: f.uploadedBy?.id ?? '',
             name: (f.uploadedBy as any)?.fullName ?? (f.uploadedBy as any)?.name ?? '',
+            fullName: (f.uploadedBy as any)?.fullName ?? (f.uploadedBy as any)?.name ?? '',
             email: (f.uploadedBy as any)?.email ?? '',
             avatar: (f.uploadedBy as any)?.avatar ?? '',
           },
@@ -159,6 +160,7 @@ export default function DocumentPage() {
           uploadedBy: {
             id: raw.uploadedBy?.id ?? raw.uploadedBy?._id ?? '',
             name: raw.uploadedBy?.fullName ?? raw.uploadedBy?.name ?? '',
+            fullName: raw.uploadedBy?.fullName ?? raw.uploadedBy?.name ?? '',
             email: raw.uploadedBy?.email ?? '',
             avatar: raw.uploadedBy?.avatar ?? '',
           },
@@ -179,7 +181,7 @@ export default function DocumentPage() {
     const comment: DocumentComment = {
       id: `comment-${Date.now()}`,
       content: content.trim(),
-      author: { id: '', name: '', email: '', avatar: '' },
+      author: { id: '', name: '', fullName: '', email: '', avatar: '' },
       createdAt: new Date().toISOString(),
     };
     setDocumentComments((prev) => ({

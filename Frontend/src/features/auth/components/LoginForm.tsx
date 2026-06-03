@@ -1,6 +1,6 @@
 import type { FormEvent } from 'react';
 import { Eye, EyeOff, LockKeyhole, UserCircle2 } from 'lucide-react';
-import { Link, useNavigate } from 'react-router-dom';
+import { Link } from 'react-router-dom';
 import type { LanguageContextValue } from '@/contexts/LanguageContext';
 
 interface LoginFormProps {

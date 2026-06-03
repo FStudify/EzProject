@@ -39,7 +39,7 @@ export interface Member {
   id: string;
   name: string;
   /** Alias so API shapes with fullName also work */
-  fullName?: string;
+  fullName: string;
   email: string;
   avatar: string | null;
   role?: ProjectRole;
@@ -58,7 +58,7 @@ export interface Task {
   status: 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'ON_HOLD' | 'CANCELLED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   assignee: Member | null;
-  creator: Member;
+  creator?: Member;
   deadline: string | null;
   requestType: string | null;
   requestNote: string | null;
@@ -106,13 +106,13 @@ export type ChannelRole = 'OWNER' | 'ADMIN' | 'MEMBER';
 /** Local ChatRoom — members use local Member (with `.name`) */
 export interface ChatRoom {
   id: string;
-  projectId: string;
+  projectId?: string;
   name: string;
   type: 'general' | 'channel' | 'direct';
   members: Member[];
-  createdBy: Member;
-  chatAdmins: string[];
-  inviteLocked: boolean;
+  createdBy?: Member;
+  chatAdmins?: string[];
+  inviteLocked?: boolean;
   createdAt: string;
   /** Per-member roles — source of truth for OWNER/ADMIN/MEMBER */
   memberRoles?: { userId: string; role: ChannelRole; joinedAt: string }[];
@@ -124,8 +124,9 @@ export interface ChatMessage {
   roomId: string;
   sender: Member | 'ai' | null;
   content: string;
-  channel: 'group' | 'task' | 'document' | 'ai';
+  channel: 'group' | 'task' | 'document' | 'ai' | 'GROUP' | 'TASK' | 'DOCUMENT' | 'AI';
   timestamp: string;
+  projectId?: string;
 }
 
 /** Local Activity — user uses local Member (with `.name`) */
@@ -137,6 +138,7 @@ export interface Activity {
   targetType?: string | null;
   targetId?: string | null;
   timestamp: string;
+  projectId?: string;
 }
 
 /** Local Project — members use local ProjectMember (with `.name`) */
@@ -191,16 +193,16 @@ export interface AppNotification {
   type: NotificationType2;
   title: string;
   body: string;
+  link: string | null;
   read: boolean;
   createdAt: string;
-  link?: string;
 }
 
 // ── Performance ────────────────────────────────────────────────
 
 export interface MemberPerformanceDetail {
   member: Member;
-  role: 'leader' | 'supervisor' | 'member';
+  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   tasksCompleted: number;
   tasksInProgress: number;

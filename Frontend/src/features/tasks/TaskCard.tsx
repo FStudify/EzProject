@@ -11,7 +11,6 @@ const priorityVariant: Record<TaskPriority, 'danger' | 'warning' | 'info'> = {
 
 interface TaskCardProps {
   task: Task;
-  projectMembers?: import('@/types').ProjectMember[];
   onClick?: () => void;
   isDragging?: boolean;
 }
@@ -27,7 +26,7 @@ function assigneeToMember(assignee: Task['assignee']) {
   };
 }
 
-export default function TaskCard({ task, projectMembers = [], onClick, isDragging }: TaskCardProps) {
+export default function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
   const assignee = assigneeToMember(task.assignee);
 
   const handleDragStart = (e: React.DragEvent) => {
@@ -72,7 +71,7 @@ export default function TaskCard({ task, projectMembers = [], onClick, isDraggin
             <>
               <Avatar
                 name={assignee.name}
-                src={assignee.avatar}
+                src={assignee.avatar ?? undefined}
                 size="sm"
               />
               <span className="truncate text-[13px] text-[#635648]">{assignee.name}</span>

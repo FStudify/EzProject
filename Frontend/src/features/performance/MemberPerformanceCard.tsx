@@ -32,7 +32,7 @@ export default function MemberPerformanceCard({
   const [saved, setSaved] = useState(false);
 
   const { member: perfMember, tasksCompleted, tasksInProgress, documentsUploaded, commentsCount, contributions, score } = performance;
-  const member = { id: perfMember.id, name: perfMember.fullName, email: perfMember.email, avatar: perfMember.avatar };
+  const member = { id: perfMember.id, name: perfMember.fullName, fullName: perfMember.fullName, email: perfMember.email, avatar: perfMember.avatar };
   const scoreVariant = getScoreVariant(score);
 
   const openModal = () => {

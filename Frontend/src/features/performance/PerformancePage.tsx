@@ -4,7 +4,7 @@ import { TrendingUp, Search, Users, Loader2 } from 'lucide-react';
 import { getPerformance } from '@/api/member.api';
 import { getProject } from '@/api/project.api';
 import { useLanguage } from '@/contexts/LanguageContext';
-import type { MemberPerformance, MemberEvaluation, Project } from '@/api/types';
+import type { MemberPerformance, MemberEvaluation, Project } from '@/types';
 import ProgressBar from '@/components/ui/ProgressBar';
 import MemberPerformanceCard from './MemberPerformanceCard';
 
@@ -25,7 +25,7 @@ export default function PerformancePage() {
         getProject(projectId),
         getPerformance(projectId),
       ]);
-      setProject(projectData);
+      setProject(projectData as Project | null);
       setPerformanceList(
         perfData.map((p) => ({
           ...p,
