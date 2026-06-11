@@ -2,10 +2,22 @@
 
 require('dotenv/config');
 
+const isProd = process.env.NODE_ENV === 'production';
+
+if (isProd) {
+  const missing = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGO_URI'].filter(
+    (key) => !process.env[key],
+  );
+
+  if (missing.length > 0) {
+    throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
+  }
+}
+
 const config = {
   env: process.env.NODE_ENV || 'development',
-  isProd: process.env.NODE_ENV === 'production',
-  isDev: process.env.NODE_ENV !== 'production',
+  isProd,
+  isDev: !isProd,
 
   port: parseInt(process.env.PORT || '3000', 10),
 

@@ -104,10 +104,11 @@ exports.listInvitations = async (req, res, next) => {
   try {
     const { projectId } = req.params;
 
-    await Project.findOne({
+    const project = await Project.findOne({
       _id: new ObjectId(projectId),
       'members.userId': new ObjectId(req.user.id),
     }).lean();
+    if (!project) throw errors.Forbidden('You are not a member of this project');
 
     const invitations = await Invitation.find({ projectId: new ObjectId(projectId) })
       .populate('invitedBy', 'id fullName avatar')
@@ -130,6 +131,7 @@ exports.acceptInvitation = async (req, res, next) => {
 
     const invitation = await Invitation.findOne({
       _id: new ObjectId(invitationId),
+      invitedUserId: new ObjectId(userId),
       status: 'PENDING',
     });
     if (!invitation) throw errors.NotFound('Invitation not found or already processed');
@@ -183,9 +185,11 @@ exports.acceptInvitation = async (req, res, next) => {
 exports.declineInvitation = async (req, res, next) => {
   try {
     const { invitationId } = req.params;
+    const userId = req.user.id;
 
     const invitation = await Invitation.findOne({
       _id: new ObjectId(invitationId),
+      invitedUserId: new ObjectId(userId),
       status: 'PENDING',
     });
     if (!invitation) throw errors.NotFound('Invitation not found or already processed');

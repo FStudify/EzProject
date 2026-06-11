@@ -72,10 +72,10 @@ export const Endpoints = {
     `${BASE}/projects/${projectId}/members/${userId}`,
   MEMBER_INVITE: (projectId: string) => `${BASE}/projects/${projectId}/members/invite`,
   MEMBER_INVITATIONS: (projectId: string) => `${BASE}/projects/${projectId}/members/invitations`,
-  INVITATION_ACCEPT: (invitationId: string) =>
-    `${BASE}/projects/:projectId/members/invitations/${invitationId}/accept`,
-  INVITATION_DECLINE: (invitationId: string) =>
-    `${BASE}/projects/:projectId/members/invitations/${invitationId}/decline`,
+  INVITATION_ACCEPT: (projectId: string, invitationId: string) =>
+    `${BASE}/projects/${projectId}/members/invitations/${invitationId}/accept`,
+  INVITATION_DECLINE: (projectId: string, invitationId: string) =>
+    `${BASE}/projects/${projectId}/members/invitations/${invitationId}/decline`,
   INVITATION_DETAIL: (projectId: string, invitationId: string) =>
     `${BASE}/projects/${projectId}/members/invitations/${invitationId}`,
   PROJECT_LEAVE: (projectId: string) => `${BASE}/projects/${projectId}/members/leave`,

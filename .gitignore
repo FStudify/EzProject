@@ -43,4 +43,5 @@ docs/
 Frontend/node_modules
 Frontend/dist
 Frontend/dist-ssr
+Frontend/.next
 Frontend/*.local

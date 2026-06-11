@@ -6,7 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getNotifications } from '@/api/user.api';
-import NotificationDrawer from './NotificationDrawer';
+import NotificationDrawer, { NOTIFICATIONS_UPDATED_EVENT } from './NotificationDrawer';
 
 interface TopbarProps {
   title: string;
@@ -30,7 +30,19 @@ export default function Topbar({ title }: TopbarProps) {
         console.error('Failed to fetch unread count:', err);
       }
     };
-    fetchUnreadCount();
+    void fetchUnreadCount();
+
+    const handleNotificationUpdate = (event: Event) => {
+      const detail = (event as CustomEvent<{ unreadCount?: number }>).detail;
+      if (typeof detail?.unreadCount === 'number') {
+        setUnreadCount(detail.unreadCount);
+      } else {
+        void fetchUnreadCount();
+      }
+    };
+
+    window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
+    return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
   }, []);
 
   useEffect(() => {

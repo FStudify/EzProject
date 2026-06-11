@@ -73,14 +73,15 @@ export async function getProjectInvitations(projectId: string): Promise<unknown[
 
 /** Accept invitation */
 export async function acceptInvitation(
+  projectId: string,
   invitationId: string,
 ): Promise<{ projectId: string; projectName?: string }> {
-  return api.post(Endpoints.INVITATION_ACCEPT(invitationId));
+  return api.post(Endpoints.INVITATION_ACCEPT(projectId, invitationId));
 }
 
 /** Decline invitation */
-export async function declineInvitation(invitationId: string): Promise<void> {
-  return api.post(Endpoints.INVITATION_DECLINE(invitationId));
+export async function declineInvitation(projectId: string, invitationId: string): Promise<void> {
+  return api.post(Endpoints.INVITATION_DECLINE(projectId, invitationId));
 }
 
 /** Lay invitation cua minh */
