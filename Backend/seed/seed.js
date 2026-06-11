@@ -367,8 +367,9 @@ async function seedActivities(projects, users) {
   console.log('[Seed] Created activity log');
 }
 
-async function seedNotifications(users) {
+async function seedNotifications(users, projects) {
   const [admin, leader, member1] = users;
+  const [mainProject] = projects;
 
   await Notification.insertMany([
     {
@@ -376,15 +377,15 @@ async function seedNotifications(users) {
       type: 'TASK',
       title: 'New task assigned',
       body: 'Implement Backend REST API da duoc gan cho ban',
-      link: '/tasks/2',
+      link: `/app/projects/${mainProject._id}/tasks`,
       read: false,
     },
     {
       userId: leader._id,
       type: 'MEETING',
-      title: 'Reminder: Sprint Planning',
-      body: 'Cuoc hop Sprint Planning bat dau trong 2 gio',
-      link: '/meetings/1',
+      title: 'Sprint Planning da duoc len lich',
+      body: 'Cuoc hop Sprint Planning sap dien ra trong hom nay. Vui long kiem tra lich hop.',
+      link: `/app/projects/${mainProject._id}/meetings`,
       read: false,
     },
     {
@@ -392,7 +393,7 @@ async function seedNotifications(users) {
       type: 'CHAT',
       title: 'New message in #dev-team',
       body: 'Co ai can review code khong?',
-      link: '/chat/dev-team',
+      link: `/app/projects/${mainProject._id}/chat`,
       read: true,
     },
   ]);
@@ -418,7 +419,7 @@ async function main() {
     await seedMeetings(projects);
     await seedChat(projects);
     await seedActivities(projects, users);
-    await seedNotifications(users);
+    await seedNotifications(users, projects);
 
     console.log('\n========================================');
     console.log('  Seed completed successfully!');

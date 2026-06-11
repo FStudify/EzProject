@@ -22,7 +22,7 @@ export default function Card({
 }: CardProps) {
   return (
     <div
-      className={`rounded-2xl border bg-surface transition-all duration-200 ${paddingMap[padding]} ${className}`.trim()}
+      className={`rounded-2xl border bg-surface transition-all duration-200 ${hover ? 'hover:-translate-y-0.5 hover:shadow-lg' : ''} ${paddingMap[padding]} ${className}`.trim()}
       style={{
         borderColor: '#E8D8CF',
         boxShadow: '0 18px 30px -24px rgba(38, 24, 16, 0.6)',

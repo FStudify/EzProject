@@ -19,6 +19,7 @@ import {
 } from 'react';
 import { io, type Socket } from 'socket.io-client';
 import { getAccessToken } from '@/api/config';
+import { useAuth } from '@/contexts/AuthContext';
 import type { ChatMessage } from '@/types';
 
 const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
@@ -72,12 +73,22 @@ interface ChatSocketValue {
 const ChatSocketContext = createContext<ChatSocketValue | null>(null);
 
 export function ChatSocketProvider({ children }: { children: ReactNode }) {
+  const { isAuthenticated } = useAuth();
   const socketRef = useRef<Socket | null>(null);
+  const [socket, setSocket] = useState<Socket | null>(null);
   const [isConnected, setIsConnected] = useState(false);
   const newMessageCbsRef = useRef<NewMessageCallback[]>([]);
   const typingCbsRef = useRef<TypingCallback[]>([]);
 
   useEffect(() => {
+    if (!isAuthenticated) {
+      socketRef.current?.disconnect();
+      socketRef.current = null;
+      setSocket(null);
+      setIsConnected(false);
+      return;
+    }
+
     const token = getAccessToken();
     if (!token) return;
 
@@ -89,6 +100,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     });
 
     socketRef.current = socket;
+    setSocket(socket);
 
     socket.on('connect', () => setIsConnected(true));
     socket.on('disconnect', () => setIsConnected(false));
@@ -123,9 +135,10 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     return () => {
       socket.disconnect();
       socketRef.current = null;
+      setSocket(null);
       setIsConnected(false);
     };
-  }, []);
+  }, [isAuthenticated]);
 
   const joinRoom = useCallback((roomId: string, projectId: string) => {
     if (!socketRef.current?.connected) return;
@@ -168,7 +181,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
   }, []);
 
   return (
-    <ChatSocketContext.Provider value={{ socket: socketRef.current, joinRoom, leaveRoom, sendMessage, onNewMessage, onTyping, emitTyping, isConnected }}>
+    <ChatSocketContext.Provider value={{ socket, joinRoom, leaveRoom, sendMessage, onNewMessage, onTyping, emitTyping, isConnected }}>
       {children}
     </ChatSocketContext.Provider>
   );
