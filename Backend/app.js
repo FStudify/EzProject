@@ -39,8 +39,6 @@ if (config.isDev) {
 
 // ── Static Files ───────────────────────────────────────
 app.use('/public', express.static(path.join(__dirname, 'public')));
-// Serve uploaded files (avatars, documents)
-app.use('/public/uploads', express.static(path.join(__dirname, 'uploads')));
 
 // ── Health Check ───────────────────────────────────────────
 app.get('/health', (req, res) => {

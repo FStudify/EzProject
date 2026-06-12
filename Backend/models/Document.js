@@ -26,7 +26,7 @@ const documentSchema = new mongoose.Schema({
     enum: ['DOC', 'PDF', 'PPT', 'ZIP', 'IMG', 'OTHER'],
     default: 'OTHER',
   },
-  size: { type: String, required: true },
+  size: { type: Number, required: true, min: 0 },
   fileUrl: { type: String, required: true },
   uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
   uploadDate: { type: Date, default: Date.now },

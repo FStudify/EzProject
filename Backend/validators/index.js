@@ -1,7 +1,7 @@
 'use strict';
 
 const { z } = require('zod');
-const { errorFactory } = require('../middlewares/errorHandler');
+const { errors: errorFactory } = require('../middlewares/errorHandler');
 
 const validators = {
   // ── Auth ───────────────────────────────────────────────
@@ -230,7 +230,17 @@ const validators = {
 
   // ── Documents ───────────────────────────────────────────
   createFolder: z.object({
-    name: z.string().min(1, 'Folder name is required'),
+    name: z
+      .string()
+      .min(1, 'Folder name is required')
+      .max(255, 'Folder name is too long')
+      .refine((value) => {
+        const trimmed = value.trim();
+        return trimmed.length > 0 &&
+          !value.includes('/') &&
+          !value.includes('\\') &&
+          !value.includes('..');
+      }, 'Invalid name'),
     parentId: z.string().nullable().optional(),
   }),
 };
