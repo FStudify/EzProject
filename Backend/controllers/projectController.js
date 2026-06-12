@@ -4,6 +4,11 @@ const mongoose = require('mongoose');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 const { ChatRoom } = require('../models/Chat');
+const Meeting = require('../models/Meeting');
+const { Folder, Document } = require('../models/Document');
+const InviteLink = require('../models/InviteLink');
+const Invitation = require('../models/Invitation');
+const { Activity, Notification, MemberEvaluation } = require('../models/Activity');
 const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
@@ -175,15 +180,32 @@ exports.delete = async (req, res, next) => {
   try {
     const project = await Project.findOne({
       _id: new ObjectId(req.params.projectId),
-      'members.userId': new ObjectId(req.user.id),
-      'members.isOwner': true,
+      members: {
+        $elemMatch: {
+          userId: new ObjectId(req.user.id),
+          isOwner: true,
+        },
+      },
     });
     if (!project) throw errors.Forbidden('Only the owner can delete this project');
 
     const ChatMessage = require('../models/Chat').ChatMessage;
     const ChatRoom = require('../models/Chat').ChatRoom;
-    await ChatMessage.deleteMany({ roomId: { $in: (await ChatRoom.find({ projectId: project._id }, '_id')).map((r) => r._id) } });
+    const rooms = await ChatRoom.find({ projectId: project._id }, '_id').lean();
+    const roomIds = rooms.map((r) => r._id);
+    await ChatMessage.deleteMany({ roomId: { $in: roomIds } });
     await ChatRoom.deleteMany({ projectId: project._id });
+    await Promise.all([
+      Task.deleteMany({ projectId: project._id }),
+      Meeting.deleteMany({ projectId: project._id }),
+      Folder.deleteMany({ projectId: project._id }),
+      Document.deleteMany({ projectId: project._id }),
+      InviteLink.deleteMany({ projectId: project._id }),
+      Invitation.deleteMany({ projectId: project._id }),
+      Activity.deleteMany({ projectId: project._id }),
+      Notification.deleteMany({ projectId: project._id }),
+      MemberEvaluation.deleteMany({ projectId: project._id }),
+    ]);
     await Project.findByIdAndDelete(req.params.projectId);
     res.status(204).send();
   } catch (err) {

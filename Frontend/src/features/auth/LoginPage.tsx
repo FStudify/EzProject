@@ -29,9 +29,9 @@ export default function LoginPage() {
       const ok = await login(username, password);
       if (ok) {
         navigate(from, { replace: true });
-      } else {
-        setError(t('error'));
       }
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('error'));
     } finally {
       setLoading(false);
     }

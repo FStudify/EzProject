@@ -107,8 +107,7 @@ export async function leaveProject(
 ): Promise<{ deleted?: boolean; transferredTo?: string }> {
   const body = options?.newOwnerId ? { newOwnerId: options.newOwnerId } : {};
   const raw = await api.post<unknown>(Endpoints.PROJECT_LEAVE(projectId), body);
-  const obj = raw as Record<string, unknown>;
-  const data = (obj.data ?? {}) as Record<string, unknown>;
+  const data = (raw ?? {}) as Record<string, unknown>;
   return {
     deleted: data.deleted as boolean | undefined,
     transferredTo: data.transferredTo as string | undefined,

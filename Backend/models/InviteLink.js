@@ -26,7 +26,6 @@ const inviteLinkSchema = new mongoose.Schema({
 
 // TTL index — MongoDB tự xóa sau khi hết hạn
 inviteLinkSchema.index({ expiresAt: 1 }, { expireAfterSeconds: 0 });
-inviteLinkSchema.index({ token: 1 });
 inviteLinkSchema.index({ projectId: 1 });
 
 module.exports = mongoose.model('InviteLink', inviteLinkSchema);

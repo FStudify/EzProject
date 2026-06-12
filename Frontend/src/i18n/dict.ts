@@ -502,7 +502,12 @@ export const vi = {
 
   // Landing page
   landing_badge: 'Dành cho Sinh viên & Nhóm',
+  landing_badge_done: '12 nhiệm vụ hoàn thành',
+  landing_badge_projects: '3 dự án đang hoạt động',
+  landing_badge_progress: 'Tiến độ nhóm 78%',
+  landing_badge_deadline: 'Đến hạn hôm nay',
   landing_hero_title: 'Quản lý dự án rõ ràng, cùng nhau',
+  landing_hero_sub: 'Xây dựng cho nhóm sinh viên muốn làm việc rõ ràng và hiệu quả hơn.',
   landing_hero_desc: 'Nhiệm vụ, thảo luận và tiến độ - tất cả trong một không gian làm việc cộng tác dành cho sinh viên.',
   landing_cta_start: 'Bắt đầu ngay',
   landing_cta_register: 'Tạo tài khoản',
@@ -999,7 +1004,12 @@ export const en = {
 
   // Landing page
   landing_badge: 'For Students & Teams',
+  landing_badge_done: '12 tasks completed',
+  landing_badge_projects: '3 active projects',
+  landing_badge_progress: 'Team progress 78%',
+  landing_badge_deadline: 'Due today',
   landing_hero_title: 'Manage Projects Clearly, Together',
+  landing_hero_sub: 'Built for student teams who want to work clearly and move faster together.',
   landing_hero_desc: 'Tasks, discussions, and progress — all in one collaborative workspace built for student teams with deadlines.',
   landing_cta_start: 'Get Started',
   landing_cta_register: 'Create Account',

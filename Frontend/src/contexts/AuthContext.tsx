@@ -89,14 +89,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   }, []);
 
   const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    try {
-      const res = await apiLogin(username, password);
-      setUser(res.user);
-      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
-      return true;
-    } catch {
-      return false;
-    }
+    const res = await apiLogin(username, password);
+    setUser(res.user);
+    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
+    return true;
   }, []);
 
   const register = useCallback(

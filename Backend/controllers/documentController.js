@@ -37,6 +37,19 @@ function formatSize(bytes) {
   return `${(bytes / (1024 * 1024)).toFixed(2)} MB`;
 }
 
+function localUploadPathFromUrl(url) {
+  try {
+    const pathname = new URL(url).pathname;
+    const marker = '/public/uploads/';
+    const index = pathname.indexOf(marker);
+    if (index === -1) return null;
+    const relative = pathname.slice(index + marker.length);
+    return path.join(__dirname, '..', 'uploads', relative);
+  } catch {
+    return null;
+  }
+}
+
 // ── GET /projects/:projectId/documents ────────────────────────────────────────
 exports.list = async (req, res, next) => {
   try {
@@ -152,8 +165,8 @@ exports.delete = async (req, res, next) => {
     if (!canDelete) throw errors.Forbidden('Only the uploader or leaders can delete files');
 
     // Xóa file vật lý khỏi disk (nếu là local storage)
-    const localPath = doc.fileUrl.replace(/^https?:\/\/[^/]+\/public\//, './public/');
-    fs.unlink(localPath, () => {}); // fail silently
+    const localPath = localUploadPathFromUrl(doc.fileUrl);
+    if (localPath) fs.unlink(localPath, () => {}); // fail silently
 
     await Document.findByIdAndDelete(req.params.docId);
     res.status(204).send();

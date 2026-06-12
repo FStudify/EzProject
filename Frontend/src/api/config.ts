@@ -48,12 +48,24 @@ interface ApiConfig {
   retryDelay: number;
 }
 
+function normalizeApiBaseUrl(rawUrl: string): string {
+  return rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
+}
+
 const config: ApiConfig = {
-  baseUrl: import.meta.env.VITE_API_URL || 'http://localhost:3000',
+  baseUrl: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || 'http://localhost:3000'),
   timeout: 10_000, // 10 seconds
   retryAttempts: 1,
   retryDelay: 1_000, // 1 second
 };
+
+function shouldAttemptRefresh(path: string): boolean {
+  return ![
+    '/api/v1/auth/login',
+    '/api/v1/auth/register',
+    '/api/v1/auth/refresh',
+  ].includes(path);
+}
 
 // ── HTTP Methods ─────────────────────────────────────────────
 
@@ -74,7 +86,7 @@ async function request<T = unknown>(
       });
 
       // 401 → try refresh token
-      if (response.status === 401) {
+      if (response.status === 401 && shouldAttemptRefresh(path)) {
         const refreshed = await tryRefreshToken();
         if (refreshed) {
           // Retry with new token
@@ -198,7 +210,9 @@ function normalizeError(status: number, body: unknown): ApiError {
           : JSON.stringify(body)
       : typeof body === 'string'
         ? body
-        : `HTTP ${status}`;
+        : raw && 'message' in raw
+          ? String(raw.message)
+          : `HTTP ${status}`;
 
   return new ApiError(status, msg);
 }

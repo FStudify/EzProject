@@ -22,7 +22,12 @@ import { getAccessToken } from '@/api/config';
 import { useAuth } from '@/contexts/AuthContext';
 import type { ChatMessage } from '@/types';
 
-const SOCKET_URL = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+function getSocketUrl() {
+  const apiUrl = import.meta.env.VITE_API_URL || 'http://localhost:3000';
+  return apiUrl.replace(/\/api\/v1\/?$/, '');
+}
+
+const SOCKET_URL = getSocketUrl();
 
 interface IncomingSocketMessage {
   _id: string;
