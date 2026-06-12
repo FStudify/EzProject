@@ -21,10 +21,22 @@ const invitationSchema = new mongoose.Schema({
   invitedEmail: {
     type: String,
     default: null,
+    lowercase: true,
+    trim: true,
   },
   invitedUsername: {
     type: String,
     default: null,
+  },
+  token: {
+    type: String,
+    unique: true,
+    sparse: true,
+  },
+  role: {
+    type: String,
+    enum: ['LEADER', 'SUPERVISOR', 'MEMBER'],
+    default: 'MEMBER',
   },
   status: {
     type: String,
@@ -34,6 +46,10 @@ const invitationSchema = new mongoose.Schema({
   expiresAt: {
     type: Date,
     required: true,
+  },
+  acceptedAt: {
+    type: Date,
+    default: null,
   },
 }, { timestamps: true });
 

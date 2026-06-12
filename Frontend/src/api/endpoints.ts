@@ -71,6 +71,9 @@ export const Endpoints = {
   MEMBER_REMOVE: (projectId: string, userId: string) =>
     `${BASE}/projects/${projectId}/members/${userId}`,
   MEMBER_INVITE: (projectId: string) => `${BASE}/projects/${projectId}/members/invite`,
+  EMAIL_INVITE: (projectId: string) => `${BASE}/projects/${projectId}/invites/email`,
+  INVITE_TOKEN: (token: string) => `${BASE}/invites/${token}`,
+  INVITE_TOKEN_ACCEPT: (token: string) => `${BASE}/invites/${token}/accept`,
   MEMBER_INVITATIONS: (projectId: string) => `${BASE}/projects/${projectId}/members/invitations`,
   INVITATION_ACCEPT: (projectId: string, invitationId: string) =>
     `${BASE}/projects/${projectId}/members/invitations/${invitationId}/accept`,

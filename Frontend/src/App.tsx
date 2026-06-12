@@ -16,6 +16,7 @@ import { ToastProvider } from '@/components/ui';
 import { ThemeProvider, LanguageProvider, AuthProvider } from '@/contexts';
 import { ChatSocketProvider } from '@/contexts/ChatSocketContext';
 import LandingPage from '@/features/landing/LandingPage';
+import JoinProjectPage from '@/features/members/JoinProjectPage';
 
 const router = createBrowserRouter([
   {
@@ -37,6 +38,10 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />,
+  },
+  {
+    path: '/app/join/:token',
+    element: <JoinProjectPage />,
   },
   {
     path: '/app',

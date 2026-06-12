@@ -1,22 +1,329 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const { v4: uuidv4 } = require('uuid');
 const Project = require('../models/Project');
 const Invitation = require('../models/Invitation');
 const User = require('../models/User');
+const { ChatRoom } = require('../models/Chat');
+const { Activity } = require('../models/Activity');
 const { errors } = require('../middlewares/errorHandler');
+const { sendProjectInviteEmail, buildInviteUrl } = require('../services/emailService');
 
 const ObjectId = mongoose.Types.ObjectId;
 
 async function checkOwner(projectId, userId) {
   const project = await Project.findOne({
     _id: new ObjectId(projectId),
-    'members.userId': new ObjectId(userId),
-    'members.isOwner': true,
+    members: {
+      $elemMatch: {
+        userId: new ObjectId(userId),
+        isOwner: true,
+      },
+    },
   }).lean();
   if (!project) throw errors.Forbidden('Only the project owner can perform this action');
   return project;
 }
+
+function normalizeRole(role) {
+  const value = String(role || 'MEMBER').toUpperCase();
+  const map = {
+    OWNER: 'LEADER',
+    ADMIN: 'LEADER',
+    MANAGER: 'LEADER',
+    PROJECT_MANAGER: 'LEADER',
+    LEADER: 'LEADER',
+    SUPERVISOR: 'SUPERVISOR',
+    MEMBER: 'MEMBER',
+  };
+  return map[value] || 'MEMBER';
+}
+
+function normalizeEmail(email) {
+  return String(email || '').trim().toLowerCase();
+}
+
+function isValidEmail(email) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+function getProjectMember(project, userId) {
+  return project.members.find((m) => m.userId.toString() === userId);
+}
+
+async function checkCanInvite(projectId, user) {
+  const project = await Project.findById(projectId).lean();
+  if (!project) throw errors.NotFound('Project');
+
+  if (user.role === 'ADMIN') return { project, member: null };
+
+  const member = getProjectMember(project, user.id);
+  if (!member) throw errors.Forbidden('You are not a member of this project');
+
+  const canInvite = member.isOwner || ['LEADER', 'SUPERVISOR'].includes(member.role);
+  if (!canInvite) {
+    throw errors.Forbidden('Only the project owner, leader, supervisor, or admin can invite members');
+  }
+
+  return { project, member };
+}
+
+async function syncMemberToGeneral(projectId, userId, role) {
+  const general = await ChatRoom.findOne({ projectId: new ObjectId(projectId), type: 'GENERAL' });
+  if (!general) return;
+
+  const already = general.members.map((m) => m.toString()).includes(userId);
+  if (!already) general.members.push(new ObjectId(userId));
+
+  general.memberRoles = general.memberRoles.filter((r) => r.userId.toString() !== userId);
+  general.memberRoles.push({
+    userId: new ObjectId(userId),
+    role: role === 'LEADER' ? 'ADMIN' : 'MEMBER',
+    joinedAt: new Date(),
+  });
+
+  await general.save();
+}
+
+async function acceptInvitationDocument(invitation, user) {
+  if (invitation.status !== 'PENDING') {
+    throw errors.BadRequest('Invitation has already been processed');
+  }
+
+  if (invitation.expiresAt < new Date()) {
+    invitation.status = 'EXPIRED';
+    await invitation.save();
+    throw errors.BadRequest('Invitation has expired');
+  }
+
+  const invitedEmail = normalizeEmail(invitation.invitedEmail);
+  const userEmail = normalizeEmail(user.email);
+  if (invitedEmail && invitedEmail !== userEmail) {
+    throw errors.Forbidden('This invitation was sent to a different email address');
+  }
+
+  const project = await Project.findById(invitation.projectId).lean();
+  if (!project) throw errors.NotFound('Project');
+
+  const alreadyMember = project.members.some((m) => m.userId.toString() === user.id);
+  if (alreadyMember) {
+    throw errors.BadRequest('You are already a member of this project');
+  }
+
+  const role = normalizeRole(invitation.role);
+  const acceptedAt = new Date();
+  const claimed = await Invitation.findOneAndUpdate(
+    { _id: invitation._id, status: 'PENDING', expiresAt: { $gte: acceptedAt } },
+    {
+      $set: {
+        invitedUserId: new ObjectId(user.id),
+        status: 'ACCEPTED',
+        acceptedAt,
+      },
+    },
+    { new: true },
+  );
+  if (!claimed) throw errors.BadRequest('Invitation has already been processed or expired');
+
+  let updatedProject;
+  try {
+    updatedProject = await Project.findOneAndUpdate(
+      {
+        _id: project._id,
+        'members.userId': { $ne: new ObjectId(user.id) },
+      },
+      {
+        $push: {
+          members: {
+            userId: new ObjectId(user.id),
+            role,
+            isOwner: false,
+            joinedAt: acceptedAt,
+          },
+        },
+      },
+      { new: true },
+    ).lean();
+  } catch (err) {
+    await Invitation.updateOne(
+      { _id: invitation._id, status: 'ACCEPTED', invitedUserId: new ObjectId(user.id) },
+      { $set: { status: 'PENDING', acceptedAt: null, invitedUserId: null } },
+    );
+    throw err;
+  }
+
+  if (!updatedProject) {
+    throw errors.BadRequest('You are already a member of this project');
+  }
+
+  try {
+    await syncMemberToGeneral(project._id, user.id, role);
+    await Activity.create({
+      projectId: project._id,
+      userId: new ObjectId(user.id),
+      action: 'joined project via email invite',
+      target: project.name,
+      targetType: 'project',
+      targetId: project._id,
+    });
+  } catch (err) {
+    console.error('[Invite] Member joined but post-accept sync failed:', err.message);
+  }
+
+  return { projectId: project._id, projectName: project.name };
+}
+
+exports.createEmailInvite = async (req, res, next) => {
+  try {
+    const { projectId } = req.params;
+    const email = normalizeEmail(req.body.email);
+    const role = normalizeRole(req.body.role);
+
+    if (!email || !isValidEmail(email)) {
+      throw errors.BadRequest('A valid email is required');
+    }
+
+    const { project } = await checkCanInvite(projectId, req.user);
+    const existingUser = await User.findOne({ email }).lean();
+
+    if (existingUser) {
+      const alreadyMember = project.members.some(
+        (m) => m.userId.toString() === existingUser._id.toString(),
+      );
+      if (alreadyMember) {
+        throw errors.BadRequest('This email already belongs to a project member');
+      }
+    }
+
+    const existingPending = await Invitation.findOne({
+      projectId: new ObjectId(projectId),
+      invitedEmail: email,
+      status: 'PENDING',
+      expiresAt: { $gte: new Date() },
+    }).lean();
+
+    if (existingPending?.token) {
+      const inviteUrl = buildInviteUrl(existingPending.token);
+      return res.json({
+        success: true,
+        data: {
+          id: existingPending._id,
+          email,
+          role: existingPending.role,
+          token: existingPending.token,
+          inviteUrl,
+          expiresAt: existingPending.expiresAt,
+          alreadyInvited: true,
+          emailSent: false,
+        },
+        message: 'Invitation already exists',
+      });
+    }
+
+    const token = uuidv4();
+    const expiresAt = new Date(Date.now() + 7 * 24 * 60 * 60 * 1000);
+
+    const invitation = await Invitation.create({
+      projectId: new ObjectId(projectId),
+      invitedBy: new ObjectId(req.user.id),
+      invitedUserId: existingUser?._id || null,
+      invitedEmail: email,
+      invitedUsername: existingUser?.fullName || null,
+      token,
+      role,
+      status: 'PENDING',
+      expiresAt,
+    });
+
+    const inviter = await User.findById(req.user.id, 'fullName').lean();
+    let emailResult;
+    try {
+      emailResult = await sendProjectInviteEmail({
+        to: email,
+        projectName: project.name,
+        inviterName: inviter?.fullName || req.user.username || 'A teammate',
+        token,
+      });
+    } catch (err) {
+      console.error('[InviteEmail] Failed to send invite email:', err.message);
+      emailResult = { sent: false, inviteUrl: buildInviteUrl(token), reason: 'SEND_FAILED' };
+    }
+
+    res.status(201).json({
+      success: true,
+      data: {
+        id: invitation._id,
+        email,
+        role,
+        token,
+        inviteUrl: emailResult.inviteUrl,
+        expiresAt,
+        emailSent: emailResult.sent,
+        emailStatus: emailResult.reason || 'SENT',
+      },
+      message: emailResult.sent
+        ? 'Invitation email sent'
+        : 'Invitation created. SMTP is not configured, use inviteUrl for local testing.',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getInviteByToken = async (req, res, next) => {
+  try {
+    const invitation = await Invitation.findOne({ token: req.params.token })
+      .populate('projectId', 'name description')
+      .populate('invitedBy', 'fullName avatar')
+      .lean();
+
+    if (!invitation) throw errors.NotFound('Invitation');
+    if (invitation.status !== 'PENDING') {
+      throw errors.BadRequest('Invitation has already been processed');
+    }
+    if (invitation.expiresAt < new Date()) {
+      await Invitation.findByIdAndUpdate(invitation._id, { status: 'EXPIRED' });
+      throw errors.BadRequest('Invitation has expired');
+    }
+
+    res.json({
+      success: true,
+      data: {
+        email: invitation.invitedEmail,
+        role: invitation.role,
+        expiresAt: invitation.expiresAt,
+        project: invitation.projectId,
+        invitedBy: invitation.invitedBy,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.acceptInviteByToken = async (req, res, next) => {
+  try {
+    const invitation = await Invitation.findOne({ token: req.params.token });
+    if (!invitation) throw errors.NotFound('Invitation');
+
+    const user = await User.findById(req.user.id).lean();
+    if (!user) throw errors.NotFound('User');
+
+    const result = await acceptInvitationDocument(invitation, {
+      id: req.user.id,
+      email: user.email,
+    });
+
+    res.json({
+      success: true,
+      data: result,
+      message: `Successfully joined project "${result.projectName}"`,
+    });
+  } catch (err) {
+    next(err);
+  }
+};
 
 // ─── OWNER: Create manual invitation (by username or email) ──────
 

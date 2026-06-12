@@ -188,6 +188,15 @@ const validators = {
     role: z.enum(['LEADER', 'SUPERVISOR', 'MEMBER']),
   }),
 
+  createEmailInvite: z.object({
+    email: z.string().trim().email('A valid email is required'),
+    role: z
+      .string()
+      .transform((value) => value.toUpperCase())
+      .pipe(z.enum(['MEMBER', 'SUPERVISOR', 'LEADER']))
+      .default('MEMBER'),
+  }),
+
   // ── Join by invite ────────────────────────────────────────
   joinProject: z.object({
     token: z.string().min(1, 'Invite token is required'),

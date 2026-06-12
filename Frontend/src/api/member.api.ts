@@ -44,6 +44,47 @@ export async function createInviteLink(
   return api.post(`${Endpoints.MEMBER_INVITE(projectId)}`);
 }
 
+export interface EmailInviteResponse {
+  id: string;
+  email: string;
+  role: 'MEMBER' | 'SUPERVISOR' | 'LEADER';
+  token: string;
+  inviteUrl: string;
+  expiresAt: string;
+  emailSent: boolean;
+  emailStatus: string;
+  alreadyInvited?: boolean;
+}
+
+/** Create and send an email-based project invitation. */
+export async function createEmailInvite(
+  projectId: string,
+  email: string,
+  role: 'MEMBER' | 'SUPERVISOR' | 'LEADER' = 'MEMBER',
+): Promise<EmailInviteResponse> {
+  return api.post(Endpoints.EMAIL_INVITE(projectId), { email, role });
+}
+
+export interface InviteTokenDetails {
+  email: string;
+  role: 'MEMBER' | 'SUPERVISOR' | 'LEADER';
+  expiresAt: string;
+  project: { _id: string; name: string; description?: string | null };
+  invitedBy?: { fullName?: string; avatar?: string | null };
+}
+
+/** Validate an email invite token. This endpoint is public. */
+export async function getInviteByToken(token: string): Promise<InviteTokenDetails> {
+  return api.get(Endpoints.INVITE_TOKEN(token));
+}
+
+/** Accept an email invite token as the current authenticated user. */
+export async function acceptInviteByToken(
+  token: string,
+): Promise<{ projectId: string; projectName: string }> {
+  return api.post(Endpoints.INVITE_TOKEN_ACCEPT(token));
+}
+
 /** Join project bang invite token */
 export async function joinByInvite(
   token: string,

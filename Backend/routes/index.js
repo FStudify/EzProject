@@ -12,6 +12,7 @@ const memberRouter = require('./member');
 const performanceRouter = require('./performance');
 const activityRouter = require('./activity');
 const adminRouter = require('./admin');
+const inviteRouter = require('./invite');
 const memberController = require('../controllers/memberController');
 const { requireAuth } = require('../middlewares/auth');
 const aiController = require('../controllers/aiController');
@@ -33,6 +34,7 @@ router.post('/ai/chat', requireAuth, aiController.chat);
 
 // ── Admin (Gap 1) ──────────────────────────────────────
 router.use('/admin', adminRouter);
+router.use('/', inviteRouter);
 
 // ── Projects & nested resources ────────────────────────
 router.use('/projects', projectRouter);

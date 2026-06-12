@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui';
 import {
   createInviteLink,
+  createEmailInvite,
   createInvitation,
   getProjectInvitations,
   revokeInvitation,
@@ -98,8 +99,13 @@ export default function InviteMemberModal({
     if (!email.trim() || !email.includes('@')) return;
     setLoading(true);
     try {
-      await createInvitation(projectId, { email: email.trim() });
-      toast(t('invitation_sent'), 'success');
+      const result = await createEmailInvite(projectId, email.trim(), 'MEMBER');
+      setInviteToken(result.token);
+      setInviteLink(result.inviteUrl);
+      toast(
+        result.emailSent ? t('email_invite_sent') : t('email_invite_created'),
+        'success',
+      );
       setEmail('');
       onInvited();
     } catch (e: any) {
