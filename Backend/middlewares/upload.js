@@ -4,6 +4,12 @@ const multer = require('multer');
 const path = require('path');
 const fs = require('fs');
 const { errors } = require('./errorHandler');
+const {
+  UPLOAD_DIR,
+  MAX_FILE_SIZE,
+  ALLOWED_EXTENSIONS,
+} = require('../config/upload.config');
+const { sanitizeOriginalFilename } = require('../utils/fileStorage');
 
 // Export cloudinary v2 so controllers can use it directly
 const cloudinary = require('cloudinary').v2;
@@ -28,15 +34,12 @@ function sanitizeFilename(original) {
 function diskStorage(subdir) {
   return multer.diskStorage({
     destination(req, file, cb) {
-      const dir = path.join(process.env.UPLOAD_DIR || './uploads', subdir);
+      const dir = path.join(UPLOAD_DIR, subdir);
       ensureDir(dir);
       cb(null, dir);
     },
     filename(req, file, cb) {
-      const ext = path.extname(file.originalname);
-      const base = sanitizeFilename(path.basename(file.originalname, ext));
-      const unique = `${Date.now()}-${Math.random().toString(36).slice(2, 8)}`;
-      cb(null, `${base}-${unique}${ext}`);
+      cb(null, sanitizeOriginalFilename(file.originalname));
     },
   });
 }
@@ -44,7 +47,7 @@ function diskStorage(subdir) {
 // ── File filter factories ─────────────────────────────────────────────────────
 
 const IMAGE_TYPES = /jpeg|jpg|png|gif|webp/;
-const DOC_TYPES = /pdf|doc|docx|xls|xlsx|ppt|pptx|zip|rar|txt|png|jpg|jpeg|gif|webp/;
+const DOC_TYPES = /pdf|doc|docx|xls|xlsx|ppt|pptx|txt|png|jpg|jpeg|webp/;
 
 function imageFilter(req, file, cb) {
   const ext = IMAGE_TYPES.test(path.extname(file.originalname).toLowerCase());
@@ -54,14 +57,14 @@ function imageFilter(req, file, cb) {
 }
 
 function documentFilter(req, file, cb) {
-  const ext = DOC_TYPES.test(path.extname(file.originalname).toLowerCase());
-  if (ext) return cb(null, true);
+  const ext = path.extname(file.originalname).toLowerCase();
+  if (ALLOWED_EXTENSIONS.has(ext) && DOC_TYPES.test(ext)) return cb(null, true);
   cb(errors.BadRequest('Unsupported file type'));
 }
 
 // ── Max file size ─────────────────────────────────────────────────────────────
 
-const MAX_SIZE = parseInt(process.env.MAX_FILE_SIZE || '10485760', 10); // 10 MB default
+const MAX_SIZE = MAX_FILE_SIZE; // 10 MB default
 
 // ── Avatar upload — memory storage, Cloudinary upload done in controller ──────
 // Using memoryStorage avoids the multer-storage-cloudinary adapter entirely.
