@@ -20,6 +20,7 @@ const validators = {
         .max(30, 'Username too long'),
       password: z.string().min(6, 'Password must be at least 6 characters'),
       confirmPassword: z.string(),
+      inviteToken: z.string().optional(),
     })
     .refine((d) => d.password === d.confirmPassword, {
       message: 'Passwords do not match',

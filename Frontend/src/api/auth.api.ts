@@ -20,7 +20,14 @@ export async function login(
 
 /** Register */
 export async function register(
-  dto: { fullName: string; email: string; username: string; password: string; confirmPassword: string },
+  dto: {
+    fullName: string;
+    email: string;
+    username: string;
+    password: string;
+    confirmPassword: string;
+    inviteToken?: string;
+  },
 ): Promise<AuthResponse> {
   const res = await api.post<any>(Endpoints.AUTH_REGISTER, dto);
   if (res.user) res.user.id = res.user._id || res.user.id;

@@ -556,3 +556,83 @@ exports.revokeInvitation = async (req, res, next) => {
     next(err);
   }
 };
+
+// ─── OWNER: Cancel invite (alias) ─────────────────────────────────
+
+exports.cancelInvite = async (req, res, next) => {
+  try {
+    const { projectId, invitationId } = req.params;
+
+    await checkCanInvite(projectId, req.user);
+
+    const result = await Invitation.findOneAndUpdate(
+      {
+        _id: new ObjectId(invitationId),
+        projectId: new ObjectId(projectId),
+        status: 'PENDING',
+      },
+      { $set: { status: 'REVOKED' } },
+      { new: true },
+    );
+
+    if (!result) {
+      throw errors.NotFound('Pending invitation');
+    }
+
+    res.json({ success: true, message: 'Invitation cancelled' });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── OWNER: Resend invite email ──────────────────────────────────
+
+exports.resendInvite = async (req, res, next) => {
+  try {
+    const { projectId, invitationId } = req.params;
+
+    await checkCanInvite(projectId, req.user);
+
+    const invitation = await Invitation.findOne({
+      _id: new ObjectId(invitationId),
+      projectId: new ObjectId(projectId),
+      status: 'PENDING',
+    }).lean();
+
+    if (!invitation) {
+      throw errors.NotFound('Pending invitation');
+    }
+
+    if (invitation.expiresAt < new Date()) {
+      throw errors.BadRequest('Cannot resend an expired invitation');
+    }
+
+    const project = await Project.findById(projectId, 'name').lean();
+    const inviter = await User.findById(req.user.id, 'fullName').lean();
+
+    const emailResult = await sendProjectInviteEmail({
+      to: invitation.invitedEmail,
+      projectName: project?.name || 'Project',
+      inviterName: inviter?.fullName || req.user.username || 'A teammate',
+      token: invitation.token,
+    }).catch((err) => {
+      console.error('[InviteEmail] Resend failed:', err.message);
+      return { sent: false, inviteUrl: buildInviteUrl(invitation.token), reason: 'SEND_FAILED' };
+    });
+
+    res.json({
+      success: true,
+      data: {
+        id: invitation._id,
+        inviteUrl: emailResult.inviteUrl,
+        emailSent: emailResult.sent,
+        emailStatus: emailResult.reason || 'SENT',
+        expiresAt: invitation.expiresAt,
+      },
+      message: emailResult.sent ? 'Invitation email resent' : 'Email could not be sent. Use the invite URL.',
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+

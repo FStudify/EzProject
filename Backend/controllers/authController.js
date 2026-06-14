@@ -2,10 +2,14 @@
 
 const bcrypt = require('bcrypt');
 const jwt = require('jsonwebtoken');
+const mongoose = require('mongoose');
 const User = require('../models/User');
 const RefreshToken = require('../models/RefreshToken');
+const Invitation = require('../models/Invitation');
 const config = require('../config');
 const { errors } = require('../middlewares/errorHandler');
+
+const ObjectId = mongoose.Types.ObjectId;
 
 function signTokens(payload) {
   const accessToken = jwt.sign(payload, config.jwt.secret, {
@@ -43,16 +47,50 @@ exports.login = async (req, res, next) => {
 
 exports.register = async (req, res, next) => {
   try {
-    const { fullName, email, username, password } = req.body;
+    const { fullName, email, username, password, inviteToken } = req.body;
 
-    const existingEmail = await User.findOne({ email });
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+
+    const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) throw errors.Conflict('Email already in use');
 
     const existingUsername = await User.findOne({ username });
     if (existingUsername) throw errors.Conflict('Username already taken');
 
     const passwordHash = await bcrypt.hash(password, 12);
-    const user = await User.create({ email, username, passwordHash, fullName });
+    const user = await User.create({
+      email: normalizedEmail,
+      username,
+      passwordHash,
+      fullName,
+    });
+
+    let joinedProject = null;
+
+    // ── If signup was triggered by an email invite, accept it automatically ──
+    if (inviteToken) {
+      try {
+        const invitation = await Invitation.findOne({ token: inviteToken });
+        if (
+          invitation &&
+          invitation.status === 'PENDING' &&
+          invitation.expiresAt >= new Date() &&
+          invitation.invitedEmail &&
+          invitation.invitedEmail.toLowerCase() === normalizedEmail
+        ) {
+          // Defer to invitationController to keep the accept logic in one place
+          const acceptController = require('./invitationController');
+          const result = await acceptController.acceptInvitationDocument(invitation, {
+            id: user._id.toString(),
+            email: user.email,
+          });
+          joinedProject = result;
+        }
+      } catch (err) {
+        // Account was created but invite-accept failed; don't fail the signup
+        console.error('[Register] Auto-accept invite failed:', err.message);
+      }
+    }
 
     const payload = { sub: user._id.toString(), email: user.email, username: user.username };
     const { accessToken, refreshToken } = signTokens(payload);
@@ -63,7 +101,15 @@ exports.register = async (req, res, next) => {
 
     const obj = user.toObject();
     delete obj.passwordHash;
-    res.status(201).json({ success: true, data: { user: obj, accessToken, refreshToken } });
+    res.status(201).json({
+      success: true,
+      data: {
+        user: obj,
+        accessToken,
+        refreshToken,
+        joinedProject,
+      },
+    });
   } catch (err) {
     next(err);
   }

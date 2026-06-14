@@ -21,7 +21,7 @@ function getFrontendUrl() {
 }
 
 function buildInviteUrl(token) {
-  return `${getFrontendUrl()}/app/join/${token}`;
+  return `${getFrontendUrl()}/invite/${token}`;
 }
 
 async function sendProjectInviteEmail({ to, projectName, inviterName, token }) {

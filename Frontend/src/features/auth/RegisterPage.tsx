@@ -1,7 +1,7 @@
-import { type FormEvent, type ReactNode, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import { type FormEvent, type ReactNode, useState, useEffect } from 'react';
+import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { AtSign, Eye, EyeOff, LockKeyhole, UserCircle2, GraduationCap, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { AtSign, Eye, EyeOff, LockKeyhole, UserCircle2, GraduationCap, Sun, Moon, ArrowLeft, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -90,19 +90,26 @@ function RegisterInput({
 }
 
 export default function RegisterPage() {
+  const [searchParams] = useSearchParams();
+  const inviteToken = searchParams.get('invite') ?? '';
+  const prefilledEmail = searchParams.get('email') ?? '';
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [displayName, setDisplayName] = useState('');
-  const [email, setEmail] = useState('');
+  const [email, setEmail] = useState(prefilledEmail);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
   const { register: registerUser } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLanguage();
   const navigate = useNavigate();
+
+  useEffect(() => {
+    if (prefilledEmail) setEmail(prefilledEmail);
+  }, [prefilledEmail]);
 
   async function handleSubmit(e: FormEvent) {
     e.preventDefault();
@@ -125,9 +132,15 @@ export default function RegisterPage() {
         username,
         password,
         confirmPassword,
+        inviteToken: inviteToken || undefined,
       });
       if (ok) {
-        navigate('/app', { replace: true });
+        // If signup was for an invite, go to /app/join/{token} which will auto-accept
+        if (inviteToken) {
+          navigate(`/app/join/${inviteToken}`, { replace: true });
+        } else {
+          navigate('/app', { replace: true });
+        }
       } else {
         setError(t('error'));
       }
@@ -226,6 +239,15 @@ export default function RegisterPage() {
                 <p className="mt-1.5 text-sm leading-relaxed" style={{ color: '#635648' }}>
                   {t('register_subtitle')}
                 </p>
+                {inviteToken && prefilledEmail && (
+                  <div
+                    className="mt-3 flex items-center gap-2 rounded-xl px-3.5 py-2.5 text-sm"
+                    style={{ backgroundColor: '#FFF5EC', border: '1px solid #F0D6BD', color: '#7A4524' }}
+                  >
+                    <Users className="h-4 w-4 shrink-0" style={{ color: '#D97853' }} />
+                    <span>Create your account to join the project. Email is pre-filled.</span>
+                  </div>
+                )}
               </div>
 
               <form onSubmit={handleSubmit} className="space-y-3.5">

@@ -44,9 +44,19 @@ const config = {
     maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10),
   },
 
-  cors: {
-    origin: process.env.CORS_ORIGIN || 'http://localhost:5173',
-  },
+  cors: (() => {
+    const raw = process.env.CORS_ORIGIN || 'http://localhost:5173';
+    // Support comma-separated list of origins: https://app.vercel.app,https://staging.vercel.app
+    const allowed = raw
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+
+    return {
+      origin: allowed.length > 1 ? allowed : allowed[0],
+      credentials: true,
+    };
+  })(),
 
   rateLimit: {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),

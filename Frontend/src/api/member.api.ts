@@ -135,6 +135,19 @@ export async function revokeInvitation(projectId: string, invitationId: string):
   return api.delete(Endpoints.INVITATION_DETAIL(projectId, invitationId));
 }
 
+/** Resend invitation email (owner only) */
+export async function resendInvitation(
+  projectId: string,
+  invitationId: string,
+): Promise<{ inviteUrl: string; emailSent: boolean; emailStatus?: string; expiresAt: string }> {
+  return api.post(Endpoints.INVITATION_RESEND(projectId, invitationId));
+}
+
+/** Cancel pending invitation (owner only) */
+export async function cancelInvitation(projectId: string, invitationId: string): Promise<void> {
+  return api.delete(Endpoints.INVITATION_CANCEL(projectId, invitationId));
+}
+
 /** ── Leave / Transfer ─────────────────────────────────── */
 
 /** Rời dự án — handle all 3 cases:

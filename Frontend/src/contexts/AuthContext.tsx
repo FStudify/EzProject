@@ -37,6 +37,7 @@ interface AuthContextValue {
     username: string;
     password: string;
     confirmPassword: string;
+    inviteToken?: string;
   }) => Promise<boolean>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
@@ -102,6 +103,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       username: string;
       password: string;
       confirmPassword: string;
+      inviteToken?: string;
     }): Promise<boolean> => {
       try {
         const res = await apiRegister(data);

@@ -17,7 +17,7 @@ async function bootstrap() {
   // ── Socket.io ──────────────────────────────────────────────────────────────
   const io = new SocketIOServer(server, {
     cors: {
-      origin: config.cors.origin,
+      origin: Array.isArray(config.cors.origin) ? config.cors.origin : [config.cors.origin],
       methods: ['GET', 'POST'],
       credentials: true,
     },

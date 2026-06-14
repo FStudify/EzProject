@@ -17,6 +17,7 @@ import { ThemeProvider, LanguageProvider, AuthProvider } from '@/contexts';
 import { ChatSocketProvider } from '@/contexts/ChatSocketContext';
 import LandingPage from '@/features/landing/LandingPage';
 import JoinProjectPage from '@/features/members/JoinProjectPage';
+import InviteLandingPage from '@/features/members/InviteLandingPage';
 
 const router = createBrowserRouter([
   {
@@ -38,6 +39,10 @@ const router = createBrowserRouter([
   {
     path: '/',
     element: <LandingPage />,
+  },
+  {
+    path: '/invite/:token',
+    element: <InviteLandingPage />,
   },
   {
     path: '/app/join/:token',
