@@ -327,6 +327,28 @@ exports.acceptInviteByToken = async (req, res, next) => {
 
 // ─── OWNER: Create manual invitation (by username or email) ──────
 
+function escapeRegex(str) {
+  return String(str || '').replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+}
+
+async function findUserByIdentifier(identifier) {
+  const raw = String(identifier || '').trim();
+  if (!raw) return null;
+
+  const looksLikeEmail = /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(raw);
+  if (looksLikeEmail) {
+    return User.findOne({ email: raw.toLowerCase() }).lean();
+  }
+
+  const exact = escapeRegex(raw);
+  return User.findOne({
+    $or: [
+      { username: { $regex: `^${exact}$`, $options: 'i' } },
+      { fullName: { $regex: `^${exact}$`, $options: 'i' } },
+    ],
+  }).lean();
+}
+
 exports.createInvitation = async (req, res, next) => {
   try {
     const { projectId } = req.params;
@@ -339,13 +361,8 @@ exports.createInvitation = async (req, res, next) => {
     const project = await checkOwner(projectId, req.user.id);
     const projectOid = new ObjectId(projectId);
 
-    let invitedUser = null;
-
-    if (username) {
-      invitedUser = await User.findOne({ fullName: { $regex: `^${username}$`, $options: 'i' } }).lean();
-    } else if (email) {
-      invitedUser = await User.findOne({ email: email.toLowerCase() }).lean();
-    }
+    const identifier = (email || username || '').trim();
+    const invitedUser = await findUserByIdentifier(identifier);
 
     if (!invitedUser) {
       throw errors.NotFound('User not found');
@@ -381,7 +398,7 @@ exports.createInvitation = async (req, res, next) => {
       invitedBy: new ObjectId(req.user.id),
       invitedUserId: invitedUser._id,
       invitedEmail: invitedUser.email,
-      invitedUsername: invitedUser.fullName,
+      invitedUsername: invitedUser.username || invitedUser.fullName,
       status: 'PENDING',
       expiresAt,
     });

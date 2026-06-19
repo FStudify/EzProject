@@ -7,6 +7,7 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import {
   acceptInviteByToken,
   getInviteByToken,
+  joinByInvite,
   type InviteTokenDetails,
 } from '@/api/member.api';
 
@@ -62,6 +63,19 @@ export default function JoinProjectPage() {
         navigate(`/app/projects/${result.projectId}`, { replace: true });
       })
       .catch((err: unknown) => {
+        // If the email-invite endpoint returns 404, this token may belong
+        // to a "shareable invite link" instead — try that endpoint as fallback.
+        const msg = err instanceof Error ? err.message : '';
+        if (/not\s*found|invitation/i.test(msg)) {
+          return joinByInvite(token)
+            .then((r) => {
+              navigate(`/app/projects/${r.projectId}`, { replace: true });
+            })
+            .catch((err2: unknown) => {
+              setError(err2 instanceof Error ? err2.message : t('invite_invalid'));
+              setPhase('error');
+            });
+        }
         setError(err instanceof Error ? err.message : t('invite_invalid'));
         setPhase('error');
       });
