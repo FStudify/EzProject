@@ -5,13 +5,20 @@ require('dotenv/config');
 const isProd = process.env.NODE_ENV === 'production';
 
 if (isProd) {
-  const missing = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGO_URI'].filter(
+  const missing = ['JWT_SECRET', 'JWT_REFRESH_SECRET', 'MONGO_URI', 'CORS_ORIGIN', 'FRONTEND_URL'].filter(
     (key) => !process.env[key],
   );
 
   if (missing.length > 0) {
     throw new Error(`Missing required production environment variables: ${missing.join(', ')}`);
   }
+
+  // Warn about common deployment mistakes
+  ['CORS_ORIGIN', 'FRONTEND_URL'].forEach((key) => {
+    if (process.env[key] && process.env[key].includes('localhost')) {
+      console.warn(`[Config] ⚠️  ${key} contains "localhost" in production. Did you forget to update it?`);
+    }
+  });
 }
 
 const config = {
@@ -37,11 +44,6 @@ const config = {
         return '127.0.0.1';
       }
     })(),
-  },
-
-  upload: {
-    dir: process.env.UPLOAD_DIR || './uploads',
-    maxFileSize: parseInt(process.env.MAX_FILE_SIZE || '10485760', 10),
   },
 
   cors: (() => {

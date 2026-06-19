@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router-dom';
-import { Button, Modal, Badge, useToast, Avatar } from '@/components/ui';
+import { Button, Modal, Badge, useToast, Avatar, SkeletonList } from '@/components/ui';
 import { UserPlus, LogOut, Link2, Crown } from 'lucide-react';
 import type { ProjectRole } from '@/types';
 import { useAuth } from '@/contexts/AuthContext';
@@ -239,8 +239,8 @@ export default function MemberList() {
         style={{ backgroundColor: '#FFFDFB', borderColor: '#E8D8CF' }}
       >
         {loading ? (
-          <div className="py-16 text-center text-sm" style={{ color: '#9a9086' }}>
-            {t('loading')}
+          <div className="p-5">
+            <SkeletonList rows={4} />
           </div>
         ) : members.length === 0 ? (
           <div className="py-16 text-center text-sm" style={{ color: '#9a9086' }}>

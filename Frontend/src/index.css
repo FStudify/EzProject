@@ -40,6 +40,9 @@
   --color-ink: #1F1F1F;
   --color-ink-secondary: #635648;
   --color-ink-muted: #7D6F66;
+
+  /* Fonts */
+  --font-sans: 'Be Vietnam Pro', 'Inter', system-ui, sans-serif;
 }
 
 /* Utility for sidebar background gradient to match provided design */
@@ -73,7 +76,7 @@ html.dark {
 /* ── Body ─────────────────────────────────────────────────────────── */
 body {
   margin: 0;
-  font-family: 'Inter', system-ui, -apple-system, sans-serif;
+  font-family: var(--font-sans);
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   background-color: var(--color-canvas);

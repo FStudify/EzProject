@@ -9,6 +9,9 @@ import {
   AlertTriangle,
   TrendingUp,
   Loader2,
+  ClipboardList,
+  CheckCircle2,
+  PlayCircle,
 } from 'lucide-react';
 import { getProject } from '@/api/project.api';
 import { getTasks } from '@/api/task.api';
@@ -128,18 +131,25 @@ export default function ProjectOverview() {
       </Card>
 
       {/* Stats row */}
-      <div className="grid grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
         {[
-          { label: 'Tổng', value: stats.total, color: 'text-ink' },
-          { label: 'Hoàn thành', value: stats.done, color: 'text-success' },
-          { label: 'Đang làm', value: stats.inProgress, color: 'text-primary' },
-          { label: 'Quá hạn', value: stats.overdue, color: stats.overdue > 0 ? 'text-danger' : 'text-ink-muted' },
-        ].map(s => (
-          <div key={s.label} className="rounded-xl border border-border bg-surface px-3 py-2.5 text-center">
-            <p className={`text-xl font-bold ${s.color}`}>{s.value}</p>
-            <p className="mt-0.5 text-xs text-ink-muted">{s.label}</p>
-          </div>
-        ))}
+          { label: 'Tổng công việc', value: stats.total, color: 'text-ink', icon: ClipboardList, bg: 'bg-slate-50 border-slate-200', iconColor: 'text-slate-600' },
+          { label: 'Hoàn thành', value: stats.done, color: 'text-success', icon: CheckCircle2, bg: 'bg-emerald-50/50 border-emerald-100', iconColor: 'text-emerald-600' },
+          { label: 'Đang làm', value: stats.inProgress, color: 'text-primary', icon: PlayCircle, bg: 'bg-blue-50/50 border-blue-100', iconColor: 'text-blue-600' },
+          { label: 'Thành viên', value: project.members.length, color: 'text-orange-600', icon: Users, bg: 'bg-orange-50/50 border-orange-100', iconColor: 'text-orange-600' },
+          { label: 'Ngày còn lại', value: daysLeft < 0 ? 0 : daysLeft, color: deadlineColor, icon: Calendar, bg: daysLeft < 0 ? 'bg-rose-50/50 border-rose-100' : 'bg-teal-50/50 border-teal-100', iconColor: daysLeft < 0 ? 'text-rose-600' : 'text-teal-600' },
+        ].map(s => {
+          const Icon = s.icon;
+          return (
+            <div key={s.label} className={`rounded-xl border px-4 py-3 flex flex-col justify-between hover:scale-[1.02] transition-transform duration-200 ${s.bg}`}>
+              <div className="flex items-center justify-between mb-2">
+                <span className="text-xs font-semibold text-ink-muted tracking-wide uppercase">{s.label}</span>
+                <Icon className={`h-4 w-4 ${s.iconColor}`} />
+              </div>
+              <p className={`text-2xl font-extrabold tracking-tight ${s.color}`}>{s.value}</p>
+            </div>
+          );
+        })}
       </div>
 
       {/* Alert */}

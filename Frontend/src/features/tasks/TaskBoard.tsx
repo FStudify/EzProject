@@ -4,7 +4,7 @@ import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock } from 'lucide-rea
 import { projectService } from '@/services';
 import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
 import type { Task, TaskStatus } from '@/types';
-import { Button } from '@/components/ui';
+import { Button, EmptyState, useToast, Skeleton } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
 import { ChatPanel } from '@/features/chat';
 import TaskColumn from './TaskColumn';
@@ -42,6 +42,7 @@ const emptyFilters: Filters = {
 
 export default function TaskBoard() {
   const { t } = useLanguage();
+  const { toast } = useToast();
   const { projectId } = useParams<{ projectId: string }>();
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -141,10 +142,12 @@ export default function TaskBoard() {
         deadline: task.deadline ?? undefined,
       });
       setTasks((prev) => [...prev, created]);
+      toast(t('task_created') || 'Đã tạo công việc thành công', 'success');
     } catch (err) {
       console.error('Failed to create task:', err);
+      toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
     }
-  }, [projectId]);
+  }, [projectId, t, toast]);
 
   const handleDeleteTask = useCallback(async (task: Task) => {
     if (!projectId) return;
@@ -153,20 +156,24 @@ export default function TaskBoard() {
       setTasks((prev) => prev.filter((t) => t.id !== task.id));
       setSelectedTask(null);
       setIsDetailOpen(false);
+      toast(t('task_deleted') || 'Đã xóa công việc thành công', 'success');
     } catch (err) {
       console.error('Failed to delete task:', err);
+      toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
     }
-  }, [projectId]);
+  }, [projectId, t, toast]);
 
   const handleStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus) => {
     if (!projectId) return;
     try {
       const updated = await apiUpdateTask(projectId, taskId, { status: newStatus });
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      toast(t('task_updated') || 'Đã cập nhật công việc thành công', 'success');
     } catch (err) {
       console.error('Failed to update task status:', err);
+      toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
     }
-  }, [projectId]);
+  }, [projectId, t, toast]);
 
   const handleSaveTask = useCallback(async (updated: Task) => {
     if (!projectId) return;
@@ -181,10 +188,12 @@ export default function TaskBoard() {
       });
       setTasks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
       setSelectedTask(saved);
+      toast(t('task_updated') || 'Đã cập nhật công việc thành công', 'success');
     } catch (err) {
       console.error('Failed to save task:', err);
+      toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
     }
-  }, [projectId]);
+  }, [projectId, t, toast]);
 
   useEffect(() => {
     if (!projectId) {
@@ -389,141 +398,161 @@ export default function TaskBoard() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="flex flex-1 items-center justify-center">
-            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+          <div className="grid w-full min-w-[1020px] grid-cols-4 gap-2.5">
+            {Array.from({ length: 4 }).map((_, i) => (
+              <div key={i} className="rounded-xl border border-border bg-surface p-4 space-y-4">
+                <Skeleton className="h-4 w-1/3" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+                <Skeleton className="h-20 w-full" />
+              </div>
+            ))}
           </div>
         )}
 
         {/* Views */}
-        {!isLoading && viewMode === 'reminders' && (
-          <div className="flex flex-1 gap-6 overflow-hidden min-h-0">
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface">
-              <h3 className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 text-base font-semibold text-slate-900">
-                <AlertTriangle className="h-4 w-4 text-rose-500" />
-                {t('overdue')} ({overdueTasks.length})
-              </h3>
-              <div className="ez-task-scrollbar flex-1 overflow-auto p-4">
-                {overdueTasks.length === 0 ? (
-                  <p className="text-sm text-slate-500">{t('no_overdue')}</p>
-                ) : (
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-600">
-                        <th className="py-2 pr-3 font-semibold">{t('task')}</th>
-                        <th className="py-2 pr-3 font-semibold">{t('assigned_to')}</th>
-                        <th className="py-2 font-semibold">{t('due')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {overdueTasks.map((task) => (
-                        <tr
-                          key={task.id}
-                          className="border-b border-slate-100 last:border-0 hover:bg-rose-50/50 cursor-pointer"
-                          onClick={() => { setSelectedTask(task); setIsDetailOpen(true); }}
-                        >
-                          <td className="py-2.5 pr-3 font-medium text-slate-900">{task.title}</td>
-                          <td className="py-2.5 pr-3">
-                            <div className="flex items-center gap-2">
-                              {task.assignee && (
-                                <>
-                                  <Avatar name={task.assignee.fullName} src={task.assignee.avatar ?? undefined} size="sm" />
-                                  <span className="text-slate-600">{task.assignee.fullName}</span>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2.5 text-slate-600">
-                            {task.deadline && new Date(task.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
-            <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface">
-              <h3 className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 text-base font-semibold text-slate-900">
-                <Clock className="h-4 w-4 text-amber-500" />
-                {t('due_soon_3_days')} ({dueSoonTasks.length})
-              </h3>
-              <div className="ez-task-scrollbar flex-1 overflow-auto p-4">
-                {dueSoonTasks.length === 0 ? (
-                  <p className="text-sm text-slate-500">{t('no_due_soon')}</p>
-                ) : (
-                  <table className="w-full text-left text-sm">
-                    <thead>
-                      <tr className="border-b border-slate-200 text-slate-600">
-                        <th className="py-2 pr-3 font-semibold">{t('task')}</th>
-                        <th className="py-2 pr-3 font-semibold">{t('assigned_to')}</th>
-                        <th className="py-2 font-semibold">{t('due')}</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {dueSoonTasks.map((task) => (
-                        <tr
-                          key={task.id}
-                          className="border-b border-slate-100 last:border-0 hover:bg-amber-50/50 cursor-pointer"
-                          onClick={() => { setSelectedTask(task); setIsDetailOpen(true); }}
-                        >
-                          <td className="py-2.5 pr-3 font-medium text-slate-900">{task.title}</td>
-                          <td className="py-2.5 pr-3">
-                            <div className="flex items-center gap-2">
-                              {task.assignee && (
-                                <>
-                                  <Avatar name={task.assignee.fullName} src={task.assignee.avatar ?? undefined} size="sm" />
-                                  <span className="text-slate-600">{task.assignee.fullName}</span>
-                                </>
-                              )}
-                            </div>
-                          </td>
-                          <td className="py-2.5 text-slate-600">
-                            {task.deadline && new Date(task.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
-                          </td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                )}
-              </div>
-            </div>
+        {!isLoading && tasks.length === 0 ? (
+          <div className="flex flex-1 items-center justify-center bg-surface rounded-xl border border-border p-8">
+            <EmptyState
+              title={t('no_tasks_title') || 'Chưa có công việc nào'}
+              description={t('no_tasks_description') || 'Tạo công việc đầu tiên để bắt đầu quản lý dự án!'}
+              actionLabel={t('add_task') || 'Thêm công việc'}
+              onAction={() => setIsAddOpen(true)}
+            />
           </div>
-        )}
-
-        {!isLoading && viewMode === 'kanban' && (
-          <div className="kanban-scroll ez-task-scrollbar flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
-            <div className="grid w-full min-w-[1020px] grid-cols-4 gap-2.5">
-              {COLUMNS.map(({ status, titleKey }) => (
-                <TaskColumn
-                  key={status}
-                  status={status}
-                  title={t(titleKey)}
-                  tasks={getTasksByStatus(status)}
-                  onTaskClick={(task) => {
-                    setSelectedTask(task);
-                    setIsDetailOpen(true);
-                  }}
-                  onDrop={handleStatusChange}
-                />
-              ))}
-            </div>
-          </div>
-        )}
-
-        {!isLoading && viewMode === 'timeline' && (
-          <div className="ez-task-scrollbar flex-1 overflow-y-auto pb-4">
-            {project && (
-              <TaskTimeline
-                tasks={filteredTasks}
-                projectStart={project.createdAt ?? ''}
-                projectDeadline={project.deadline ?? ''}
-                onTaskClick={(task) => {
-                  setSelectedTask(task);
-                  setIsDetailOpen(true);
-                }}
-              />
+        ) : (
+          <>
+            {!isLoading && viewMode === 'reminders' && (
+              <div className="flex flex-1 gap-6 overflow-hidden min-h-0">
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface">
+                  <h3 className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 text-base font-semibold text-slate-900">
+                    <AlertTriangle className="h-4 w-4 text-rose-500" />
+                    {t('overdue')} ({overdueTasks.length})
+                  </h3>
+                  <div className="ez-task-scrollbar flex-1 overflow-auto p-4">
+                    {overdueTasks.length === 0 ? (
+                      <p className="text-sm text-slate-500">{t('no_overdue')}</p>
+                    ) : (
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-600">
+                            <th className="py-2 pr-3 font-semibold">{t('task')}</th>
+                            <th className="py-2 pr-3 font-semibold">{t('assigned_to')}</th>
+                            <th className="py-2 font-semibold">{t('due')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {overdueTasks.map((task) => (
+                            <tr
+                              key={task.id}
+                              className="border-b border-slate-100 last:border-0 hover:bg-rose-50/50 cursor-pointer"
+                              onClick={() => { setSelectedTask(task); setIsDetailOpen(true); }}
+                            >
+                              <td className="py-2.5 pr-3 font-medium text-slate-900">{task.title}</td>
+                              <td className="py-2.5 pr-3">
+                                <div className="flex items-center gap-2">
+                                  {task.assignee && (
+                                    <>
+                                      <Avatar name={task.assignee.fullName} src={task.assignee.avatar ?? undefined} size="sm" />
+                                      <span className="text-slate-600">{task.assignee.fullName}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-slate-600">
+                                {task.deadline && new Date(task.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+                <div className="flex min-w-0 flex-1 flex-col overflow-hidden rounded-xl border border-border bg-surface">
+                  <h3 className="flex shrink-0 items-center gap-2 border-b border-border px-4 py-3 text-base font-semibold text-slate-900">
+                    <Clock className="h-4 w-4 text-amber-500" />
+                    {t('due_soon_3_days')} ({dueSoonTasks.length})
+                  </h3>
+                  <div className="ez-task-scrollbar flex-1 overflow-auto p-4">
+                    {dueSoonTasks.length === 0 ? (
+                      <p className="text-sm text-slate-500">{t('no_due_soon')}</p>
+                    ) : (
+                      <table className="w-full text-left text-sm">
+                        <thead>
+                          <tr className="border-b border-slate-200 text-slate-600">
+                            <th className="py-2 pr-3 font-semibold">{t('task')}</th>
+                            <th className="py-2 pr-3 font-semibold">{t('assigned_to')}</th>
+                            <th className="py-2 font-semibold">{t('due')}</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {dueSoonTasks.map((task) => (
+                            <tr
+                              key={task.id}
+                              className="border-b border-slate-100 last:border-0 hover:bg-amber-50/50 cursor-pointer"
+                              onClick={() => { setSelectedTask(task); setIsDetailOpen(true); }}
+                            >
+                              <td className="py-2.5 pr-3 font-medium text-slate-900">{task.title}</td>
+                              <td className="py-2.5 pr-3">
+                                <div className="flex items-center gap-2">
+                                  {task.assignee && (
+                                    <>
+                                      <Avatar name={task.assignee.fullName} src={task.assignee.avatar ?? undefined} size="sm" />
+                                      <span className="text-slate-600">{task.assignee.fullName}</span>
+                                    </>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-2.5 text-slate-600">
+                                {task.deadline && new Date(task.deadline).toLocaleDateString(undefined, { day: 'numeric', month: 'short', year: 'numeric' })}
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    )}
+                  </div>
+                </div>
+              </div>
             )}
-          </div>
+
+            {!isLoading && viewMode === 'kanban' && (
+              <div className="kanban-scroll ez-task-scrollbar flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
+                <div className="grid w-full min-w-[1020px] grid-cols-4 gap-2.5">
+                  {COLUMNS.map(({ status, titleKey }) => (
+                    <TaskColumn
+                      key={status}
+                      status={status}
+                      title={t(titleKey)}
+                      tasks={getTasksByStatus(status)}
+                      onTaskClick={(task) => {
+                        setSelectedTask(task);
+                        setIsDetailOpen(true);
+                      }}
+                      onDrop={handleStatusChange}
+                    />
+                  ))}
+                </div>
+              </div>
+            )}
+
+            {!isLoading && viewMode === 'timeline' && (
+              <div className="ez-task-scrollbar flex-1 overflow-y-auto pb-4">
+                {project && (
+                  <TaskTimeline
+                    tasks={filteredTasks}
+                    projectStart={project.createdAt ?? ''}
+                    projectDeadline={project.deadline ?? ''}
+                    onTaskClick={(task) => {
+                      setSelectedTask(task);
+                      setIsDetailOpen(true);
+                    }}
+                  />
+                )}
+              </div>
+            )}
+          </>
         )}
       </div>
 

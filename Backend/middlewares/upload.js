@@ -13,11 +13,22 @@ const { sanitizeOriginalFilename } = require('../utils/fileStorage');
 
 // Export cloudinary v2 so controllers can use it directly
 const cloudinary = require('cloudinary').v2;
-cloudinary.config({
-  cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
-  api_key: process.env.CLOUDINARY_API_KEY,
-  api_secret: process.env.CLOUDINARY_API_SECRET,
-});
+
+function hasCloudinaryConfig() {
+  return Boolean(
+    process.env.CLOUDINARY_CLOUD_NAME &&
+    process.env.CLOUDINARY_API_KEY &&
+    process.env.CLOUDINARY_API_SECRET,
+  );
+}
+
+if (hasCloudinaryConfig()) {
+  cloudinary.config({
+    cloud_name: process.env.CLOUDINARY_CLOUD_NAME,
+    api_key: process.env.CLOUDINARY_API_KEY,
+    api_secret: process.env.CLOUDINARY_API_SECRET,
+  });
+}
 
 // ── Helpers ──────────────────────────────────────────────────────────────────
 
@@ -119,6 +130,13 @@ function fileUrl(req, filePath) {
  * @returns {Promise<string>} secure_url
  */
 function uploadToCloudinary(buffer, options = {}) {
+  if (!hasCloudinaryConfig()) {
+    return Promise.reject(
+      new Error(
+        'Cloudinary credentials not configured. Set CLOUDINARY_CLOUD_NAME, CLOUDINARY_API_KEY, CLOUDINARY_API_SECRET in .env',
+      ),
+    );
+  }
   return new Promise((resolve, reject) => {
     const stream = cloudinary.uploader.upload_stream(options, (err, result) => {
       if (err) return reject(err);

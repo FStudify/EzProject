@@ -2,7 +2,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
 import { getProjects, createProject } from '@/api/project.api';
 import type { ProjectStatus } from '@/api/types';
-import { Button, Modal, useToast } from '@/components/ui';
+import { Button, Modal, useToast, SkeletonCard } from '@/components/ui';
 import ProjectCard from './ProjectCard';
 import type { Project } from '@/types';
 import {
@@ -402,9 +402,11 @@ export default function ProjectListPage() {
       {/* Project list */}
       <div className="grid grid-cols-1 gap-6 md:grid-cols-2 xl:grid-cols-3">
         {loading ? (
-          <p className="col-span-full py-12 text-center text-sm text-ink-muted">
-            Đang tải dự án…
-          </p>
+          <>
+            <SkeletonCard />
+            <SkeletonCard />
+            <SkeletonCard />
+          </>
         ) : error ? (
           <p className="col-span-full py-12 text-center text-sm text-red-500">{error}</p>
         ) : sortedProjects.length === 0 ? (

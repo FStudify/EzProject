@@ -26,6 +26,17 @@ function isElevated(member) {
   return member.isOwner || member.role === 'LEADER' || member.role === 'SUPERVISOR';
 }
 
+async function recalculateProjectProgress(projectId) {
+  const tasks = await Task.find({ projectId: new ObjectId(projectId) });
+  if (tasks.length === 0) {
+    await Project.findByIdAndUpdate(projectId, { $set: { progress: 0 } });
+    return;
+  }
+  const doneTasks = tasks.filter((t) => t.status === 'DONE');
+  const progress = Math.round((doneTasks.length / tasks.length) * 100);
+  await Project.findByIdAndUpdate(projectId, { $set: { progress } });
+}
+
 // ── GET /projects/:projectId/tasks ────────────────────────────────────────────
 exports.list = async (req, res, next) => {
   try {
@@ -103,6 +114,8 @@ exports.create = async (req, res, next) => {
       { path: 'creatorId', select: 'id fullName avatar' },
     ]);
 
+    await recalculateProjectProgress(req.params.projectId);
+
     res.status(201).json({ success: true, data: task });
   } catch (err) {
     next(err);
@@ -140,6 +153,8 @@ exports.update = async (req, res, next) => {
       .populate('assigneeId', 'id fullName avatar')
       .populate('creatorId', 'id fullName avatar');
 
+    await recalculateProjectProgress(req.params.projectId);
+
     res.json({ success: true, data: updated });
   } catch (err) {
     next(err);
@@ -162,6 +177,7 @@ exports.delete = async (req, res, next) => {
     }
 
     await Task.findByIdAndDelete(req.params.taskId);
+    await recalculateProjectProgress(req.params.projectId);
     res.status(204).send();
   } catch (err) {
     next(err);

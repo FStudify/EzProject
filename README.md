@@ -8,27 +8,46 @@ Unified workspace platform for student teams — tasks, documents, chat, meeting
 EzProject/
 ├── Frontend/              # React 19 + Vite + TypeScript + Tailwind CSS 4
 │   ├── src/
-│   │   ├── api/           # Centralized API layer
-│   │   ├── contexts/      # React contexts (Auth, Theme, Language)
-│   │   ├── components/    # Shared UI components
-│   │   ├── features/      # Feature modules (dashboard, projects, tasks, etc.)
-│   │   ├── hooks/         # Custom React hooks
-│   │   ├── i18n/          # Internationalization
-│   │   └── mocks/         # Mock data (dev only)
+│   │   ├── api/           # Centralized API layer (config, endpoints, *.api.ts)
+│   │   ├── contexts/      # Auth, Theme, Language, ChatSocket, Sidebar
+│   │   ├── components/    # Shared UI (ui/) + Layout (layout/)
+│   │   ├── features/      # Feature modules (auth, dashboard, projects, tasks, ...)
+│   │   ├── i18n/          # Custom VI/EN dictionary
+│   │   ├── mocks/         # Mock data fallback (dev only)
+│   │   └── services/      # projectService, taskService
+│   ├── package.json
+│   └── vercel.json
+│
+├── Backend/               # Express.js (CommonJS) + Mongoose + MongoDB Atlas
+│   ├── server.js          # Entry: start HTTP + Socket.io
+│   ├── app.js             # Express config (middleware, routes)
+│   ├── config/            # index.js (env-based), database.js, upload.config.js
+│   ├── models/            # 11 Mongoose models (User, Project, Task, Chat, Document, Meeting, ...)
+│   ├── controllers/       # 12 business logic handlers
+│   ├── routes/            # 14 route files
+│   ├── middlewares/       # auth, errorHandler, rateLimit, upload, documentUploadRateLimiter
+│   ├── services/          # emailService
+│   ├── socket.js          # Socket.io server logic
+│   ├── utils/             # fileStorage
+│   ├── validators/        # Zod schemas
+│   ├── seed/              # seed.js (5 users), seedAdmin.js
+│   ├── scripts/           # migrate-document-size.js
 │   └── package.json
 │
-├── Backend/               # Express.js + TypeScript + Mongoose + MongoDB Atlas
-│   ├── src/
-│   │   ├── config/        # Environment config (typed)
-│   │   ├── database/       # MongoDB Atlas connection
-│   │   ├── models/         # Mongoose schemas (User, Project, Task, etc.)
-│   │   ├── services/       # Business logic
-│   │   ├── routes/         # Express route handlers
-│   │   ├── validators/     # Zod validation schemas
-│   │   └── main.ts         # Entry point
-│   └── package.json
+├── docs/                  # Project documentation
+│   ├── 1-BRD-Project-Overview.md
+│   ├── 2-SRS-Functional-Requirements.md
+│   ├── 3-UseCase-User-Flow.md
+│   ├── 4-Database-Design.md
+│   ├── 5-API-Specification.md
+│   ├── 6-System-Architecture.md
+│   ├── 7-NFR-Non-Functional-Requirements.md
+│   ├── 8-TechStack-Coding-Conventions.md
+│   ├── 9-UIUX-Design.md
+│   └── deployment/DEPLOY_GUIDE.md
 │
-└── docs/                  # Project documentation
+├── render.yaml            # Render infra-as-code
+└── gundsetupdeploy.ps1    # Helper script for .env management
 ```
 
 ---
@@ -44,17 +63,82 @@ npm run dev
 # Opens at http://localhost:5173
 ```
 
+> Frontend gọi Backend ở `VITE_API_URL` (mặc định `http://localhost:3000`).
+
 ### Backend
+
+```powershell
+# Ở root repo, tự động copy .env.example -> .env (hỏi trước khi ghi đè)
+.\gundsetupdeploy.ps1 -Mode init
+
+# Hoặc thủ công:
+cd Backend
+copy .env.example .env
+# Sửa .env: set MONGO_URI, JWT_SECRET, ...
+
+npm install
+npm run dev   # = node --watch server.js
+# Runs at http://localhost:3000
+```
+
+### Seed demo data (optional)
 
 ```bash
 cd Backend
-cp .env.example .env
-# Edit .env: set MONGO_URI from MongoDB Atlas
-
-npm install
-npm run dev
-# Runs at http://localhost:3000
+npm run seed
+# Tạo 5 user test (admin/leader1/member1/member2/supervisor1, password 123456)
+# + 2 project mẫu + 7 tasks + 3 meetings + chat/activities/notifications
 ```
+
+> `seed.js` xóa data cũ trước khi insert. Chỉ dùng cho dev/demo.
+
+---
+
+## Environment Setup
+
+Dự án có **25 biến môi trường** (24 Backend + 1 Frontend). File `.env.example` ở cả `Backend/` và `Frontend/` chỉ chứa placeholder, mọi key đều được phép commit lên repo.
+
+### Workflow nhanh
+
+```powershell
+# 1. Khoi tao .env tu .env.example
+.\gundsetupdeploy.ps1 -Mode init
+
+# 2. Mo Backend\.env, dien 5 gia tri bat buoc:
+#    MONGO_URI, JWT_SECRET, JWT_REFRESH_SECRET, CORS_ORIGIN, FRONTEND_URL
+#    (CLOUDINARY_* va SMTP_* co the de trong neu khong dung)
+
+# 3. Mo Frontend\.env, dien:
+#    VITE_API_URL=http://localhost:3000
+
+# 4. Validate da du keys chua
+.\gundsetupdeploy.ps1 -Mode validate
+
+# 5. Chay app
+cd Backend && npm run seed && npm run dev
+# Terminal khac:
+cd Frontend && npm run dev
+```
+
+### Lay gia tri o dau?
+
+| Bien | Lay tu |
+|------|--------|
+| `MONGO_URI` | https://www.mongodb.com/cloud/atlas (cluster free M0) |
+| `JWT_SECRET` / `JWT_REFRESH_SECRET` | `openssl rand -base64 32` hoac Render "Generate Value" |
+| `CLOUDINARY_*` | https://cloudinary.com (free 25GB, optional) |
+| `SMTP_*` | https://resend.com (free 100 email/ngay, optional) |
+
+### Deploy production
+
+| Nền tảng | File config | Bien can paste |
+|----------|------------|-----------------|
+| **Render** (Backend) | `render.yaml` (auto-detect) | `MONGO_URI`, `CORS_ORIGIN`, `FRONTEND_URL` + (optional) Cloudinary, SMTP |
+| **Vercel** (Frontend) | `vercel.json` | `VITE_API_URL` = URL Render |
+
+Helper script cung cấp lệnh `export-render` và `export-vercel` để xuất keys ra clipboard.
+
+> **Chi tiết đầy đủ** từng bước: xem **[docs/19_ENVIRONMENT_GUIDE.md](docs/19_ENVIRONMENT_GUIDE.md)** (hướng dẫn lấy từng giá trị, troubleshooting 8 lỗi thường gặp, security checklist).
 
 ---
 
@@ -149,11 +233,13 @@ FRONTEND_URL=http://localhost:5173
 | # | Document | Contents |
 |---|---|---|
 | 1 | BRD Project Overview | Team, problems, solution, scope, KPIs |
-| 2 | SRS Functional Requirements | Module-by-module functional specs |
-| 3 | Use Case / User Flow | Actors, use cases, activity diagrams |
-| 4 | Database Design | PostgreSQL schema (reference), ERD |
-| 5 | API Specification | 40+ endpoints, request/response examples |
-| 6 | System Architecture | Frontend, backend, security, deployment |
-| 7 | NFR Non-Functional | Performance, security, scalability |
-| 8 | Tech Stack & Conventions | Stack, naming, Git flow, code style |
+| 2 | SRS Functional Requirements | Module-by-module functional specs (Auth, Projects, Tasks, Docs, Members, Meetings, Chat, Performance, Profile) |
+| 3 | Use Case / User Flow | Actors (Customer/Admin/Leader/Supervisor/Member), 14 use cases, flows |
+| 4 | Database Design | **MongoDB + Mongoose** — 11 collections, ERD, business rules, TTL indexes |
+| 5 | API Specification | 40+ endpoints, request/response, Socket.io events, error codes |
+| 6 | System Architecture | Frontend, Backend, MongoDB Atlas, Render + Vercel, real-time Socket.io |
+| 7 | NFR Non-Functional | Performance, security, rate limits, env vars |
+| 8 | Tech Stack & Conventions | Stack (React 19, Express 4.21, Mongoose 8.9), naming, Git flow |
 | 9 | UI/UX Design | Color palette, typography, components |
+| 19 | [Environment Guide](docs/19_ENVIRONMENT_GUIDE.md) | 25 env vars, cách lấy từng giá trị, deploy Render + Vercel |
+| — | [Deployment Guide](docs/deployment/DEPLOY_GUIDE.md) | Step-by-step: MongoDB Atlas + Render + Vercel |

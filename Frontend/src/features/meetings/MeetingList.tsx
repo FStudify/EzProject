@@ -28,18 +28,18 @@ import { createTask } from '@/api/task.api';
 import { projectService } from '@/services';
 import { useAuth } from '@/contexts/AuthContext';
 import type { Meeting, ProjectMember } from '@/types';
-import { Button, Modal, ProjectMemberAvatar, useToast } from '@/components/ui';
+import { Button, Modal, ProjectMemberAvatar, useToast, EmptyState } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useChatSocket } from '@/contexts/ChatSocketContext';
 import MeetingCalendar from './MeetingCalendar';
 
-type LocalMeetingStatus = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
+type LocalMeetingStatus = 'SCHEDULED' | 'IN_PROGRESS' | 'COMPLETED' | 'CANCELLED';
 
 const STATUS_VARIANTS: Record<string, string> = {
-  scheduled: 'bg-orange-100 text-orange-700',
-  in_progress: 'bg-amber-100 text-amber-700',
-  completed: 'bg-emerald-100 text-emerald-700',
-  cancelled: 'bg-slate-100 text-slate-500',
+  SCHEDULED: 'bg-orange-100 text-orange-700',
+  IN_PROGRESS: 'bg-amber-100 text-amber-700',
+  COMPLETED: 'bg-emerald-100 text-emerald-700',
+  CANCELLED: 'bg-slate-100 text-slate-500',
 };
 
 function formatDateTime(iso: string) {
@@ -82,13 +82,14 @@ export default function MeetingList() {
   };
 
   const getStatusLabel = (status: string) => {
+    const s = status.toLowerCase();
     const map: Record<string, string> = {
       scheduled: t('scheduled'),
       in_progress: t('in_progress'),
       completed: t('completed'),
       cancelled: t('cancelled'),
     };
-    return map[status] ?? status;
+    return map[s] ?? status;
   };
 
   const loadData = useCallback(async () => {
@@ -290,22 +291,21 @@ export default function MeetingList() {
           onCreateMeeting={currentUserRole !== '' ? () => setIsAddOpen(true) : undefined}
         />
       ) : meetings.length === 0 ? (
-        <div className="rounded-xl border-2 border-dashed border-slate-200 bg-slate-50/50 py-16 text-center">
-          <Video className="mx-auto mb-3 h-12 w-12 text-slate-300" />
-          <p className="text-sm font-medium text-slate-600">{t('no_meetings_yet')}</p>
-          <p className="mt-1 text-xs text-slate-500">{t('create_meeting_to_start')}</p>
-          {currentUserRole !== '' && (
-            <Button variant="accent" size="sm" className="mt-4" onClick={() => setIsAddOpen(true)}>
-              <Plus className="mr-1.5 h-4 w-4" />{t('new_meeting')}
-            </Button>
-          )}
+        <div className="bg-surface rounded-xl border border-border p-8">
+          <EmptyState
+            icon={<Video className="h-7 w-7 text-ink-muted" />}
+            title={t('no_meetings') || 'Chưa có cuộc họp'}
+            description={t('no_meetings_yet') || 'Chưa có cuộc họp nào được lên lịch.'}
+            actionLabel={currentUserRole !== '' ? t('new_meeting') || 'Lên lịch họp' : undefined}
+            onAction={currentUserRole !== '' ? () => setIsAddOpen(true) : undefined}
+          />
         </div>
       ) : (
         <div className="space-y-4">
           {meetings.map((meeting) => {
             const myResponse = meeting.attendeeResponses?.[authUser?.id ?? ''];
             const isInvited = meeting.attendees.some((a) => a.id === authUser?.id);
-            const meetingStatus = (meeting.status in STATUS_VARIANTS ? meeting.status : 'scheduled') as LocalMeetingStatus;
+            const meetingStatus = (meeting.status in STATUS_VARIANTS ? meeting.status : 'SCHEDULED') as LocalMeetingStatus;
             return (
               <article
                 key={meeting.id}
@@ -1005,7 +1005,7 @@ function EditMeetingModal({ meeting, isOpen, onClose, onSave, members, projectId
   const [meetingType, setMeetingType] = useState<'online' | 'offline'>(meeting.type);
   const [location, setLocation] = useState(meeting.location ?? '');
   const [meetingLink, setMeetingLink] = useState(meeting.meetingLink ?? '');
-  const [status, setStatus] = useState<LocalMeetingStatus>(meeting.status);
+  const [status, setStatus] = useState<LocalMeetingStatus>((meeting.status?.toUpperCase() ?? 'SCHEDULED') as LocalMeetingStatus);
   const [attendeeIds, setAttendeeIds] = useState<string[]>(meeting.attendees.map((a) => a.id));
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
@@ -1022,7 +1022,7 @@ function EditMeetingModal({ meeting, isOpen, onClose, onSave, members, projectId
     setMeetingType(meeting.type);
     setLocation(meeting.location ?? '');
     setMeetingLink(meeting.meetingLink ?? '');
-    setStatus(meeting.status);
+    setStatus((meeting.status?.toUpperCase() ?? 'SCHEDULED') as LocalMeetingStatus);
     setAttendeeIds(meeting.attendees.map((a) => a.id));
   }, [meeting]);
 
@@ -1054,12 +1054,7 @@ function EditMeetingModal({ meeting, isOpen, onClose, onSave, members, projectId
   const handleSubmit = async () => {
     if (!validate()) return;
     setIsSubmitting(true);
-    const apiStatus =
-      status === 'scheduled' ? 'SCHEDULED'
-      : status === 'in_progress' ? 'IN_PROGRESS'
-      : status === 'completed' ? 'COMPLETED'
-      : status === 'cancelled' ? 'CANCELLED'
-      : 'SCHEDULED';
+    const apiStatus = status;
     try {
       const updated = await apiUpdateMeeting(projectId, meeting.id, {
         title: title.trim(),
@@ -1160,10 +1155,10 @@ function EditMeetingModal({ meeting, isOpen, onClose, onSave, members, projectId
         <div>
           <label className={labelClass}>{t('status')}</label>
           <select value={status} onChange={(e) => setStatus(e.target.value as LocalMeetingStatus)} className={inputClass}>
-            <option value="scheduled">{t('scheduled')}</option>
-            <option value="in_progress">{t('in_progress')}</option>
-            <option value="completed">{t('completed')}</option>
-            <option value="cancelled">{t('cancelled')}</option>
+            <option value="SCHEDULED">{t('scheduled')}</option>
+            <option value="IN_PROGRESS">{t('in_progress')}</option>
+            <option value="COMPLETED">{t('completed')}</option>
+            <option value="CANCELLED">{t('cancelled')}</option>
           </select>
         </div>
 

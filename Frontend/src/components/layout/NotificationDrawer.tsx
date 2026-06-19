@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Bell, CheckSquare, FileText, Inbox, MessageCircle, Video } from 'lucide-react';
-import { Drawer } from '@/components/ui';
+import { Drawer, SkeletonList } from '@/components/ui';
 import {
   getNotifications,
   markAllNotificationsRead,
@@ -238,7 +238,9 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
 
       <ul className="mt-3 divide-y divide-border">
         {isLoading ? (
-          <li className="py-12 text-center text-sm text-ink-muted">Đang tải...</li>
+          <div className="py-4">
+            <SkeletonList rows={5} />
+          </div>
         ) : filtered.length === 0 ? (
           <li className="flex flex-col items-center gap-2 py-16 text-center text-sm text-ink-muted">
             <Inbox className="h-8 w-8 text-ink-muted/60" />

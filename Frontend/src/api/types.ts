@@ -109,34 +109,32 @@ export interface Task {
   updatedAt?: string;
 }
 
-// ── Documents ────────────────────────────────────────────────
+// ── Documents (link-based) ───────────────────────────────
 
-export type FileType = 'DOC' | 'PDF' | 'PPT' | 'ZIP' | 'IMG' | 'OTHER';
-
-export interface Folder {
-  id: string;
-  name: string;
-  parentId: string | null;
-  fileCount: number;
-  createdAt: string;
-}
+export type DocumentType =
+  | 'google_doc'
+  | 'google_sheet'
+  | 'google_slide'
+  | 'figma'
+  | 'github'
+  | 'notion'
+  | 'other';
 
 export interface Document {
   id: string;
   projectId: string;
-  folderId: string | null;
-  name: string;
-  fileType: FileType;
-  size: string;
-  fileUrl: string | null;
-  uploadedBy: Pick<User, 'id' | 'fullName' | 'avatar'>;
-  uploadDate: string;
+  title: string;
+  description: string;
+  type: DocumentType;
+  url: string;
+  createdBy:
+    | (Pick<User, 'id' | 'fullName' | 'avatar' | 'email'> & { name?: string })
+    | null;
+  createdAt: string;
+  updatedAt: string;
 }
 
-export interface DocumentListResponse {
-  folders: Folder[];
-  files: Document[];
-}
+export type DocumentListResponse = Document[];
 
 // ── Meetings ──────────────────────────────────────────────────
 

@@ -10,9 +10,10 @@ const sizeStyles = {
 };
 
 function getBarColor(value: number): { bg: string; text: string } {
-  if (value > 66) return { bg: '#53B848', text: '#4E9D33' };
-  if (value >= 33) return { bg: '#F37124', text: '#B76442' };
-  return { bg: '#ef4444', text: '#dc2626' };
+  if (value >= 80) return { bg: '#10B981', text: '#059669' };
+  if (value >= 50) return { bg: '#3B82F6', text: '#2563EB' };
+  if (value >= 20) return { bg: '#F59E0B', text: '#D97706' };
+  return { bg: '#EF4444', text: '#DC2626' };
 }
 
 export default function ProgressBar({

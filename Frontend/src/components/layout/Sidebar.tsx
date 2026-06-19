@@ -45,7 +45,7 @@ function navItemClass(isActive: boolean, isDisabled: boolean) {
 
 export default function Sidebar() {
   const { pathname } = useLocation();
-  const { collapsed, toggle } = useSidebar();
+  const { collapsed, toggle, isMobile } = useSidebar();
   const { user } = useAuth();
   const { t } = useLanguage();
 
@@ -56,7 +56,13 @@ export default function Sidebar() {
   return (
     <aside
       className={`fixed left-0 top-0 z-40 flex h-full flex-col text-on-sidebar shadow-[0_16px_34px_-20px_rgba(59,27,13,0.68)] transition-all duration-200 ease-in-out ${
-        collapsed ? 'w-[72px]' : 'w-[224px]'
+        isMobile
+          ? collapsed
+            ? '-translate-x-full w-[224px]'
+            : 'translate-x-0 w-[224px]'
+          : collapsed
+            ? 'w-[72px]'
+            : 'w-[224px]'
       }`}
       style={{
         background: `linear-gradient(180deg, #C8774D 0%, #B86843 34%, #A75C3A 100%)`,

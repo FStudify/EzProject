@@ -2,40 +2,65 @@
 
 const mongoose = require('mongoose');
 
-const folderSchema = new mongoose.Schema({
-  projectId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true,
-  },
-  parentId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null },
-  name: { type: String, required: true, trim: true },
-  createdBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-}, { timestamps: true });
+/**
+ * Document — link-based reference to external resources
+ * (Google Docs, Figma, GitHub, Notion, etc.)
+ *
+ * We don't store files. We store references.
+ * This mirrors how Notion, Jira, Trello, ClickUp work.
+ */
 
-const documentSchema = new mongoose.Schema({
-  projectId: {
-    type: mongoose.Schema.Types.ObjectId,
-    ref: 'Project',
-    required: true,
-  },
-  folderId: { type: mongoose.Schema.Types.ObjectId, ref: 'Folder', default: null },
-  name: { type: String, required: true, trim: true },
-  fileType: {
-    type: String,
-    enum: ['DOC', 'PDF', 'PPT', 'ZIP', 'IMG', 'OTHER'],
-    default: 'OTHER',
-  },
-  size: { type: Number, required: true, min: 0 },
-  fileUrl: { type: String, required: true },
-  uploadedBy: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
-  uploadDate: { type: Date, default: Date.now },
-}, { timestamps: true });
+const DOCUMENT_TYPES = [
+  'google_doc',
+  'google_sheet',
+  'google_slide',
+  'figma',
+  'github',
+  'notion',
+  'other',
+];
 
-folderSchema.index({ projectId: 1, parentId: 1 });
-documentSchema.index({ projectId: 1, folderId: 1 });
+const documentSchema = new mongoose.Schema(
+  {
+    projectId: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'Project',
+      required: true,
+    },
+    title: {
+      type: String,
+      required: true,
+      trim: true,
+      maxlength: 255,
+    },
+    description: {
+      type: String,
+      trim: true,
+      maxlength: 2000,
+      default: '',
+    },
+    type: {
+      type: String,
+      enum: DOCUMENT_TYPES,
+      required: true,
+    },
+    url: {
+      type: String,
+      required: true,
+      trim: true,
+    },
+    createdBy: {
+      type: mongoose.Schema.Types.ObjectId,
+      ref: 'User',
+      required: true,
+    },
+  },
+  { timestamps: true },
+);
 
-const Folder = mongoose.model('Folder', folderSchema);
+documentSchema.index({ projectId: 1, createdAt: -1 });
+documentSchema.index({ projectId: 1, type: 1 });
+
 const Document = mongoose.model('Document', documentSchema);
 
-module.exports = { Folder, Document };
+module.exports = { Document, DOCUMENT_TYPES };

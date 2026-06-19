@@ -13,7 +13,6 @@
 export type {
   TaskStatus,
   TaskPriority,
-  FileType,
   MeetingStatus,
   MeetingType,
   ChatRoomType,
@@ -162,19 +161,18 @@ export interface Project {
   createdAt?: string;
 }
 
-// ── Document types ────────────────────────────────────────────────
+// ── Document types (link-based) ─────────────────────────────────
 
-export interface Document {
-  id: string;
-  projectId: string;
-  name: string;
-  fileType: 'DOC' | 'PDF' | 'PPT' | 'ZIP' | 'IMG' | 'OTHER';
-  size: string;
-  uploadedBy: Member;
-  uploadDate: string;
-  fileUrl?: string;
-  folderId?: string | null;
-}
+export type DocumentType =
+  | 'google_doc'
+  | 'google_sheet'
+  | 'google_slide'
+  | 'figma'
+  | 'github'
+  | 'notion'
+  | 'other';
+
+export type { Document } from '@/api/types';
 
 export interface Folder {
   id: string;

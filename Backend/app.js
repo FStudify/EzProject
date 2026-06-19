@@ -17,9 +17,22 @@ const app = express();
 
 // ── Security ───────────────────────────────────────────────
 app.use(helmet());
+
+// CORS: support comma-separated list of allowed origins.
+// Function form echoes the request origin so each client gets the right header.
+const allowedOrigins = Array.isArray(config.cors.origin)
+  ? config.cors.origin
+  : [config.cors.origin];
+
 app.use(
   cors({
-    origin: config.cors.origin,
+    origin(origin, callback) {
+      // Allow same-origin / curl (no Origin header) and matching origins
+      if (!origin || allowedOrigins.includes(origin)) {
+        return callback(null, true);
+      }
+      return callback(null, false);
+    },
     credentials: true,
   }),
 );

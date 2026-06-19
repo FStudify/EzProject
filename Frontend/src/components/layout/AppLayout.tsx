@@ -6,21 +6,36 @@ import { SidebarProvider, useSidebar } from './SidebarContext';
 export default function AppLayout() {
   return (
     <SidebarProvider>
-      <div className="flex min-h-screen bg-canvas">
-        <Sidebar />
-        <AppMain />
-      </div>
+      <AppLayoutContent />
     </SidebarProvider>
   );
 }
 
+function AppLayoutContent() {
+  const { collapsed, setCollapsed, isMobile } = useSidebar();
+
+  return (
+    <div className="flex min-h-screen bg-canvas">
+      <Sidebar />
+      {!collapsed && isMobile && (
+        <div
+          className="fixed inset-0 bg-black/40 z-30 lg:hidden"
+          onClick={() => setCollapsed(true)}
+          aria-hidden="true"
+        />
+      )}
+      <AppMain />
+    </div>
+  );
+}
+
 function AppMain() {
-  const { collapsed } = useSidebar();
+  const { collapsed, isMobile } = useSidebar();
 
   return (
     <main
       className={`flex min-h-screen flex-1 flex-col transition-all duration-200 ${
-        collapsed ? 'ml-[72px]' : 'ml-[224px]'
+        isMobile ? 'ml-0' : collapsed ? 'ml-[72px]' : 'ml-[224px]'
       }`}
     >
       <Topbar title="EZProject" />

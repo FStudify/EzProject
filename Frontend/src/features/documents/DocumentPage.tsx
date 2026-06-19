@@ -1,735 +1,647 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import {
   FileText,
-  Presentation,
-  Archive,
-  Image,
-  Upload,
-  Folder,
-  FolderPlus,
-  Edit2,
+  Link as LinkIcon,
+  Plus,
   Trash2,
-  Download,
-  PanelLeftOpen,
-  X,
-  MessageSquare,
-  Info,
+  Edit2,
+  ExternalLink,
   Search,
-  ChevronRight,
-  MoreVertical,
   Loader2,
+  X,
+  Check,
+  AlertCircle,
+  Github,
+  Figma,
+  Globe,
+  Sheet,
+  Presentation,
+  Copy,
+  Calendar,
+  User as UserIcon,
 } from 'lucide-react';
-import { getDocuments, createFolder, renameDocument, deleteDocument, uploadDocument } from '@/api/document.api';
-import type { Document } from '@/types';
-import { Button, ProjectMemberAvatar, Badge } from '@/components/ui';
-import DocumentContentArea from './DocumentContentArea';
-import type { DocumentComment, DocumentAuditEntry } from '@/types';
-import { useLanguage } from '@/contexts/LanguageContext';
+import { Button, EmptyState, useToast } from '@/components/ui';
+import {
+  getDocuments,
+  createDocument,
+  updateDocument,
+  deleteDocument,
+  type CreateDocumentPayload,
+} from '@/api/document.api';
+import type { Document, DocumentType } from '@/types';
 
-const fileTypeIcons = {
-  DOC: FileText,
-  PDF: FileText,
-  PPT: Presentation,
-  ZIP: Archive,
-  IMG: Image,
-  OTHER: FileText,
-} as const;
+// ── Type → icon + label mapping ──────────────────────────────────
+const TYPE_META: Record<
+  DocumentType,
+  { label: string; Icon: typeof FileText; color: string; bg: string }
+> = {
+  google_doc: {
+    label: 'Google Docs',
+    Icon: FileText,
+    color: '#1A73E8',
+    bg: '#E8F0FE',
+  },
+  google_sheet: {
+    label: 'Google Sheets',
+    Icon: Sheet,
+    color: '#188038',
+    bg: '#E6F4EA',
+  },
+  google_slide: {
+    label: 'Google Slides',
+    Icon: Presentation,
+    color: '#F4B400',
+    bg: '#FEF7E0',
+  },
+  figma: {
+    label: 'Figma',
+    Icon: Figma,
+    color: '#A259FF',
+    bg: '#F3E8FF',
+  },
+  github: {
+    label: 'GitHub',
+    Icon: Github,
+    color: '#1F1F1F',
+    bg: '#F0EDE8',
+  },
+  notion: {
+    label: 'Notion',
+    Icon: FileText,
+    color: '#000000',
+    bg: '#F5F5F5',
+  },
+  other: {
+    label: 'Link',
+    Icon: Globe,
+    color: '#635648',
+    bg: '#F0EDE8',
+  },
+};
 
-function getFileType(filename: string) {
-  const ext = filename.split('.').pop()?.toLowerCase() || '';
-  if (['doc', 'docx'].includes(ext)) return 'DOC';
-  if (ext === 'pdf') return 'PDF';
-  if (['ppt', 'pptx'].includes(ext)) return 'PPT';
-  if (['zip', 'rar', '7z'].includes(ext)) return 'ZIP';
-  if (['png', 'jpg', 'jpeg', 'gif', 'webp', 'svg'].includes(ext)) return 'IMG';
-  return 'OTHER';
+function getTypeMeta(type: string) {
+  return TYPE_META[type as DocumentType] ?? TYPE_META.other;
 }
 
-interface DocumentFolder {
-  id: string;
-  parentId: string | null;
-  name: string;
-  createdAt: string;
-  createdBy: { id: string; name: string; avatar: string };
+function formatTime(ts: string) {
+  const diff = Date.now() - new Date(ts).getTime();
+  const m = Math.floor(diff / 60000);
+  const h = Math.floor(diff / 3600000);
+  const d = Math.floor(h / 24);
+  if (m < 1) return 'just now';
+  if (m < 60) return `${m}m ago`;
+  if (h < 24) return `${h}h ago`;
+  if (d < 30) return `${d}d ago`;
+  return new Date(ts).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
-export default function DocumentPage() {
-  const { t } = useLanguage();
-
-  function formatTime(ts: string) {
-    const diff = Date.now() - new Date(ts).getTime();
-    const m = Math.floor(diff / 60000);
-    const h = Math.floor(diff / 3600000);
-    const d = Math.floor(h / 24);
-    if (m < 1) return t('just_now');
-    if (m < 60) return `${m} ${t('minutes_ago')}`;
-    if (h < 24) return `${h} ${t('hours_ago')}`;
-    return `${d} ${t('days_ago')}`;
+function isValidUrl(url: string): boolean {
+  try {
+    const u = new URL(url.startsWith('http') ? url : `https://${url}`);
+    return u.protocol === 'http:' || u.protocol === 'https:';
+  } catch {
+    return false;
   }
+}
 
+// ── Add/Edit Document Modal ──────────────────────────────────────
+interface DocumentFormModalProps {
+  open: boolean;
+  initial: Document | null;
+  onClose: () => void;
+  onSave: (payload: CreateDocumentPayload) => Promise<void>;
+}
+
+function DocumentFormModal({ open, initial, onClose, onSave }: DocumentFormModalProps) {
+  const [title, setTitle] = useState('');
+  const [url, setUrl] = useState('');
+  const [description, setDescription] = useState('');
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState('');
+
+  useEffect(() => {
+    if (open) {
+      setTitle(initial?.title ?? '');
+      setUrl(initial?.url ?? '');
+      setDescription(initial?.description ?? '');
+      setError('');
+      setSaving(false);
+    }
+  }, [open, initial]);
+
+  if (!open) return null;
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setError('');
+    if (!title.trim()) {
+      setError('Title is required');
+      return;
+    }
+    const cleanUrl = url.trim();
+    if (!isValidUrl(cleanUrl)) {
+      setError('Please enter a valid URL (http:// or https://)');
+      return;
+    }
+    setSaving(true);
+    try {
+      await onSave({
+        title: title.trim(),
+        url: cleanUrl.startsWith('http') ? cleanUrl : `https://${cleanUrl}`,
+        description: description.trim(),
+      });
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || 'Failed to save document');
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/40 px-4 py-8">
+      <div
+        className="w-full max-w-md rounded-2xl p-6 shadow-2xl"
+        style={{ backgroundColor: '#FFFDFB', border: '1px solid #E8D8CF' }}
+        onClick={(e) => e.stopPropagation()}
+      >
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-lg font-bold" style={{ color: '#1F1F1F' }}>
+            {initial ? 'Edit document' : 'Add document link'}
+          </h2>
+          <button
+            type="button"
+            onClick={onClose}
+            className="rounded-lg p-1.5 transition-colors hover:bg-canvas"
+            style={{ color: '#9a9086' }}
+          >
+            <X className="h-4 w-4" />
+          </button>
+        </div>
+
+        <form onSubmit={handleSubmit} className="space-y-4">
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold" style={{ color: '#635648' }}>
+              Title
+            </label>
+            <input
+              type="text"
+              value={title}
+              onChange={(e) => setTitle(e.target.value)}
+              placeholder="e.g. Database Design"
+              autoFocus
+              className="ez-input w-full"
+              required
+            />
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold" style={{ color: '#635648' }}>
+              URL
+            </label>
+            <input
+              type="url"
+              value={url}
+              onChange={(e) => setUrl(e.target.value)}
+              placeholder="https://docs.google.com/document/d/..."
+              className="ez-input w-full"
+              required
+            />
+            <p className="mt-1.5 text-xs" style={{ color: '#9a9086' }}>
+              Supported: Google Docs, Sheets, Slides, Figma, GitHub, Notion
+            </p>
+          </div>
+
+          <div>
+            <label className="mb-1.5 block text-[13px] font-semibold" style={{ color: '#635648' }}>
+              Description (optional)
+            </label>
+            <textarea
+              value={description}
+              onChange={(e) => setDescription(e.target.value)}
+              placeholder="Short note about this document"
+              rows={2}
+              className="ez-input w-full resize-none"
+            />
+          </div>
+
+          {error && (
+            <div
+              className="flex items-start gap-2 rounded-lg px-3 py-2 text-sm"
+              style={{ backgroundColor: '#FEF2F2', border: '1px solid #FECACA', color: '#DC2626' }}
+            >
+              <AlertCircle className="mt-0.5 h-4 w-4 shrink-0" />
+              <span>{error}</span>
+            </div>
+          )}
+
+          <div className="flex gap-2 pt-2">
+            <Button
+              type="button"
+              variant="secondary"
+              size="md"
+              onClick={onClose}
+              className="flex-1"
+              disabled={saving}
+            >
+              Cancel
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="md"
+              className="flex-1"
+              disabled={saving}
+            >
+              {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Check className="h-4 w-4" />}
+              {initial ? 'Save changes' : 'Add document'}
+            </Button>
+          </div>
+        </form>
+      </div>
+    </div>
+  );
+}
+
+// ── Main page ────────────────────────────────────────────────────
+export default function DocumentPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const { toast } = useToast();
 
-  const [selectedDoc, setSelectedDoc] = useState<Document | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
-  const [rightPanel, setRightPanel] = useState<'info' | 'comments' | null>(null);
   const [documents, setDocuments] = useState<Document[]>([]);
-  const [uploadedBlobs] = useState<Map<string, Blob>>(new Map());
-  const [documentComments, setDocumentComments] = useState<Record<string, DocumentComment[]>>({});
-  const [documentAuditLogs] = useState<Record<string, DocumentAuditEntry[]>>({});
-  const [folders, setFolders] = useState<DocumentFolder[]>([]);
-  const [currentFolderId, setCurrentFolderId] = useState<string | null>(null);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [newComment, setNewComment] = useState('');
-  const [renamingId, setRenamingId] = useState<string | null>(null);
-  const [renamingValue, setRenamingValue] = useState('');
-  const [renameType, setRenameType] = useState<'file' | 'folder'>('file');
-  const [newFolderName, setNewFolderName] = useState('');
-  const [isCreatingFolder, setIsCreatingFolder] = useState(false);
-  const [dropdownId, setDropdownId] = useState<string | null>(null);
-  const [dropdownType, setDropdownType] = useState<'file' | 'folder'>('file');
   const [isLoading, setIsLoading] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterType, setFilterType] = useState<DocumentType | 'all'>('all');
+  const [modalOpen, setModalOpen] = useState(false);
+  const [editing, setEditing] = useState<Document | null>(null);
+  const [copiedId, setCopiedId] = useState<string | null>(null);
 
   const fetchDocuments = useCallback(async () => {
     if (!projectId) return;
     setIsLoading(true);
     try {
-      const response = await getDocuments(projectId, {
-        folderId: currentFolderId,
+      const data = await getDocuments(projectId, {
+        type: filterType === 'all' ? undefined : filterType,
         search: searchTerm || undefined,
       });
-      // Normalize API Documents (@/api/types) to local Documents (@/types)
-      setDocuments(
-        response.files.map((f) => ({
-          id: f.id,
-          projectId: f.projectId,
-          name: f.name,
-          fileType: f.fileType,
-          size: f.size,
-          fileUrl: f.fileUrl ?? undefined,
-          uploadedBy: {
-            id: f.uploadedBy?.id ?? '',
-            name: (f.uploadedBy as any)?.fullName ?? (f.uploadedBy as any)?.name ?? '',
-            fullName: (f.uploadedBy as any)?.fullName ?? (f.uploadedBy as any)?.name ?? '',
-            email: (f.uploadedBy as any)?.email ?? '',
-            avatar: (f.uploadedBy as any)?.avatar ?? '',
-          },
-          uploadDate: f.uploadDate,
-          folderId: f.folderId,
-        }))
-      );
-      setFolders(
-        response.folders.map((f) => ({
-          id: f.id,
-          name: f.name,
-          parentId: f.parentId,
-          createdAt: f.createdAt,
-          createdBy: { id: '', name: '', avatar: '' },
-        }))
-      );
+      setDocuments(data);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
+      toast('Failed to load documents', 'error');
     } finally {
       setIsLoading(false);
     }
-  }, [projectId, currentFolderId, searchTerm]);
+  }, [projectId, filterType, searchTerm, toast]);
 
   useEffect(() => {
     fetchDocuments();
   }, [fetchDocuments]);
 
-  const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const files = e.target.files;
-    if (!files?.length || !projectId) return;
-    for (const file of Array.from(files)) {
-      try {
-        const formData = new FormData();
-        formData.append('file', file);
-        if (currentFolderId) formData.append('folderId', currentFolderId);
-        const doc = await uploadDocument(projectId, formData);
-        // Normalize API response to @/types Document
-        const raw = doc as any;
-        const normalized: Document = {
-          id: raw._id ?? raw.id,
-          projectId: raw.projectId ?? projectId,
-          name: raw.name ?? file.name,
-          fileType: raw.fileType ?? getFileType(file.name),
-          size: raw.size ?? `${(file.size / 1024).toFixed(0)} KB`,
-          fileUrl: raw.fileUrl ?? undefined,
-          uploadedBy: {
-            id: raw.uploadedBy?.id ?? raw.uploadedBy?._id ?? '',
-            name: raw.uploadedBy?.fullName ?? raw.uploadedBy?.name ?? '',
-            fullName: raw.uploadedBy?.fullName ?? raw.uploadedBy?.name ?? '',
-            email: raw.uploadedBy?.email ?? '',
-            avatar: raw.uploadedBy?.avatar ?? '',
-          },
-          uploadDate: raw.uploadDate ?? new Date().toISOString(),
-          folderId: raw.folderId ?? currentFolderId,
-        };
-        setDocuments((prev) => [...prev, normalized]);
-        setDocumentComments((prev) => ({ ...prev, [normalized.id]: [] }));
-      } catch (error) {
-        console.error('Failed to upload file:', file.name, error);
-      }
-    }
-    e.target.value = '';
+  const handleAdd = () => {
+    setEditing(null);
+    setModalOpen(true);
   };
 
-  const handleAddComment = (docId: string, content: string) => {
-    if (!content.trim()) return;
-    const comment: DocumentComment = {
-      id: `comment-${Date.now()}`,
-      content: content.trim(),
-      author: { id: '', name: '', fullName: '', email: '', avatar: '' },
-      createdAt: new Date().toISOString(),
-    };
-    setDocumentComments((prev) => ({
-      ...prev,
-      [docId]: [...(prev[docId] ?? []), comment],
-    }));
-    setNewComment('');
+  const handleEdit = (doc: Document) => {
+    setEditing(doc);
+    setModalOpen(true);
   };
 
-  const handleCreateFolder = async () => {
-    if (!newFolderName.trim() || !projectId) return;
+  const handleDelete = async (doc: Document) => {
+    if (!projectId) return;
+    if (!window.confirm(`Delete "${doc.title}"?`)) return;
     try {
-      const newFolder = await createFolder(projectId, {
-        name: newFolderName.trim(),
-        parentId: currentFolderId,
-      });
-      setFolders((prev) => [
-        ...prev,
-        {
-          id: newFolder.id,
-          name: newFolder.name,
-          parentId: newFolder.parentId,
-          createdAt: newFolder.createdAt,
-          createdBy: { id: '', name: '', avatar: '' },
-        },
-      ]);
-      setNewFolderName('');
-      setIsCreatingFolder(false);
-    } catch (error) {
-      console.error('Failed to create folder:', error);
+      await deleteDocument(projectId, doc.id);
+      setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
+      toast('Document deleted', 'success');
+    } catch (error: any) {
+      toast(error?.message || 'Failed to delete', 'error');
     }
   };
 
-  const handleRename = async (id: string) => {
-    if (!renamingValue.trim() || !projectId) {
-      setRenamingId(null);
-      return;
-    }
-    if (renameType === 'file') {
-      try {
-        await renameDocument(projectId, id, renamingValue.trim());
-        setDocuments((prev) =>
-          prev.map((d) => (d.id === id ? { ...d, name: renamingValue.trim() } : d))
-        );
-      } catch (error) {
-        console.error('Failed to rename document:', error);
-      }
-    } else {
-      setFolders((prev) =>
-        prev.map((f) => (f.id === id ? { ...f, name: renamingValue.trim() } : f))
-      );
-    }
-    setRenamingId(null);
-  };
-
-  const handleDeleteFile = async (id: string) => {
+  const handleSave = async (payload: CreateDocumentPayload) => {
     if (!projectId) return;
     try {
-      await deleteDocument(projectId, id);
-      setDocuments((prev) => prev.filter((d) => d.id !== id));
-      if (selectedDoc?.id === id) setSelectedDoc(null);
-      setDropdownId(null);
-    } catch (error) {
-      console.error('Failed to delete document:', error);
-    }
-  };
-
-  const handleDeleteFolder = (id: string) => {
-    const idsToDelete = new Set<string>([id]);
-    let changed = true;
-    while (changed) {
-      changed = false;
-      for (const f of folders) {
-        if (f.parentId && idsToDelete.has(f.parentId) && !idsToDelete.has(f.id)) {
-          idsToDelete.add(f.id);
-          changed = true;
-        }
+      if (editing) {
+        const updated = await updateDocument(projectId, editing.id, payload);
+        setDocuments((prev) => prev.map((d) => (d.id === editing.id ? updated : d)));
+        toast('Document updated', 'success');
+      } else {
+        const created = await createDocument(projectId, payload);
+        setDocuments((prev) => [created, ...prev]);
+        toast('Document added', 'success');
       }
+    } catch (error: any) {
+      toast(error?.message || 'Failed to save document', 'error');
     }
-    setFolders((prev) => prev.filter((f) => !idsToDelete.has(f.id)));
-    setDocuments((prev) => prev.filter((d) => !idsToDelete.has(d.folderId ?? '')));
-    if (currentFolderId && idsToDelete.has(currentFolderId)) {
-      setCurrentFolderId(null);
+  };
+
+  const handleOpen = (doc: Document) => {
+    window.open(doc.url, '_blank', 'noopener,noreferrer');
+  };
+
+  const handleCopy = async (doc: Document) => {
+    try {
+      await navigator.clipboard.writeText(doc.url);
+      setCopiedId(doc.id);
+      setTimeout(() => setCopiedId(null), 1500);
+    } catch {
+      toast('Failed to copy link', 'error');
     }
-    setDropdownId(null);
   };
 
-  const handleGoUp = () => {
-    if (!currentFolderId) return;
-    const folder = folders.find((f) => f.id === currentFolderId);
-    setCurrentFolderId(folder?.parentId ?? null);
-  };
-
-  const handleDropdownToggle = (id: string, type: 'file' | 'folder') => {
-    if (dropdownId === id) { setDropdownId(null); return; }
-    setDropdownId(id);
-    setDropdownType(type);
-  };
-
-  const handleBreadcrumbClick = (folderId: string | null) => {
-    setCurrentFolderId(folderId);
-  };
-
-  const comments = selectedDoc ? documentComments[selectedDoc.id] ?? [] : [];
-  const auditLog = selectedDoc ? documentAuditLogs[selectedDoc.id] ?? [] : [];
-
-  const currentFolders = folders.filter((f) => f.parentId === currentFolderId);
-  const currentDocs = documents.filter((d) => d.folderId === currentFolderId);
-  const flatDocs = searchTerm
-    ? documents.filter((d) => d.name.toLowerCase().includes(searchTerm.toLowerCase()))
-    : currentDocs;
-
-  const getBreadcrumb = (folderId: string | null): DocumentFolder[] => {
-    const path: DocumentFolder[] = [];
-    let id: string | null = folderId;
-    while (id) {
-      const folder = folders.find((f) => f.id === id);
-      if (!folder) break;
-      path.unshift(folder);
-      id = folder.parentId;
-    }
-    return path;
-  };
-
-  const breadcrumb = getBreadcrumb(currentFolderId);
-
-  // ── File list panel ──────────────────────────────────────────────────────
-  const FileListPanel = () => (
-    <div className="flex w-56 shrink-0 flex-col border-r border-border bg-canvas">
-      {/* Header */}
-      <div className="flex items-center justify-between border-b border-border px-4 py-3">
-        <h2 className="text-sm font-semibold text-ink">{t('documents')}</h2>
-        <span className="rounded-full bg-surface-muted px-2 py-0.5 text-[11px] text-ink-muted">
-          {currentDocs.length + currentFolders.length}
-        </span>
-      </div>
-
-      {/* Search */}
-      <div className="border-b border-border px-3 py-2">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-1/2 h-3.5 w-3.5 -translate-y-1/2 text-ink-muted" />
-          <input
-            type="search"
-            placeholder={t('search_placeholder_doc')}
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="ez-input w-full pl-8 text-xs"
-          />
-        </div>
-      </div>
-
-      {/* Actions */}
-      <div className="flex gap-1.5 border-b border-border px-3 py-2">
-        <Button variant="primary" size="sm" className="flex-1 justify-center text-xs" onClick={() => fileInputRef.current?.click()}>
-          <Upload className="h-3.5 w-3.5" /> {t('upload')}
-        </Button>
-        <Button variant="secondary" size="sm" onClick={() => setIsCreatingFolder(true)} title={t('create_folder')}>
-          <FolderPlus className="h-3.5 w-3.5" />
-        </Button>
-        <input ref={fileInputRef} type="file" multiple onChange={handleUpload} className="hidden" />
-      </div>
-
-      {/* Folder creation */}
-      {isCreatingFolder && (
-        <div className="flex items-center gap-2 border-b border-border px-3 py-2">
-          <Folder className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-          <input
-            autoFocus
-            value={newFolderName}
-            onChange={(e) => setNewFolderName(e.target.value)}
-            onKeyDown={(e) => {
-              if (e.key === 'Enter') handleCreateFolder();
-              if (e.key === 'Escape') { setIsCreatingFolder(false); setNewFolderName(''); }
-            }}
-            onBlur={() => { if (!newFolderName.trim()) setIsCreatingFolder(false); }}
-            placeholder={t('folder_name')}
-            className="ez-input flex-1 text-xs"
-          />
-        </div>
-      )}
-
-      {/* Breadcrumb */}
-      {breadcrumb.length > 0 && (
-        <div className="flex items-center gap-1 border-b border-border px-3 py-2 overflow-x-auto">
-          <button
-            type="button"
-            onClick={() => handleBreadcrumbClick(null)}
-            className="flex items-center gap-1 text-[11px] text-primary hover:text-primary-dark shrink-0"
-          >
-            <Folder className="h-3 w-3" />
-            {t('folder_root')}
-          </button>
-          {breadcrumb.map((f, i) => (
-            <div key={f.id} className="flex items-center gap-1 shrink-0">
-              <ChevronRight className="h-3 w-3 text-ink-muted" />
-              {i === breadcrumb.length - 1 ? (
-                <span className="text-[11px] font-medium text-ink">{f.name}</span>
-              ) : (
-                <button
-                  type="button"
-                  onClick={() => handleBreadcrumbClick(f.id)}
-                  className="text-[11px] text-primary hover:text-primary-dark"
-                >
-                  {f.name}
-                </button>
-              )}
-            </div>
-          ))}
-        </div>
-      )}
-
-      {/* Up button when inside folder */}
-      {currentFolderId && !searchTerm && (
-        <div className="px-3 pt-2 pb-0">
-          <button
-            type="button"
-            onClick={handleGoUp}
-            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-xs text-ink-muted hover:bg-surface-muted hover:text-ink transition-colors"
-          >
-            <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-            <span>{t('folder_up')}</span>
-          </button>
-        </div>
-      )}
-
-      {/* Loading state */}
-      {isLoading && (
-        <div className="flex items-center justify-center py-8">
-          <Loader2 className="h-5 w-5 animate-spin text-ink-muted" />
-        </div>
-      )}
-
-      {/* Items list */}
-      {!isLoading && (
-        <div className="flex-1 min-h-0 overflow-y-auto px-3 pt-1">
-
-          {/* Folders */}
-          {!searchTerm && (
-            <>
-              {currentFolders.length > 0 && (
-                <>
-                  <p className="mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">{t('folders')}</p>
-                  <ul className="space-y-0.5 mb-3">
-                    {currentFolders.map((folder) => (
-                      <li key={folder.id} className="group relative">
-                        {renamingId === folder.id ? (
-                          <div className="flex items-center gap-2 px-2 py-1.5">
-                            <Folder className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                            <input
-                              autoFocus
-                              value={renamingValue}
-                              onChange={(e) => setRenamingValue(e.target.value)}
-                              onKeyDown={(e) => {
-                                if (e.key === 'Enter') handleRename(folder.id);
-                                if (e.key === 'Escape') setRenamingId(null);
-                              }}
-                              onBlur={() => setRenamingId(null)}
-                              className="ez-input flex-1 text-xs"
-                            />
-                          </div>
-                        ) : (
-                          <button
-                            type="button"
-                            onClick={() => setCurrentFolderId(folder.id)}
-                            className="flex w-full items-center gap-2 rounded-lg px-2 py-1.5 text-left text-xs text-ink hover:bg-surface-muted transition-colors"
-                          >
-                            <Folder className="h-3.5 w-3.5 shrink-0 text-indigo-400" />
-                            <span className="flex-1 truncate">{folder.name}</span>
-                            <button
-                              type="button"
-                              onClick={(e) => { e.stopPropagation(); handleDropdownToggle(folder.id, 'folder'); }}
-                              className="flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover:opacity-100 text-ink-muted hover:bg-border hover:text-ink transition-all"
-                              aria-label={t('folder_options')}
-                            >
-                              <MoreVertical className="h-3 w-3" />
-                            </button>
-                          </button>
-                        )}
-                        {dropdownId === folder.id && dropdownType === 'folder' && (
-                          <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-border bg-surface p-1 shadow-xl">
-                            <button type="button" onClick={() => { setRenamingId(folder.id); setRenamingValue(folder.name); setRenameType('folder'); setDropdownId(null); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-ink hover:bg-canvas transition-colors">
-                              <Edit2 className="h-3.5 w-3.5 text-ink-muted" />{t('rename')}
-                            </button>
-                            <button type="button" onClick={() => handleDeleteFolder(folder.id)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-danger hover:bg-canvas transition-colors">
-                              <Trash2 className="h-3.5 w-3.5" />{t('delete_folder')}
-                            </button>
-                          </div>
-                        )}
-                      </li>
-                    ))}
-                  </ul>
-                  <div className="border-t border-border mb-3" />
-                </>
-              )}
-            </>
-          )}
-
-          {/* Files */}
-          <p className={`mb-1 text-[10px] font-semibold uppercase tracking-wider text-ink-muted ${searchTerm ? '' : 'mt-0'}`}>
-            {searchTerm ? t('search_results') : t('files')}
-          </p>
-          {flatDocs.length === 0 && !searchTerm && currentFolders.length === 0 ? (
-            <p className="py-6 text-center text-xs text-ink-muted">{t('folder_empty')}</p>
-          ) : flatDocs.length === 0 && searchTerm ? (
-            <p className="py-6 text-center text-xs text-ink-muted">{t('no_results')}</p>
-          ) : (
-            <ul className="space-y-0.5 pb-2">
-              {flatDocs.map((doc) => {
-                const Icon = fileTypeIcons[doc.fileType];
-                const isSelected = selectedDoc?.id === doc.id;
-                return (
-                  <li key={doc.id} className="group relative">
-                    {renamingId === doc.id ? (
-                      <input
-                        autoFocus
-                        value={renamingValue}
-                        onChange={(e) => setRenamingValue(e.target.value)}
-                        onKeyDown={(e) => {
-                          if (e.key === 'Enter') handleRename(doc.id);
-                          if (e.key === 'Escape') setRenamingId(null);
-                        }}
-                        onBlur={() => setRenamingId(null)}
-                        className="ez-input w-full text-xs"
-                      />
-                    ) : (
-                      <button
-                        type="button"
-                        onClick={() => setSelectedDoc(doc)}
-                        className={`group/file w-full text-left flex items-center gap-2 rounded-lg px-2 py-2 transition-all ${
-                          isSelected
-                            ? 'bg-primary text-white'
-                            : 'hover:bg-surface-muted text-ink'
-                        }`}
-                      >
-                        <Icon className="h-3.5 w-3.5 shrink-0 opacity-70" />
-                        <div className="flex-1 min-w-0">
-                          <p className="truncate text-xs font-medium">{doc.name}</p>
-                          <p className={`text-[10px] ${isSelected ? 'text-white/60' : 'text-ink-muted'}`}>
-                            {doc.size}
-                          </p>
-                        </div>
-                        <button
-                          type="button"
-                          onClick={(e) => { e.stopPropagation(); handleDropdownToggle(doc.id, 'file'); }}
-                          className={`flex h-5 w-5 items-center justify-center rounded opacity-0 group-hover/file:opacity-100 ${isSelected ? 'hover:bg-white/20' : 'text-ink-muted hover:bg-border hover:text-ink'} transition-all`}
-                          aria-label={t('file_options')}
-                        >
-                          <MoreVertical className="h-3 w-3" />
-                        </button>
-                      </button>
-                    )}
-                    {dropdownId === doc.id && dropdownType === 'file' && (
-                      <div className="absolute right-0 top-full z-50 mt-1 w-40 rounded-xl border border-border bg-surface p-1 shadow-xl">
-                        <button type="button" onClick={() => { setRenamingId(doc.id); setRenamingValue(doc.name); setRenameType('file'); setDropdownId(null); }} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-ink hover:bg-canvas transition-colors">
-                          <Edit2 className="h-3.5 w-3.5 text-ink-muted" />{t('rename')}
-                        </button>
-                        <button type="button" onClick={() => handleDeleteFile(doc.id)} className="flex w-full items-center gap-2 rounded-lg px-3 py-2 text-xs text-danger hover:bg-canvas transition-colors">
-                          <Trash2 className="h-3.5 w-3.5" />{t('delete_file')}
-                        </button>
-                      </div>
-                    )}
-                  </li>
-                );
-              })}
-            </ul>
-          )}
-        </div>
-      )}
-    </div>
+  const totalDocs = documents.length;
+  const grouped = documents.reduce<Record<DocumentType, Document[]>>(
+    (acc, doc) => {
+      const key = doc.type;
+      if (!acc[key]) acc[key] = [];
+      acc[key].push(doc);
+      return acc;
+    },
+    {
+      google_doc: [],
+      google_sheet: [],
+      google_slide: [],
+      figma: [],
+      github: [],
+      notion: [],
+      other: [],
+    },
   );
 
-  // ── Right panel ──────────────────────────────────────────────────────────
-  const RightPanel = ({ mode }: { mode: 'info' | 'comments' }) => (
-    <div className="flex w-72 shrink-0 flex-col border-l border-border bg-surface">
-      <div className="flex items-center justify-between border-b border-border px-4 py-2.5">
-        <p className="text-xs font-semibold text-ink">
-          {mode === 'info' ? t('file_info') : `${t('file_comments')} (${comments.length})`}
-        </p>
-        <button type="button" onClick={() => setRightPanel(null)} className="rounded p-0.5 text-ink-muted hover:bg-surface-muted hover:text-ink">
-          <X className="h-3.5 w-3.5" />
-        </button>
-      </div>
-
-      {mode === 'info' ? (
-        <div className="flex-1 overflow-y-auto p-4">
-          <dl className="space-y-3 text-xs">
-            <div className="flex justify-between">
-              <dt className="text-ink-muted">{t('file_type')}</dt>
-              <dd className="font-medium text-ink">{selectedDoc?.fileType}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-ink-muted">{t('file_size')}</dt>
-              <dd className="font-medium text-ink">{selectedDoc?.size}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-ink-muted">{t('uploaded_by')}</dt>
-              <dd className="font-medium text-ink">{selectedDoc?.uploadedBy.name}</dd>
-            </div>
-            <div className="flex justify-between">
-              <dt className="text-ink-muted">{t('upload_date')}</dt>
-              <dd className="font-medium text-ink">{selectedDoc ? new Date(selectedDoc.uploadDate).toLocaleDateString('vi-VN') : ''}</dd>
-            </div>
-          </dl>
-          {auditLog.length > 0 && (
-            <>
-              <div className="mt-5 mb-2 text-[10px] font-semibold uppercase tracking-wider text-ink-muted">{t('history')}</div>
-              <ul className="space-y-2">
-                {auditLog.map((entry) => (
-                  <li key={entry.id} className="rounded-lg border border-border bg-surface-muted p-2">
-                    <Badge variant="default" className="mb-1">{entry.action}</Badge>
-                    <p className="text-xs font-medium text-ink">{entry.user.name}</p>
-                    <p className="text-[10px] text-ink-muted">{formatTime(entry.timestamp)}</p>
-                  </li>
-                ))}
-              </ul>
-            </>
-          )}
-        </div>
-      ) : (
-        <>
-          <div className="flex-1 min-h-0 overflow-y-auto p-3 space-y-2">
-            {comments.length === 0 ? (
-              <p className="py-6 text-center text-xs text-ink-muted">{t('no_comments')}</p>
-            ) : (
-              comments.map((c) => (
-                <div key={c.id} className="rounded-lg border border-border bg-surface-muted p-2.5">
-                  <div className="flex items-center gap-2 mb-1.5">
-                    <ProjectMemberAvatar member={c.author} projectMembers={[]} size="sm" />
-                    <div>
-                      <p className="text-xs font-semibold text-ink">{c.author.name}</p>
-                      <p className="text-[10px] text-ink-muted">{formatTime(c.createdAt)}</p>
-                    </div>
-                  </div>
-                  <p className="text-xs text-ink-secondary">{c.content}</p>
-                </div>
-              ))
-            )}
-          </div>
-          <div className="border-t border-border p-3">
-            <textarea
-              value={newComment}
-              onChange={(e) => setNewComment(e.target.value)}
-              placeholder={t('write_comment')}
-              rows={2}
-              className="ez-input mb-2 resize-none text-xs"
-            />
-            <Button
-              variant="primary"
-              size="sm"
-              className="w-full justify-center text-xs"
-              onClick={() => selectedDoc && handleAddComment(selectedDoc.id, newComment)}
-              disabled={!newComment.trim()}
-            >
-              {t('send_comment')}
-            </Button>
-          </div>
-        </>
-      )}
-    </div>
-  );
-
-  // ── Viewer toolbar ──────────────────────────────────────────────────────
-  const ViewerToolbar = () => (
-    <div className="flex items-center gap-2 border-b border-border px-4 py-2">
-      {selectedDoc ? (
-        <>
-          <div className="flex-1 min-w-0">
-            <p className="truncate text-sm font-semibold text-ink">{selectedDoc.name}</p>
-          </div>
-          {selectedDoc.fileUrl && (
-            <a
-              href={`${window.location.origin}${selectedDoc.fileUrl}`}
-              download={selectedDoc.name}
-              className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-xs font-medium text-ink-secondary hover:border-primary hover:text-primary transition-colors"
-            >
-              <Download className="h-3.5 w-3.5" />
-              {t('download')}
-            </a>
-          )}
-          <button
-            type="button"
-            onClick={() => setRightPanel(rightPanel === 'info' ? null : 'info')}
-            className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${rightPanel === 'info' ? 'border-primary bg-primary-50 text-primary' : 'border-border text-ink-secondary hover:bg-surface-muted'}`}
-          >
-            <Info className="h-3.5 w-3.5 inline mr-1" />{t('file_info')}
-          </button>
-          <button
-            type="button"
-            onClick={() => setRightPanel(rightPanel === 'comments' ? null : 'comments')}
-            className={`rounded-lg border px-2.5 py-1.5 text-xs font-medium transition-colors ${rightPanel === 'comments' ? 'border-primary bg-primary-50 text-primary' : 'border-border text-ink-secondary hover:bg-surface-muted'}`}
-          >
-            <MessageSquare className="h-3.5 w-3.5 inline mr-1" />{t('file_comments')}
-          </button>
-        </>
-      ) : null}
-    </div>
-  );
-
-  // ── Main render ──────────────────────────────────────────────────────────
-  if (!sidebarOpen) {
-    return (
-      <div className="flex h-[calc(100vh-72px)] overflow-hidden">
-        <div className="flex flex-1 flex-col overflow-hidden">
-          <ViewerToolbar />
-          <div className="flex flex-1 min-h-0 overflow-hidden">
-            {selectedDoc ? (
-              <DocumentContentArea document={selectedDoc} fileBlob={uploadedBlobs.get(selectedDoc.id) ?? null} className="flex-1" />
-            ) : (
-              <div className="flex flex-1 items-center justify-center">
-                <p className="text-sm text-ink-muted">{t('select_document')}</p>
-              </div>
-            )}
-            {rightPanel && <RightPanel mode={rightPanel} />}
-          </div>
-        </div>
-        <button
-          type="button"
-          onClick={() => setSidebarOpen(true)}
-          className="absolute left-0 top-1/2 z-10 flex h-10 w-6 items-center justify-center rounded-r-lg border border-l-0 border-border bg-surface shadow-md hover:bg-surface-muted"
-        >
-          <PanelLeftOpen className="h-4 w-4 text-ink-muted" />
-        </button>
-      </div>
-    );
-  }
+  const filterTabs: { value: DocumentType | 'all'; label: string }[] = [
+    { value: 'all', label: 'All' },
+    { value: 'google_doc', label: 'Docs' },
+    { value: 'google_sheet', label: 'Sheets' },
+    { value: 'google_slide', label: 'Slides' },
+    { value: 'figma', label: 'Figma' },
+    { value: 'github', label: 'GitHub' },
+    { value: 'notion', label: 'Notion' },
+  ];
 
   return (
-    <div className="flex h-[calc(100vh-72px)] overflow-hidden rounded-2xl border border-border bg-surface shadow-sm">
-      <FileListPanel />
-      <div className="flex flex-1 flex-col overflow-hidden">
-        <ViewerToolbar />
-        <div className="flex flex-1 min-h-0 overflow-hidden">
-          {selectedDoc ? (
-            <DocumentContentArea document={selectedDoc} fileBlob={uploadedBlobs.get(selectedDoc.id) ?? null} className="flex-1" />
-          ) : (
-            <div className="flex flex-1 items-center justify-center">
-              <div className="text-center">
-                <div className="mx-auto mb-3 flex h-12 w-12 items-center justify-center rounded-full bg-surface-muted">
-                  <FileText className="h-6 w-6 text-ink-muted" />
-                </div>
-                <p className="text-sm font-medium text-ink">{t('no_documents')}</p>
-                <p className="mt-1 text-xs text-ink-muted">{t('select_document')}</p>
-              </div>
-            </div>
-          )}
-          {rightPanel && <RightPanel mode={rightPanel} />}
+    <div
+      className="flex h-[calc(100vh-72px)] flex-col overflow-hidden rounded-2xl border shadow-sm"
+      style={{ backgroundColor: '#FFFDFB', borderColor: '#E8D8CF' }}
+    >
+      {/* Header */}
+      <header className="flex items-center gap-3 border-b px-5 py-3" style={{ borderColor: '#E8D8CF' }}>
+        <div className="flex h-9 w-9 items-center justify-center rounded-xl" style={{ backgroundColor: '#FFF5EC' }}>
+          <LinkIcon className="h-5 w-5" style={{ color: '#D97853' }} />
+        </div>
+        <div className="flex-1">
+          <h1 className="text-base font-bold" style={{ color: '#1F1F1F' }}>
+            Documents
+          </h1>
+          <p className="text-xs" style={{ color: '#9a9086' }}>
+            {totalDocs} {totalDocs === 1 ? 'link' : 'links'} to external resources
+          </p>
+        </div>
+        <Button variant="primary" size="md" onClick={handleAdd}>
+          <Plus className="h-4 w-4" /> Add document
+        </Button>
+      </header>
+
+      {/* Search + filters */}
+      <div
+        className="flex flex-wrap items-center gap-2 border-b px-5 py-3"
+        style={{ borderColor: '#E8D8CF' }}
+      >
+        <div className="relative min-w-[240px] flex-1">
+          <Search
+            className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2"
+            style={{ color: '#9a9086' }}
+          />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Search documents…"
+            className="ez-input w-full pl-9"
+          />
+        </div>
+        <div className="flex flex-wrap gap-1.5">
+          {filterTabs.map((tab) => {
+            const active = filterType === tab.value;
+            return (
+              <button
+                key={tab.value}
+                type="button"
+                onClick={() => setFilterType(tab.value)}
+                className="rounded-lg px-3 py-1.5 text-xs font-medium transition-all"
+                style={{
+                  backgroundColor: active ? '#D97853' : 'transparent',
+                  color: active ? '#FFFFFF' : '#7D6F66',
+                  border: `1px solid ${active ? '#D97853' : '#E8D8CF'}`,
+                }}
+              >
+                {tab.label}
+              </button>
+            );
+          })}
         </div>
       </div>
+
+      {/* Content */}
+      <div className="flex-1 overflow-y-auto px-5 py-5">
+        {isLoading ? (
+          <div className="flex items-center justify-center py-16">
+            <Loader2 className="h-6 w-6 animate-spin" style={{ color: '#D97853' }} />
+          </div>
+        ) : documents.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12">
+            <EmptyState
+              icon={<LinkIcon className="h-7 w-7" />}
+              title={Boolean(searchTerm || filterType !== 'all') ? 'Không tìm thấy tài liệu' : 'Chưa có tài liệu'}
+              description={Boolean(searchTerm || filterType !== 'all') ? 'Thử thay đổi bộ lọc hoặc từ khóa tìm kiếm.' : 'Thêm liên kết tài liệu nhóm của bạn (Google Docs, Figma, GitHub, Notion...)'}
+              actionLabel={!Boolean(searchTerm || filterType !== 'all') ? 'Thêm tài liệu' : undefined}
+              onAction={!Boolean(searchTerm || filterType !== 'all') ? handleAdd : undefined}
+            />
+          </div>
+        ) : (
+          <div className="space-y-6">
+            {filterType === 'all'
+              ? Object.entries(grouped).map(([type, docs]) => {
+                  if (docs.length === 0) return null;
+                  const meta = getTypeMeta(type);
+                  const { Icon } = meta;
+                  return (
+                    <section key={type}>
+                      <header className="mb-3 flex items-center gap-2">
+                        <div
+                          className="flex h-7 w-7 items-center justify-center rounded-lg"
+                          style={{ backgroundColor: meta.bg }}
+                        >
+                          <Icon className="h-3.5 w-3.5" style={{ color: meta.color }} />
+                        </div>
+                        <h2 className="text-sm font-semibold" style={{ color: '#1F1F1F' }}>
+                          {meta.label}
+                        </h2>
+                        <span
+                          className="rounded-full px-2 py-0.5 text-[10px] font-medium"
+                          style={{ backgroundColor: '#F0EDE8', color: '#7D6F66' }}
+                        >
+                          {docs.length}
+                        </span>
+                      </header>
+                      <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                        {docs.map((doc) => (
+                          <DocumentCard
+                            key={doc.id}
+                            doc={doc}
+                            copied={copiedId === doc.id}
+                            onOpen={() => handleOpen(doc)}
+                            onCopy={() => handleCopy(doc)}
+                            onEdit={() => handleEdit(doc)}
+                            onDelete={() => handleDelete(doc)}
+                          />
+                        ))}
+                      </div>
+                    </section>
+                  );
+                })
+              : (
+                <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                  {documents.map((doc) => (
+                    <DocumentCard
+                      key={doc.id}
+                      doc={doc}
+                      copied={copiedId === doc.id}
+                      onOpen={() => handleOpen(doc)}
+                      onCopy={() => handleCopy(doc)}
+                      onEdit={() => handleEdit(doc)}
+                      onDelete={() => handleDelete(doc)}
+                    />
+                  ))}
+                </div>
+              )}
+          </div>
+        )}
+      </div>
+
+      <DocumentFormModal
+        open={modalOpen}
+        initial={editing}
+        onClose={() => setModalOpen(false)}
+        onSave={handleSave}
+      />
     </div>
   );
 }
+
+// ── Document card ────────────────────────────────────────────────
+interface DocumentCardProps {
+  doc: Document;
+  copied: boolean;
+  onOpen: () => void;
+  onCopy: () => void;
+  onEdit: () => void;
+  onDelete: () => void;
+}
+
+function DocumentCard({ doc, copied, onOpen, onCopy, onEdit, onDelete }: DocumentCardProps) {
+  const meta = getTypeMeta(doc.type);
+  const { Icon } = meta;
+
+  return (
+    <article
+      className="group relative flex flex-col gap-3 rounded-2xl p-4 transition-all"
+      style={{
+        backgroundColor: '#FFFFFF',
+        border: '1px solid #E8E0D8',
+      }}
+      onMouseEnter={(e) => {
+        e.currentTarget.style.borderColor = '#D97853';
+        e.currentTarget.style.boxShadow = '0 4px 12px rgba(217,120,83,0.10)';
+      }}
+      onMouseLeave={(e) => {
+        e.currentTarget.style.borderColor = '#E8E0D8';
+        e.currentTarget.style.boxShadow = 'none';
+      }}
+    >
+      {/* Top row: type badge + actions */}
+      <div className="flex items-start justify-between gap-2">
+        <div
+          className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl"
+          style={{ backgroundColor: meta.bg }}
+        >
+          <Icon className="h-4 w-4" style={{ color: meta.color }} />
+        </div>
+        <div className="flex items-center gap-0.5 opacity-0 transition-opacity group-hover:opacity-100">
+          <button
+            type="button"
+            onClick={onCopy}
+            className="rounded-lg p-1.5 transition-colors hover:bg-canvas"
+            style={{ color: '#7D6F66' }}
+            aria-label="Copy link"
+            title={copied ? 'Copied!' : 'Copy link'}
+          >
+            {copied ? <Check className="h-3.5 w-3.5" /> : <Copy className="h-3.5 w-3.5" />}
+          </button>
+          <button
+            type="button"
+            onClick={onEdit}
+            className="rounded-lg p-1.5 transition-colors hover:bg-canvas"
+            style={{ color: '#7D6F66' }}
+            aria-label="Edit"
+            title="Edit"
+          >
+            <Edit2 className="h-3.5 w-3.5" />
+          </button>
+          <button
+            type="button"
+            onClick={onDelete}
+            className="rounded-lg p-1.5 transition-colors hover:bg-red-50"
+            style={{ color: '#EF4444' }}
+            aria-label="Delete"
+            title="Delete"
+          >
+            <Trash2 className="h-3.5 w-3.5" />
+          </button>
+        </div>
+      </div>
+
+      {/* Title + description */}
+      <div className="min-w-0 flex-1">
+        <h3 className="truncate text-sm font-semibold" style={{ color: '#1F1F1F' }}>
+          {doc.title}
+        </h3>
+        {doc.description && (
+          <p className="mt-1 line-clamp-2 text-xs" style={{ color: '#7D6F66' }}>
+            {doc.description}
+          </p>
+        )}
+      </div>
+
+      {/* Meta */}
+      <div className="flex items-center gap-2 text-[11px]" style={{ color: '#9a9086' }}>
+        {doc.createdBy?.fullName && (
+          <span className="flex items-center gap-1">
+            <UserIcon className="h-3 w-3" />
+            {doc.createdBy.fullName}
+          </span>
+        )}
+        <span className="flex items-center gap-1">
+          <Calendar className="h-3 w-3" />
+          {formatTime(doc.createdAt)}
+        </span>
+      </div>
+
+      {/* Open button */}
+      <button
+        type="button"
+        onClick={onOpen}
+        className="flex w-full items-center justify-center gap-2 rounded-xl px-3 py-2 text-sm font-semibold transition-all"
+        style={{ backgroundColor: '#FFF5EC', color: '#D97853' }}
+        onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = '#FFE8D6')}
+        onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = '#FFF5EC')}
+      >
+        <ExternalLink className="h-3.5 w-3.5" />
+        Open in new tab
+      </button>
+    </article>
+  );
+}
+
+

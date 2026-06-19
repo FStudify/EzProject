@@ -229,21 +229,30 @@ const validators = {
     language: z.enum(['VI', 'EN']).optional(),
   }),
 
-  // ── Documents ───────────────────────────────────────────
-  createFolder: z.object({
-    name: z
-      .string()
-      .min(1, 'Folder name is required')
-      .max(255, 'Folder name is too long')
-      .refine((value) => {
-        const trimmed = value.trim();
-        return trimmed.length > 0 &&
-          !value.includes('/') &&
-          !value.includes('\\') &&
-          !value.includes('..');
-      }, 'Invalid name'),
-    parentId: z.string().nullable().optional(),
+  // ── Documents (link-based) ────────────────────────────────
+  listDocuments: z.object({
+    type: z.enum(['google_doc', 'google_sheet', 'google_slide', 'figma', 'github', 'notion', 'other']).optional(),
+    search: z.string().optional(),
   }),
+
+  createDocumentLink: z.object({
+    title: z.string().min(1, 'Title is required').max(255),
+    description: z.string().max(2000).optional().default(''),
+    url: z.string().min(1, 'URL is required'),
+    type: z.enum(['google_doc', 'google_sheet', 'google_slide', 'figma', 'github', 'notion', 'other']).optional(),
+  }),
+
+  updateDocumentLink: z
+    .object({
+      title: z.string().min(1).max(255).optional(),
+      description: z.string().max(2000).optional(),
+      url: z.string().min(1).optional(),
+      type: z.enum(['google_doc', 'google_sheet', 'google_slide', 'figma', 'github', 'notion', 'other']).optional(),
+    })
+    .refine(
+      (d) => d.title !== undefined || d.description !== undefined || d.url !== undefined || d.type !== undefined,
+      { message: 'At least one field must be provided' },
+    ),
 };
 
 function validate(schema, source = 'body') {

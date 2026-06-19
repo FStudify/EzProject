@@ -1,68 +1,61 @@
 /**
  * ============================================================
- * Document API Module
+ * Document API Module — Link-based
  * ============================================================
+ * Documents store references to external resources
+ * (Google Docs, Figma, GitHub, Notion, etc.)
  */
 import { api } from './config';
 import { Endpoints } from './endpoints';
-import type { Document, Folder, DocumentListResponse } from './types';
+import type { Document, DocumentType } from './types';
 
-/** Lay danh sach tai lieu cua project */
+export interface CreateDocumentPayload {
+  title: string;
+  description?: string;
+  url: string;
+  type?: DocumentType;
+}
+
+export interface UpdateDocumentPayload {
+  title?: string;
+  description?: string;
+  url?: string;
+  type?: DocumentType;
+}
+
+/** List documents in a project (optionally filter by type / search) */
 export async function getDocuments(
   projectId: string,
-  options?: { folderId?: string | null; search?: string; fileType?: string },
-): Promise<DocumentListResponse> {
+  options?: { type?: DocumentType; search?: string },
+): Promise<Document[]> {
   const params = new URLSearchParams();
-  if (options?.folderId !== undefined) params.set('folderId', options.folderId ?? 'null');
+  if (options?.type) params.set('type', options.type);
   if (options?.search) params.set('search', options.search);
-  if (options?.fileType) params.set('fileType', options.fileType);
 
   const qs = params.toString();
-  return api.get<DocumentListResponse>(
+  return api.get<Document[]>(
     `${Endpoints.DOCUMENT_LIST(projectId)}${qs ? `?${qs}` : ''}`,
   );
 }
 
-/** Upload tai lieu */
-export async function uploadDocument(
+/** Add a document link to a project */
+export async function createDocument(
   projectId: string,
-  formData: FormData,
+  payload: CreateDocumentPayload,
 ): Promise<Document> {
-  return api.upload<Document>(Endpoints.DOCUMENT_LIST(projectId), formData);
+  return api.post<Document>(Endpoints.DOCUMENT_LIST(projectId), payload);
 }
 
-/** Cap nhat ten tai lieu */
-export async function renameDocument(
+/** Update a document */
+export async function updateDocument(
   projectId: string,
   docId: string,
-  name: string,
+  payload: UpdateDocumentPayload,
 ): Promise<Document> {
-  return api.put<Document>(Endpoints.DOCUMENT_DETAIL(projectId, docId), { name });
+  return api.put<Document>(Endpoints.DOCUMENT_DETAIL(projectId, docId), payload);
 }
 
-/** Xoa tai lieu */
+/** Delete a document */
 export async function deleteDocument(projectId: string, docId: string): Promise<void> {
   return api.delete(Endpoints.DOCUMENT_DETAIL(projectId, docId));
-}
-
-/** Tao thu muc */
-export async function createFolder(
-  projectId: string,
-  data: { name: string; parentId?: string | null },
-): Promise<Folder> {
-  return api.post<Folder>(Endpoints.DOCUMENT_FOLDERS(projectId), data);
-}
-
-/** Cap nhat ten thu muc */
-export async function renameFolder(
-  projectId: string,
-  folderId: string,
-  name: string,
-): Promise<Folder> {
-  return api.put<Folder>(Endpoints.DOCUMENT_FOLDER(projectId, folderId), { name });
-}
-
-/** Xoa thu muc */
-export async function deleteFolder(projectId: string, folderId: string): Promise<void> {
-  return api.delete(Endpoints.DOCUMENT_FOLDER(projectId, folderId));
 }

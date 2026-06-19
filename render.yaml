@@ -11,12 +11,17 @@ services:
     healthCheckPath: /health
     autoDeploy: true
     envVars:
+      # ── Runtime (không bí mật) ──
       - key: NODE_ENV
         value: production
       - key: PORT
         value: 10000
+
+      # ── Database (BÍ MẬT) ──
       - key: MONGO_URI
         sync: false
+
+      # ── JWT (BÍ MẬT — Generate Value tự tạo random 64 ký tự) ──
       - key: JWT_SECRET
         generateValue: true
       - key: JWT_REFRESH_SECRET
@@ -25,10 +30,22 @@ services:
         value: 15m
       - key: JWT_REFRESH_EXPIRES_IN
         value: 7d
+
+      # ── CORS + Frontend URL (BÍ MẬT vì chứa domain thật) ──
       - key: CORS_ORIGIN
         sync: false
       - key: FRONTEND_URL
         sync: false
+
+      # ── Cloudinary (BÍ MẬT — OPTIONAL) ──
+      - key: CLOUDINARY_CLOUD_NAME
+        sync: false
+      - key: CLOUDINARY_API_KEY
+        sync: false
+      - key: CLOUDINARY_API_SECRET
+        sync: false
+
+      # ── SMTP (BÍ MẬT — OPTIONAL) ──
       - key: SMTP_HOST
         sync: false
       - key: SMTP_PORT
@@ -39,17 +56,17 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
-      - key: CLOUDINARY_CLOUD_NAME
-        sync: false
-      - key: CLOUDINARY_API_KEY
-        sync: false
-      - key: CLOUDINARY_API_SECRET
-        sync: false
-      - key: UPLOAD_DIR
-        value: ./uploads
-      - key: MAX_FILE_SIZE
-        value: 10485760
+
+      # ── Rate Limit (không bí mật) ──
       - key: RATE_LIMIT_WINDOW_MS
         value: 60000
       - key: RATE_LIMIT_MAX
         value: 100
+
+      # ── File Storage (không bí mật, default cho prod) ──
+      - key: UPLOAD_DIR
+        value: uploads
+      - key: MAX_FILE_SIZE
+        value: 10485760
+      - key: PROJECT_STORAGE_QUOTA_BYTES
+        value: 1073741824

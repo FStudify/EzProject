@@ -1,12 +1,13 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Search, Bell, LogOut, UserPen, Settings, Sun, Moon } from 'lucide-react';
+import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon } from 'lucide-react';
 import { Avatar } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getNotifications } from '@/api/user.api';
 import NotificationDrawer, { NOTIFICATIONS_UPDATED_EVENT } from './NotificationDrawer';
+import { useSidebar } from './SidebarContext';
 
 interface TopbarProps {
   title: string;
@@ -16,6 +17,7 @@ export default function Topbar({ title }: TopbarProps) {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLanguage();
+  const { toggle, isMobile } = useSidebar();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -66,6 +68,22 @@ export default function Topbar({ title }: TopbarProps) {
           borderColor: theme === 'dark' ? undefined : '#E8D8CF',
         }}
       >
+        {isMobile && (
+          <button
+            type="button"
+            onClick={toggle}
+            className="inline-flex h-9 w-9 items-center justify-center rounded-xl border transition-colors lg:hidden mr-1 shrink-0"
+            style={{
+              borderColor: theme === 'dark' ? '#4a3d2e' : '#E6D6CC',
+              backgroundColor: theme === 'dark' ? '#252018' : '#FFFDFB',
+              color: theme === 'dark' ? '#c8bfb3' : '#635648',
+            }}
+            aria-label="Toggle Sidebar"
+          >
+            <Menu className="h-5 w-5" />
+          </button>
+        )}
+
         <h1
           className="hidden min-w-0 shrink-0 truncate text-lg font-bold sm:block md:max-w-[200px] lg:max-w-[280px]"
           style={{

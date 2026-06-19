@@ -35,7 +35,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useChatSocket } from '@/contexts/ChatSocketContext';
 import type { ChatMessage, ChatRoom, Member, ProjectMember } from '@/types';
 import ChatMessageBubble from './ChatMessage';
-import { ProjectMemberAvatar, Button } from '@/components/ui';
+import { ProjectMemberAvatar, Button, EmptyState } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui';
 
@@ -179,6 +179,16 @@ export default function ChatPage() {
       .catch(() => {})
       .finally(() => setLoadingMessages(false));
   }, [projectId, activeRoomId]);
+
+  // ── Auto-resize textarea ─────────────────────────────────────
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [input]);
 
   // ── Auto-scroll ─────────────────────────────────────────────
   useEffect(() => {
@@ -554,18 +564,17 @@ export default function ChatPage() {
               </button>
             </div>
 
-            {/* Messages */}
             <div ref={listRef} className="flex-1 min-w-0 overflow-y-auto overflow-x-hidden p-5 space-y-4">
               {loadingMessages ? (
                 <div className="flex items-center justify-center py-16">
                   <div className="h-8 w-8 animate-spin rounded-full border-4 border-t-transparent" style={{ borderColor: '#E8D8CF', borderTopColor: '#D97853' }} />
                 </div>
               ) : roomMessages.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-16" style={{ color: '#9a9086' }}>
-                  <MessageCircle className="mb-3 h-10 w-10" />
-                  <p className="text-sm font-medium">{t('no_messages')}</p>
-                  <p className="text-xs">{t('start_conversation')}</p>
-                </div>
+                <EmptyState
+                  icon={<MessageCircle className="h-7 w-7 text-ink-muted" />}
+                  title={t('no_messages') || 'Chưa có tin nhắn'}
+                  description={t('start_conversation') || 'Bắt đầu cuộc trò chuyện đầu tiên!'}
+                />
               ) : (
                 roomMessages.map((msg) => (
                   <ChatMessageBubble
@@ -580,13 +589,19 @@ export default function ChatPage() {
             {/* Input */}
             <div className="shrink-0 p-4" style={{ borderTop: '1px solid #E8D8CF' }}>
               <div className="flex min-w-0 gap-2">
-                <input
-                  type="text"
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder={`Nhắn tin trong ${activeRoom.name}...`}
-                  className="min-w-0 flex-1 rounded-xl border py-2.5 pl-4 pr-4 text-sm transition-all focus:outline-none focus:ring-2"
+                  className="min-w-0 flex-1 rounded-xl border py-2.5 pl-4 pr-4 text-sm transition-all focus:outline-none focus:ring-2 resize-none max-h-32 overflow-y-auto"
                   style={{ backgroundColor: '#FFFDFB', color: '#1F1F1F', borderColor: '#E8C7AE' }}
                   onFocus={e => { e.currentTarget.style.borderColor = '#D97853'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,120,83,0.16)'; }}
                   onBlur={e => { e.currentTarget.style.borderColor = '#E8C7AE'; e.currentTarget.style.boxShadow = ''; }}

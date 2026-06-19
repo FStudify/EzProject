@@ -37,6 +37,15 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
     }
   }, [isOpen, messages]);
 
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  useEffect(() => {
+    const textarea = textareaRef.current;
+    if (textarea) {
+      textarea.style.height = 'auto';
+      textarea.style.height = `${textarea.scrollHeight}px`;
+    }
+  }, [input]);
+
   const handleSend = () => {
     const trimmed = input.trim();
     if (!trimmed) return;
@@ -115,13 +124,19 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
             {/* Input */}
             <div className="border-t border-slate-200 p-3">
               <div className="flex gap-2">
-                <input
-                  type="text"
+                <textarea
+                  ref={textareaRef}
+                  rows={1}
                   value={input}
                   onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && !e.shiftKey) {
+                      e.preventDefault();
+                      handleSend();
+                    }
+                  }}
                   placeholder="Nhập tin nhắn..."
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary"
+                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none max-h-32 overflow-y-auto"
                 />
                 <button
                   type="button"

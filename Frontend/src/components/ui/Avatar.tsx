@@ -29,6 +29,30 @@ function getInitials(name: string): string {
     .toUpperCase();
 }
 
+const GRADIENTS = [
+  { from: '#4F46E5', to: '#06B6D4', text: '#FFFFFF' }, // Indigo to Cyan
+  { from: '#10B981', to: '#3B82F6', text: '#FFFFFF' }, // Emerald to Blue
+  { from: '#F59E0B', to: '#EF4444', text: '#FFFFFF' }, // Amber to Red
+  { from: '#EC4899', to: '#8B5CF6', text: '#FFFFFF' }, // Pink to Violet
+  { from: '#F97316', to: '#FACC15', text: '#FFFFFF' }, // Orange to Yellow
+  { from: '#06B6D4', to: '#3B82F6', text: '#FFFFFF' }, // Cyan to Blue
+  { from: '#8B5CF6', to: '#EC4899', text: '#FFFFFF' }, // Violet to Pink
+];
+
+function getAvatarColors(name: string): { bg: string; text: string } {
+  if (!name) return { bg: 'linear-gradient(135deg, #4F46E5, #06B6D4)', text: '#FFFFFF' };
+  let hash = 0;
+  for (let i = 0; i < name.length; i++) {
+    hash = name.charCodeAt(i) + ((hash << 5) - hash);
+  }
+  const index = Math.abs(hash) % GRADIENTS.length;
+  const grad = GRADIENTS[index];
+  return {
+    bg: `linear-gradient(135deg, ${grad.from}, ${grad.to})`,
+    text: grad.text,
+  };
+}
+
 export default function Avatar({
   src,
   name,
@@ -39,6 +63,7 @@ export default function Avatar({
   const [imgError, setImgError] = useState(false);
   const sizeClass = sizeStyles[size];
   const ringClass = online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
+  const { bg, text } = getAvatarColors(name);
 
   const content = (
     <div
@@ -56,8 +81,8 @@ export default function Avatar({
         <div
           className="flex h-full w-full items-center justify-center font-semibold"
           style={{
-            background: 'linear-gradient(135deg, #e6f2fa, #b3d9f2)',
-            color: '#0651A0',
+            background: bg,
+            color: text,
           }}
         >
           {getInitials(name)}

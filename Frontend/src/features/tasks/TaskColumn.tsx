@@ -76,6 +76,11 @@ export default function TaskColumn({
         </div>
       </div>
       <div className="ez-task-scrollbar flex-1 min-h-0 space-y-1.5 overflow-y-auto p-1.5">
+        {isDragOver && (
+          <div className="h-20 rounded-xl border-2 border-dashed border-primary-light/50 bg-primary-50/25 dark:bg-primary-950/10 mb-2 animate-pulse flex items-center justify-center">
+            <span className="text-xs font-semibold text-primary">Thả vào đây</span>
+          </div>
+        )}
         {tasks.map((task) => (
           <TaskCard
             key={task.id}
@@ -83,9 +88,9 @@ export default function TaskColumn({
             onClick={() => onTaskClick?.(task)}
           />
         ))}
-        {tasks.length === 0 && (
-          <div className="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-border py-6 text-slate-400">
-            <p className="text-xs">Drop here</p>
+        {tasks.length === 0 && !isDragOver && (
+          <div className="flex flex-col items-center justify-center rounded-lg border border-dashed border-border py-6 text-ink-muted">
+            <p className="text-xs">Chưa có công việc</p>
           </div>
         )}
       </div>

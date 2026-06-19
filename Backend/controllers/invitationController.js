@@ -477,6 +477,20 @@ exports.acceptInvitation = async (req, res, next) => {
     invitation.status = 'ACCEPTED';
     await invitation.save();
 
+    try {
+      await syncMemberToGeneral(project._id, userId, 'MEMBER');
+      await Activity.create({
+        projectId: project._id,
+        userId: new ObjectId(userId),
+        action: 'joined project via manual invite',
+        target: project.name,
+        targetType: 'project',
+        targetId: project._id,
+      });
+    } catch (err) {
+      console.error('[Invite] Manual join member post-accept sync failed:', err.message);
+    }
+
     res.json({
       success: true,
       data: { projectId: project._id, projectName: project.name },

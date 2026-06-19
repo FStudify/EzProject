@@ -407,7 +407,7 @@ async function main() {
     console.log('  EZProject — Database Seed');
     console.log('========================================\n');
 
-    await mongoose.connect(process.env.MONGO_URI);
+    await mongoose.connect(process.env.MONGO_URI || 'mongodb://127.0.0.1:27017/ezproject');
     console.log('[MongoDB] Connected');
 
     console.log('\n[Seed] Dropping existing data...');
