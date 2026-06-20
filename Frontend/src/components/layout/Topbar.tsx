@@ -56,7 +56,7 @@ export default function Topbar({ title }: TopbarProps) {
       const inviter = detail?.invitedBy?.fullName || 'Ai đó';
       const project = detail?.projectName || 'một dự án';
       setUnreadCount((prev) => prev + 1);
-      toast(`${inviter} đã mời bạn vào dự án "${project}"`, 'info');
+      toast(`${inviter} đã mời bạn vào dự án "${project}"`, 'success');
     };
     window.addEventListener('invitation:new', handleInvitation);
     return () => window.removeEventListener('invitation:new', handleInvitation);
