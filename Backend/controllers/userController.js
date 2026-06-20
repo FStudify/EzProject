@@ -222,3 +222,25 @@ exports.getUserStats = async (req, res, next) => {
     next(err);
   }
 };
+
+// ── GET /users/me/activities ────────────────────────────────────────────────
+// Cross-project activity feed for the current user (most recent first).
+exports.getUserActivities = async (req, res, next) => {
+  try {
+    const limit = Math.min(parseInt(req.query.limit, 10) || 20, 100);
+    const mongoose = require('mongoose');
+    const { Activity } = require('../models/Activity');
+
+    const userObjId = new mongoose.Types.ObjectId(req.user.id);
+
+    const activities = await Activity.find({ userId: userObjId })
+      .sort({ createdAt: -1 })
+      .limit(limit)
+      .populate('projectId', 'name')
+      .lean();
+
+    res.json({ success: true, data: activities });
+  } catch (err) {
+    next(err);
+  }
+};

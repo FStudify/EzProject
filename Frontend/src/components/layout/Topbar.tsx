@@ -1,7 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
 import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon } from 'lucide-react';
-import { Avatar } from '@/components/ui';
+import { Avatar, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -18,6 +18,7 @@ export default function Topbar({ title }: TopbarProps) {
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLanguage();
   const { toggle, isMobile } = useSidebar();
+  const { toast } = useToast();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
@@ -46,6 +47,20 @@ export default function Topbar({ title }: TopbarProps) {
     window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
     return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
   }, []);
+
+  // Real-time invitation notification — the server emits "invitation:new" via
+  // socket when someone invites us. Refresh the badge count and show a toast.
+  useEffect(() => {
+    const handleInvitation = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectName?: string; invitedBy?: { fullName?: string } }>).detail;
+      const inviter = detail?.invitedBy?.fullName || 'Ai đó';
+      const project = detail?.projectName || 'một dự án';
+      setUnreadCount((prev) => prev + 1);
+      toast(`${inviter} đã mời bạn vào dự án "${project}"`, 'info');
+    };
+    window.addEventListener('invitation:new', handleInvitation);
+    return () => window.removeEventListener('invitation:new', handleInvitation);
+  }, [toast]);
 
   useEffect(() => {
     const onClickOutside = (e: MouseEvent) => {

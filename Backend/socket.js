@@ -47,6 +47,10 @@ function initSocket(io) {
   io.on('connection', (socket) => {
     console.log(`[Socket] connected: ${socket.user.id} (${socket.user.fullName})`);
 
+    // ── join personal room so server can push user-targeted events
+    //    (invitations, friend requests, etc.) without client polling.
+    socket.join(`user:${socket.user.id}`);
+
     // ── join_project ────────────────────────────────────────────────────────
     // Client joins project room to receive all project-level events (chat, meetings, etc.)
     socket.on('join_project', async ({ projectId }) => {

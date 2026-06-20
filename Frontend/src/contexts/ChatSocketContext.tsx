@@ -133,6 +133,17 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       typingCbsRef.current.forEach((cb) => cb(data));
     });
 
+    // Real-time invitation notification — owner just invited this user.
+    // We re-dispatch a window CustomEvent so any feature/component can listen
+    // without coupling to the socket context directly.
+    socket.on('invitation:new', (data: unknown) => {
+      try {
+        window.dispatchEvent(new CustomEvent('invitation:new', { detail: data }));
+      } catch (err) {
+        console.warn('[ChatSocket] failed to dispatch invitation:new', err);
+      }
+    });
+
     socket.on('error', (data: { message: string }) => {
       console.warn('[ChatSocket] error:', data.message);
     });

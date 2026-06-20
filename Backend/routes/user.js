@@ -38,4 +38,7 @@ router.put('/me/notifications/:id/read', requireAuth, userController.markNotific
 // ── My invitations ────────────────────────────────────
 router.get('/me/invitations', requireAuth, invitationController.myInvitations);
 
+// ── My activities ─────────────────────────────────────
+router.get('/me/activities', requireAuth, userController.getUserActivities);
+
 module.exports = router;

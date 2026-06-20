@@ -4,6 +4,7 @@ const mongoose = require('mongoose');
 const { v4: uuidv4 } = require('uuid');
 const Project = require('../models/Project');
 const Invitation = require('../models/Invitation');
+const InviteLink = require('../models/InviteLink');
 const User = require('../models/User');
 const { ChatRoom } = require('../models/Chat');
 const { Activity } = require('../models/Activity');
@@ -46,6 +47,25 @@ function normalizeEmail(email) {
 
 function isValidEmail(email) {
   return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email);
+}
+
+/**
+ * Emit a real-time "you've been invited" event to the invited user.
+ * Uses a per-user room "user:<id>" so the toast/list updates instantly
+ * without requiring them to refresh.
+ */
+function notifyInvitedUser(req, invitation, project, invitedUserId) {
+  const io = req.app?.get('io');
+  if (!io || !invitedUserId) return;
+  io.to(`user:${invitedUserId.toString()}`).emit('invitation:new', {
+    invitationId: invitation._id?.toString() ?? invitation.id,
+    projectId: project._id.toString(),
+    projectName: project.name,
+    invitedBy: invitation.invitedBy,
+    role: invitation.role,
+    expiresAt: invitation.expiresAt,
+    createdAt: invitation.createdAt || new Date().toISOString(),
+  });
 }
 
 function getProjectMember(project, userId) {
@@ -250,6 +270,11 @@ exports.createEmailInvite = async (req, res, next) => {
       emailResult = { sent: false, inviteUrl: buildInviteUrl(token), reason: 'SEND_FAILED' };
     }
 
+    // Real-time push to invited user if they already have an account
+    if (existingUser?._id) {
+      notifyInvitedUser(req, invitation, project, existingUser._id);
+    }
+
     res.status(201).json({
       success: true,
       data: {
@@ -273,28 +298,54 @@ exports.createEmailInvite = async (req, res, next) => {
 
 exports.getInviteByToken = async (req, res, next) => {
   try {
-    const invitation = await Invitation.findOne({ token: req.params.token })
+    const { token } = req.params;
+    const invitation = await Invitation.findOne({ token })
       .populate('projectId', 'name description')
       .populate('invitedBy', 'fullName avatar')
       .lean();
 
-    if (!invitation) throw errors.NotFound('Invitation');
-    if (invitation.status !== 'PENDING') {
-      throw errors.BadRequest('Invitation has already been processed');
+    if (invitation) {
+      if (invitation.status !== 'PENDING') {
+        throw errors.BadRequest('Invitation has already been processed');
+      }
+      if (invitation.expiresAt < new Date()) {
+        await Invitation.findByIdAndUpdate(invitation._id, { status: 'EXPIRED' });
+        throw errors.BadRequest('Invitation has expired');
+      }
+
+      return res.json({
+        success: true,
+        data: {
+          kind: 'invitation',
+          email: invitation.invitedEmail,
+          role: invitation.role,
+          expiresAt: invitation.expiresAt,
+          project: invitation.projectId,
+          invitedBy: invitation.invitedBy,
+        },
+      });
     }
-    if (invitation.expiresAt < new Date()) {
-      await Invitation.findByIdAndUpdate(invitation._id, { status: 'EXPIRED' });
+
+    // Fallback: token có thể thuộc shareable invite link (InviteLink collection)
+    const link = await InviteLink.findOne({ token })
+      .populate('projectId', 'name description')
+      .populate('createdBy', 'fullName avatar')
+      .lean();
+
+    if (!link) throw errors.NotFound('Invitation');
+    if (link.expiresAt < new Date()) {
+      await InviteLink.deleteOne({ _id: link._id });
       throw errors.BadRequest('Invitation has expired');
     }
 
-    res.json({
+    return res.json({
       success: true,
       data: {
-        email: invitation.invitedEmail,
-        role: invitation.role,
-        expiresAt: invitation.expiresAt,
-        project: invitation.projectId,
-        invitedBy: invitation.invitedBy,
+        kind: 'invite_link',
+        role: 'MEMBER',
+        expiresAt: link.expiresAt,
+        project: link.projectId,
+        invitedBy: link.createdBy,
       },
     });
   } catch (err) {
@@ -304,21 +355,84 @@ exports.getInviteByToken = async (req, res, next) => {
 
 exports.acceptInviteByToken = async (req, res, next) => {
   try {
-    const invitation = await Invitation.findOne({ token: req.params.token });
-    if (!invitation) throw errors.NotFound('Invitation');
+    const { token } = req.params;
+    const invitation = await Invitation.findOne({ token });
+    if (invitation) {
+      const user = await User.findById(req.user.id).lean();
+      if (!user) throw errors.NotFound('User');
 
-    const user = await User.findById(req.user.id).lean();
-    if (!user) throw errors.NotFound('User');
+      const result = await acceptInvitationDocument(invitation, {
+        id: req.user.id,
+        email: user.email,
+      });
 
-    const result = await acceptInvitationDocument(invitation, {
-      id: req.user.id,
-      email: user.email,
+      return res.json({
+        success: true,
+        data: result,
+        message: `Successfully joined project "${result.projectName}"`,
+      });
+    }
+
+    // Fallback: token may belong to a shareable InviteLink
+    const link = await InviteLink.findOne({ token });
+    if (!link) throw errors.NotFound('Invitation');
+    if (link.expiresAt < new Date()) {
+      await InviteLink.deleteOne({ _id: link._id });
+      throw errors.BadRequest('Invitation has expired');
+    }
+
+    const project = await Project.findById(link.projectId);
+    if (!project) throw errors.NotFound('Project');
+
+    const alreadyMember = project.members.some(
+      (m) => m.userId.toString() === req.user.id,
+    );
+    if (alreadyMember) {
+      return res.json({
+        success: true,
+        data: { projectId: project._id, projectName: project.name, alreadyMember: true },
+        message: 'You are already a member of this project',
+      });
+    }
+
+    project.members.push({
+      userId: new ObjectId(req.user.id),
+      role: 'MEMBER',
+      isOwner: false,
+      joinedAt: new Date(),
     });
+    await project.save();
 
-    res.json({
+    // Delete link after successful use (one-time use)
+    await InviteLink.deleteOne({ _id: link._id });
+
+    try {
+      const { ChatRoom } = require('../models/Chat');
+      const { Activity } = require('../models/Activity');
+      const general = await ChatRoom.findOne({ projectId: project._id, type: 'GENERAL' });
+      if (general) {
+        const already = general.members.map((m) => m.toString()).includes(req.user.id);
+        if (!already) general.members.push(new ObjectId(req.user.id));
+        general.memberRoles = general.memberRoles.filter((r) => r.userId.toString() !== req.user.id);
+        general.memberRoles.push({ userId: new ObjectId(req.user.id), role: 'MEMBER', joinedAt: new Date() });
+        await general.save();
+      }
+      await Activity.create({
+        projectId: project._id,
+        userId: new ObjectId(req.user.id),
+        action: 'joined project via invite link',
+        target: project.name,
+        targetType: 'project',
+        targetId: project._id,
+      });
+    } catch (err) {
+      console.error('[Invite] Link-join post-accept sync failed:', err.message);
+    }
+
+    return res.json({
       success: true,
-      data: result,
-      message: `Successfully joined project "${result.projectName}"`,
+      data: { projectId: project._id, projectName: project.name },
+      message: `Successfully joined project "${project.name}"`,
     });
   } catch (err) {
     next(err);
@@ -402,6 +516,8 @@ exports.createInvitation = async (req, res, next) => {
       status: 'PENDING',
       expiresAt,
     });
+
+    notifyInvitedUser(req, invitation, project, invitedUser._id);
 
     res.status(201).json({
       success: true,
