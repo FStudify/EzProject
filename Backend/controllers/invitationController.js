@@ -68,6 +68,25 @@ function notifyInvitedUser(req, invitation, project, invitedUserId) {
   });
 }
 
+/**
+ * Notify the inviter when their invitee accepts or declines.
+ * payload: { invitationId, projectId, projectName, action: 'accepted'|'declined', by }
+ */
+function notifyInviter(req, invitation, project, action) {
+  const io = req.app?.get('io');
+  if (!io || !invitation?.invitedBy) return;
+  io.to(`user:${invitation.invitedBy.toString()}`).emit('invitation:response', {
+    invitationId: invitation._id.toString(),
+    projectId: project._id.toString(),
+    projectName: project.name,
+    invitedUser: invitation.invitedUserId,
+    invitedEmail: invitation.invitedEmail,
+    invitedUsername: invitation.invitedUsername,
+    action, // 'accepted' | 'declined'
+    timestamp: new Date().toISOString(),
+  });
+}
+
 function getProjectMember(project, userId) {
   return project.members.find((m) => m.userId.toString() === userId);
 }
@@ -257,24 +276,9 @@ exports.createEmailInvite = async (req, res, next) => {
     });
 
     const inviter = await User.findById(req.user.id, 'fullName').lean();
-    let emailResult;
-    try {
-      emailResult = await sendProjectInviteEmail({
-        to: email,
-        projectName: project.name,
-        inviterName: inviter?.fullName || req.user.username || 'A teammate',
-        token,
-      });
-    } catch (err) {
-      console.error('[InviteEmail] Failed to send invite email:', err.message);
-      emailResult = { sent: false, inviteUrl: buildInviteUrl(token), reason: 'SEND_FAILED' };
-    }
 
-    // Real-time push to invited user if they already have an account
-    if (existingUser?._id) {
-      notifyInvitedUser(req, invitation, project, existingUser._id);
-    }
-
+    // Respond immediately so the frontend doesn't time out (Render cold-start
+    // can take 30s and SMTP may be slow). Email is sent in the background.
     res.status(201).json({
       success: true,
       data: {
@@ -282,15 +286,45 @@ exports.createEmailInvite = async (req, res, next) => {
         email,
         role,
         token,
-        inviteUrl: emailResult.inviteUrl,
+        inviteUrl: buildInviteUrl(token),
         expiresAt,
-        emailSent: emailResult.sent,
-        emailStatus: emailResult.reason || 'SENT',
+        emailSent: false,
+        emailStatus: 'PENDING',
       },
-      message: emailResult.sent
-        ? 'Invitation email sent'
-        : 'Invitation created. SMTP is not configured, use inviteUrl for local testing.',
+      message: 'Invitation created. Email is being sent in the background.',
     });
+
+    // Real-time push to invited user if they already have an account
+    if (existingUser?._id) {
+      notifyInvitedUser(req, invitation, project, existingUser._id);
+    }
+
+    // Fire-and-forget email send — do NOT block the response.
+    setImmediate(async () => {
+      try {
+        const result = await sendProjectInviteEmail({
+          to: email,
+          projectName: project.name,
+          inviterName: inviter?.fullName || req.user.username || 'A teammate',
+          token,
+        });
+        await Invitation.findByIdAndUpdate(invitation._id, {
+          emailSent: result.sent,
+          emailStatus: result.reason || (result.sent ? 'SENT' : 'UNCONFIGURED'),
+        });
+        if (!result.sent) {
+          console.warn(`[InviteEmail] Email not sent (${result.reason}) for ${email}`);
+        }
+      } catch (err) {
+        console.error('[InviteEmail] Background send failed:', err.message);
+        await Invitation.findByIdAndUpdate(invitation._id, {
+          emailSent: false,
+          emailStatus: 'SEND_FAILED',
+        });
+      }
+    });
+
+    return;
   } catch (err) {
     next(err);
   }
@@ -366,6 +400,9 @@ exports.acceptInviteByToken = async (req, res, next) => {
         email: user.email,
       });
 
+      // Email-link accept path: also notify the inviter in real-time
+      notifyInviter(req, invitation, { _id: result.projectId, name: result.projectName }, 'accepted');
+
       return res.json({
         success: true,
         data: result,
@@ -428,6 +465,14 @@ exports.acceptInviteByToken = async (req, res, next) => {
     } catch (err) {
       console.error('[Invite] Link-join post-accept sync failed:', err.message);
     }
+
+    // Notify link creator that someone joined via their link
+    notifyInviter(
+      req,
+      { _id: link._id, invitedBy: link.createdBy, invitedUserId: new ObjectId(req.user.id), invitedEmail: req.user.email },
+      project,
+      'accepted',
+    );
 
     return res.json({
       success: true,
@@ -624,6 +669,9 @@ exports.acceptInvitation = async (req, res, next) => {
       console.error('[Invite] Manual join member post-accept sync failed:', err.message);
     }
 
+    // Notify the inviter in real-time so they see "User accepted your invite"
+    notifyInviter(req, invitation, project, 'accepted');
+
     res.json({
       success: true,
       data: { projectId: project._id, projectName: project.name },
@@ -650,6 +698,9 @@ exports.declineInvitation = async (req, res, next) => {
 
     invitation.status = 'DECLINED';
     await invitation.save();
+
+    const project = await Project.findById(invitation.projectId).lean();
+    if (project) notifyInviter(req, invitation, project, 'declined');
 
     res.json({ success: true, message: 'Invitation declined' });
   } catch (err) {

@@ -144,6 +144,16 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // When an invitee accepts/declines our invite, push a window event so
+    // the bell drawer can update the notification list in real-time.
+    socket.on('invitation:response', (data: unknown) => {
+      try {
+        window.dispatchEvent(new CustomEvent('invitation:response', { detail: data }));
+      } catch (err) {
+        console.warn('[ChatSocket] failed to dispatch invitation:response', err);
+      }
+    });
+
     socket.on('error', (data: { message: string }) => {
       console.warn('[ChatSocket] error:', data.message);
     });

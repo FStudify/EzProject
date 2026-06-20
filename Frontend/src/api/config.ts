@@ -72,7 +72,7 @@ function shouldAttemptRefresh(path: string): boolean {
 async function request<T = unknown>(
   method: 'GET' | 'POST' | 'PUT' | 'PATCH' | 'DELETE',
   path: string,
-  options: RequestInit = {},
+  options: RequestInit & { timeout?: number } = {},
 ): Promise<T> {
   const url = `${config.baseUrl}${path}`;
   let lastError: Error | null = null;
@@ -269,29 +269,39 @@ export const api = {
     return request<T>('GET', path, options);
   },
 
-  post<T = unknown>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
+  post<T = unknown>(path: string, body?: unknown, options?: RequestInit & { timeout?: number }): Promise<T> {
+    const { timeout, ...rest } = options || {};
     return request<T>('POST', path, {
-      ...options,
+      ...rest,
+      ...(timeout ? { timeout } : {}),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   },
 
-  put<T = unknown>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
+  put<T = unknown>(path: string, body?: unknown, options?: RequestInit & { timeout?: number }): Promise<T> {
+    const { timeout, ...rest } = options || {};
     return request<T>('PUT', path, {
-      ...options,
+      ...rest,
+      ...(timeout ? { timeout } : {}),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   },
 
-  patch<T = unknown>(path: string, body?: unknown, options?: RequestInit): Promise<T> {
+  patch<T = unknown>(path: string, body?: unknown, options?: RequestInit & { timeout?: number }): Promise<T> {
+    const { timeout, ...rest } = options || {};
     return request<T>('PATCH', path, {
-      ...options,
+      ...rest,
+      ...(timeout ? { timeout } : {}),
       body: body !== undefined ? JSON.stringify(body) : undefined,
     });
   },
 
-  delete<T = unknown>(path: string, options?: RequestInit): Promise<T> {
-    return request<T>('DELETE', path, options);
+  delete<T = unknown>(path: string, options?: RequestInit & { timeout?: number }): Promise<T> {
+    const { timeout, ...rest } = options || {};
+    return request<T>('DELETE', path, {
+      ...rest,
+      ...(timeout ? { timeout } : {}),
+    });
   },
 
   /**
@@ -300,10 +310,12 @@ export const api = {
   upload<T = unknown>(
     path: string,
     formData: FormData,
-    options?: RequestInit,
+    options?: RequestInit & { timeout?: number },
   ): Promise<T> {
+    const { timeout, ...rest } = options || {};
     return request<T>('POST', path, {
-      ...options,
+      ...rest,
+      ...(timeout ? { timeout } : {}),
       body: formData,
       headers: { Accept: 'application/json' },
     });

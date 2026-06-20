@@ -1,6 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Bell, CheckSquare, FileText, Inbox, MessageCircle, Video } from 'lucide-react';
+import { Bell, CheckSquare, FileText, Inbox, MessageCircle, Video, UserPlus } from 'lucide-react';
 import { Drawer, SkeletonList } from '@/components/ui';
 import {
   getNotifications,
@@ -9,10 +9,13 @@ import {
 } from '@/api/user.api';
 import type { NotificationType } from '@/api/types';
 import type { AppNotification } from '@/types';
+import InvitationRequestList from './InvitationRequestList';
 
 type FilterTab = 'all' | 'unread' | Lowercase<NotificationType>;
+type DrawerView = 'notifications' | 'invitations';
 
 export const NOTIFICATIONS_UPDATED_EVENT = 'notifications:updated';
+export const INVITATIONS_UPDATED_EVENT = 'invitations:updated';
 
 const TYPE_ICONS: Record<Lowercase<NotificationType>, typeof Bell> = {
   task: CheckSquare,
@@ -111,8 +114,10 @@ function normalizeNotificationLink(link: string | null, type: string): string | 
 export default function NotificationDrawer({ isOpen, onClose }: NotificationDrawerProps) {
   const [items, setItems] = useState<AppNotification[]>([]);
   const [tab, setTab] = useState<FilterTab>('all');
+  const [view, setView] = useState<DrawerView>('notifications');
   const [isLoading, setIsLoading] = useState(true);
   const [isMarkingAll, setIsMarkingAll] = useState(false);
+  const [invitationCount, setInvitationCount] = useState(0);
 
   const fetchNotifications = async () => {
     try {
@@ -197,34 +202,46 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
   ];
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} title="Thông báo">
+    <Drawer
+      isOpen={isOpen}
+      onClose={onClose}
+      title={view === 'invitations' ? 'Lời mời tham gia dự án' : 'Thông báo'}
+    >
       <div className="flex flex-wrap items-center justify-between gap-2 border-b border-border pb-3">
         <div className="flex flex-wrap gap-1">
-          {tabs.map((currentTab) => (
-            <button
-              key={currentTab.id}
-              type="button"
-              onClick={() => setTab(currentTab.id)}
-              className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
-                tab === currentTab.id
-                  ? 'bg-primary text-white'
-                  : 'bg-surface-muted text-ink-secondary hover:bg-primary-50'
-              }`}
-            >
-              {currentTab.label}
-              {currentTab.id === 'unread' && unreadCount > 0 && (
-                <span className="ml-1 opacity-90">({unreadCount})</span>
-              )}
-              {currentTab.id !== 'all' &&
-                currentTab.id !== 'unread' &&
-                typeCounts[currentTab.id] > 0 && (
-                  <span className="ml-1 opacity-75">({typeCounts[currentTab.id]})</span>
-                )}
-            </button>
-          ))}
+          <button
+            type="button"
+            onClick={() => setView('notifications')}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              view === 'notifications'
+                ? 'bg-primary text-white'
+                : 'bg-surface-muted text-ink-secondary hover:bg-primary-50'
+            }`}
+          >
+            <Bell className="h-3.5 w-3.5" />
+            Thông báo
+            {unreadCount > 0 && (
+              <span className="ml-1 opacity-90">({unreadCount})</span>
+            )}
+          </button>
+          <button
+            type="button"
+            onClick={() => setView('invitations')}
+            className={`inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+              view === 'invitations'
+                ? 'bg-primary text-white'
+                : 'bg-surface-muted text-ink-secondary hover:bg-primary-50'
+            }`}
+          >
+            <UserPlus className="h-3.5 w-3.5" />
+            Lời mời
+            {invitationCount > 0 && (
+              <span className="ml-1 opacity-90">({invitationCount})</span>
+            )}
+          </button>
         </div>
 
-        {unreadCount > 0 && (
+        {view === 'notifications' && unreadCount > 0 && (
           <button
             type="button"
             onClick={() => void markAllRead()}
@@ -236,27 +253,58 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
         )}
       </div>
 
-      <ul className="mt-3 divide-y divide-border">
-        {isLoading ? (
-          <div className="py-4">
-            <SkeletonList rows={5} />
+      {view === 'invitations' ? (
+        <InvitationRequestList onUnreadChange={setInvitationCount} />
+      ) : (
+        <>
+          <div className="flex flex-wrap gap-1 pt-3">
+            {tabs.map((currentTab) => (
+              <button
+                key={currentTab.id}
+                type="button"
+                onClick={() => setTab(currentTab.id)}
+                className={`rounded-full px-3 py-1 text-xs font-medium transition-colors ${
+                  tab === currentTab.id
+                    ? 'bg-primary text-white'
+                    : 'bg-surface-muted text-ink-secondary hover:bg-primary-50'
+                }`}
+              >
+                {currentTab.label}
+                {currentTab.id === 'unread' && unreadCount > 0 && (
+                  <span className="ml-1 opacity-90">({unreadCount})</span>
+                )}
+                {currentTab.id !== 'all' &&
+                  currentTab.id !== 'unread' &&
+                  typeCounts[currentTab.id] > 0 && (
+                    <span className="ml-1 opacity-75">({typeCounts[currentTab.id]})</span>
+                  )}
+              </button>
+            ))}
           </div>
-        ) : filtered.length === 0 ? (
-          <li className="flex flex-col items-center gap-2 py-16 text-center text-sm text-ink-muted">
-            <Inbox className="h-8 w-8 text-ink-muted/60" />
-            {tab === 'unread' ? 'Không còn thông báo chưa đọc.' : 'Không có thông báo phù hợp.'}
-          </li>
-        ) : (
-          filtered.map((notification) => (
-            <NotificationRow
-              key={notification.id}
-              item={notification}
-              onRead={() => markRead(notification.id)}
-              onNavigate={onClose}
-            />
-          ))
-        )}
-      </ul>
+
+          <ul className="mt-3 divide-y divide-border">
+            {isLoading ? (
+              <div className="py-4">
+                <SkeletonList rows={5} />
+              </div>
+            ) : filtered.length === 0 ? (
+              <li className="flex flex-col items-center gap-2 py-16 text-center text-sm text-ink-muted">
+                <Inbox className="h-8 w-8 text-ink-muted/60" />
+                {tab === 'unread' ? 'Không còn thông báo chưa đọc.' : 'Không có thông báo phù hợp.'}
+              </li>
+            ) : (
+              filtered.map((notification) => (
+                <NotificationRow
+                  key={notification.id}
+                  item={notification}
+                  onRead={() => markRead(notification.id)}
+                  onNavigate={onClose}
+                />
+              ))
+            )}
+          </ul>
+        </>
+      )}
     </Drawer>
   );
 }

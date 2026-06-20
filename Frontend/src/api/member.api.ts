@@ -41,7 +41,7 @@ export async function removeMember(projectId: string, userId: string): Promise<v
 export async function createInviteLink(
   projectId: string,
 ): Promise<{ inviteLink: string; token: string; expiresAt: string }> {
-  return api.post(`${Endpoints.MEMBER_INVITE(projectId)}`);
+  return api.post(`${Endpoints.MEMBER_INVITE(projectId)}`, undefined, { timeout: 20_000 });
 }
 
 export interface EmailInviteResponse {
@@ -62,7 +62,9 @@ export async function createEmailInvite(
   email: string,
   role: 'MEMBER' | 'SUPERVISOR' | 'LEADER' = 'MEMBER',
 ): Promise<EmailInviteResponse> {
-  return api.post(Endpoints.EMAIL_INVITE(projectId), { email, role });
+  // Email invitations can be slow on Render free tier (cold start + SMTP).
+  // Use a 30s timeout to avoid AbortError on first hit after deploy.
+  return api.post(Endpoints.EMAIL_INVITE(projectId), { email, role }, { timeout: 30_000 });
 }
 
 export interface InviteTokenDetails {
@@ -104,7 +106,7 @@ export async function createInvitation(
   status: string;
   expiresAt: string;
 }> {
-  return api.post(Endpoints.MEMBER_INVITATIONS(projectId), data);
+  return api.post(Endpoints.MEMBER_INVITATIONS(projectId), data, { timeout: 20_000 });
 }
 
 /** Lay danh sach invitation cua project (owner only) */
@@ -117,12 +119,12 @@ export async function acceptInvitation(
   projectId: string,
   invitationId: string,
 ): Promise<{ projectId: string; projectName?: string }> {
-  return api.post(Endpoints.INVITATION_ACCEPT(projectId, invitationId));
+  return api.post(Endpoints.INVITATION_ACCEPT(projectId, invitationId), undefined, { timeout: 20_000 });
 }
 
 /** Decline invitation */
 export async function declineInvitation(projectId: string, invitationId: string): Promise<void> {
-  return api.post(Endpoints.INVITATION_DECLINE(projectId, invitationId));
+  return api.post(Endpoints.INVITATION_DECLINE(projectId, invitationId), undefined, { timeout: 15_000 });
 }
 
 /** Lay invitation cua minh */

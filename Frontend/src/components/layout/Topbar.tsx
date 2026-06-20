@@ -6,6 +6,7 @@ import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getNotifications } from '@/api/user.api';
+import { getMyInvitations } from '@/api/invitations.api';
 import NotificationDrawer, { NOTIFICATIONS_UPDATED_EVENT } from './NotificationDrawer';
 import { useSidebar } from './SidebarContext';
 
@@ -22,44 +23,73 @@ export default function Topbar({ title }: TopbarProps) {
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [invitationCount, setInvitationCount] = useState(0);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
+  const fetchBadge = async () => {
+    try {
+      const [notif, invites] = await Promise.allSettled([
+        getNotifications(),
+        getMyInvitations(),
+      ]);
+      const notifUnread = notif.status === 'fulfilled' ? notif.value.unreadCount : 0;
+      const inviteUnread = invites.status === 'fulfilled' ? invites.value.length : 0;
+      setUnreadCount(notifUnread);
+      setInvitationCount(inviteUnread);
+    } catch (err) {
+      console.error('Failed to fetch badge counts:', err);
+    }
+  };
+
   useEffect(() => {
-    const fetchUnreadCount = async () => {
-      try {
-        const data = await getNotifications();
-        setUnreadCount(data.unreadCount);
-      } catch (err) {
-        console.error('Failed to fetch unread count:', err);
-      }
-    };
-    void fetchUnreadCount();
+    void fetchBadge();
 
     const handleNotificationUpdate = (event: Event) => {
-      const detail = (event as CustomEvent<{ unreadCount?: number }>).detail;
-      if (typeof detail?.unreadCount === 'number') {
-        setUnreadCount(detail.unreadCount);
-      } else {
-        void fetchUnreadCount();
+      const detail = (event as CustomEvent<{ unreadCount?: number; invitationCount?: number }>).detail;
+      if (typeof detail?.unreadCount === 'number') setUnreadCount(detail.unreadCount);
+      if (typeof detail?.invitationCount === 'number') setInvitationCount(detail.invitationCount);
+      if (detail?.unreadCount == null && detail?.invitationCount == null) {
+        void fetchBadge();
       }
     };
 
     window.addEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
-    return () => window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
+    window.addEventListener('invitations:updated', handleNotificationUpdate);
+    return () => {
+      window.removeEventListener(NOTIFICATIONS_UPDATED_EVENT, handleNotificationUpdate);
+      window.removeEventListener('invitations:updated', handleNotificationUpdate);
+    };
   }, []);
 
-  // Real-time invitation notification — the server emits "invitation:new" via
-  // socket when someone invites us. Refresh the badge count and show a toast.
+  // Real-time: someone invited us → +1 on invitation badge + toast
   useEffect(() => {
     const handleInvitation = (event: Event) => {
       const detail = (event as CustomEvent<{ projectName?: string; invitedBy?: { fullName?: string } }>).detail;
       const inviter = detail?.invitedBy?.fullName || 'Ai đó';
       const project = detail?.projectName || 'một dự án';
-      setUnreadCount((prev) => prev + 1);
+      setInvitationCount((prev) => prev + 1);
       toast(`${inviter} đã mời bạn vào dự án "${project}"`, 'success');
     };
     window.addEventListener('invitation:new', handleInvitation);
     return () => window.removeEventListener('invitation:new', handleInvitation);
+  }, [toast]);
+
+  // Real-time: an invitee accepted/declined our invite → toast so we know
+  useEffect(() => {
+    const handleResponse = (event: Event) => {
+      const detail = (event as CustomEvent<{
+        projectName?: string;
+        invitedUsername?: string;
+        invitedEmail?: string;
+        action?: 'accepted' | 'declined';
+      }>).detail;
+      const who = detail?.invitedUsername || detail?.invitedEmail || 'Người được mời';
+      const project = detail?.projectName || 'dự án';
+      const verb = detail?.action === 'declined' ? 'đã từ chối' : 'đã đồng ý tham gia';
+      toast(`${who} ${verb} dự án "${project}"`, detail?.action === 'declined' ? 'warning' : 'success');
+    };
+    window.addEventListener('invitation:response', handleResponse);
+    return () => window.removeEventListener('invitation:response', handleResponse);
   }, [toast]);
 
   useEffect(() => {
@@ -188,12 +218,12 @@ export default function Topbar({ title }: TopbarProps) {
             aria-label={t('notifications')}
           >
             <Bell className="h-[18px] w-[18px]" aria-hidden />
-            {unreadCount > 0 && (
+            {unreadCount + invitationCount > 0 && (
               <span
                 className="absolute -right-1 -top-1 flex h-[18px] min-w-[18px] items-center justify-center rounded-full px-1 text-[10px] font-bold text-white"
                 style={{ backgroundColor: '#ef4444' }}
               >
-                {unreadCount}
+                {unreadCount + invitationCount}
               </span>
             )}
           </button>
