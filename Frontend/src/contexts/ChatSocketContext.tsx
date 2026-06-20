@@ -72,6 +72,14 @@ interface ChatSocketValue {
   onTyping: (cb: TypingCallback) => () => void;
   /** Emit typing status */
   emitTyping: (roomId: string, isTyping: boolean) => void;
+  /**
+   * Subscribe to a project to receive project-wide real-time events
+   * (member joined/removed, project updates, etc.).
+   * Returns an unsubscribe function.
+   */
+  joinProject: (projectId: string) => void;
+  /** Unsubscribe from a project */
+  leaveProject: (projectId: string) => void;
   isConnected: boolean;
 }
 
@@ -154,6 +162,25 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       }
     });
 
+    // Project-wide events: broadcast to all members when someone joins/leaves.
+    // Each feature component listens via window events so it can refresh its view
+    // without coupling to the socket context directly.
+    socket.on('project:member:joined', (data: unknown) => {
+      try {
+        window.dispatchEvent(new CustomEvent('project:member:joined', { detail: data }));
+      } catch (err) {
+        console.warn('[ChatSocket] failed to dispatch project:member:joined', err);
+      }
+    });
+
+    socket.on('project:member:removed', (data: unknown) => {
+      try {
+        window.dispatchEvent(new CustomEvent('project:member:removed', { detail: data }));
+      } catch (err) {
+        console.warn('[ChatSocket] failed to dispatch project:member:removed', err);
+      }
+    });
+
     socket.on('error', (data: { message: string }) => {
       console.warn('[ChatSocket] error:', data.message);
     });
@@ -206,8 +233,53 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
+  // ── Project room subscription ────────────────────────────────────────────
+  // Required so the client receives project-wide events (member:joined, member:removed)
+  // broadcast by the backend. Re-emits automatically when the socket reconnects.
+  const joinedProjectsRef = useRef<Set<string>>(new Set());
+
+  const joinProject = useCallback((projectId: string) => {
+    joinedProjectsRef.current.add(projectId);
+    const sock = socketRef.current;
+    if (!sock?.connected) return;
+    sock.emit('join_project', { projectId });
+  }, []);
+
+  const leaveProject = useCallback((projectId: string) => {
+    joinedProjectsRef.current.delete(projectId);
+    const sock = socketRef.current;
+    if (!sock?.connected) return;
+    sock.emit('leave_project', { projectId });
+  }, []);
+
+  // After (re)connect, re-subscribe to all projects we want to follow.
+  useEffect(() => {
+    const sock = socketRef.current;
+    if (!sock) return;
+    const rejoin = () => {
+      joinedProjectsRef.current.forEach((projectId) => {
+        sock.emit('join_project', { projectId });
+      });
+    };
+    sock.on('connect', rejoin);
+    return () => {
+      sock.off('connect', rejoin);
+    };
+  }, [socket]);
+
   return (
-    <ChatSocketContext.Provider value={{ socket, joinRoom, leaveRoom, sendMessage, onNewMessage, onTyping, emitTyping, isConnected }}>
+    <ChatSocketContext.Provider value={{
+      socket,
+      joinRoom,
+      leaveRoom,
+      sendMessage,
+      onNewMessage,
+      onTyping,
+      emitTyping,
+      joinProject,
+      leaveProject,
+      isConnected,
+    }}>
       {children}
     </ChatSocketContext.Provider>
   );

@@ -152,6 +152,22 @@ exports.remove = async (req, res, next) => {
     });
 
     await syncMemberToAllChats(req.params.projectId, req.params.userId, 'leave');
+
+    // Real-time broadcast: every member (and the kicked user) gets notified
+    // so their member list updates instantly without a page reload.
+    const io = req.app?.get('io');
+    if (io) {
+      const payload = {
+        projectId: req.params.projectId,
+        removedUserId: req.params.userId,
+        removedBy: req.user.id,
+        bySelf: isSelf,
+        timestamp: new Date().toISOString(),
+      };
+      io.to(`project:${req.params.projectId}`).emit('project:member:removed', payload);
+      io.to(`user:${req.params.userId}`).emit('project:member:removed', payload);
+    }
+
     res.status(204).send();
   } catch (err) {
     next(err);

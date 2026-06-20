@@ -61,6 +61,18 @@ export default function MemberList() {
     void fetchMembers();
   }, [projectId, t]);
 
+  // Real-time member list refresh when anyone joins or is removed
+  useEffect(() => {
+    if (!projectId) return;
+    const handler = () => { void fetchMembers(); };
+    window.addEventListener('project:member:joined', handler);
+    window.addEventListener('project:member:removed', handler);
+    return () => {
+      window.removeEventListener('project:member:joined', handler);
+      window.removeEventListener('project:member:removed', handler);
+    };
+  }, [projectId, t]);
+
   const currentMembership = members.find((pm) => pm.user.id === authUser?.id);
   const isOwner = currentMembership?.isOwner === true;
 

@@ -1,5 +1,5 @@
-import { useState, useEffect, useMemo } from 'react';
-import { useParams, Link } from 'react-router-dom';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useParams, Link, useNavigate } from 'react-router-dom';
 import {
   Calendar,
   Users,
@@ -19,6 +19,8 @@ import { getActivities } from '@/api/member.api';
 import type { Project, Task, Activity } from '@/types';
 import { Card, ProgressBar, MemberAvatar } from '@/components/ui';
 import { getRoleLabel } from '@/components/ui/RoleIcons';
+import { useChatSocket } from '@/contexts/ChatSocketContext';
+import { useToast } from '@/components/ui';
 
 function timeAgo(ts: string) {
   const diff = Date.now() - new Date(ts).getTime();
@@ -34,18 +36,21 @@ function timeAgo(ts: string) {
 
 export default function ProjectOverview() {
   const { projectId } = useParams<{ projectId: string }>();
+  const navigate = useNavigate();
   const [project, setProject] = useState<Project | null>(null);
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const { joinProject, leaveProject } = useChatSocket();
+  const { toast } = useToast();
 
-  useEffect(() => {
+  const refresh = useCallback(() => {
     if (!projectId) return;
     setLoading(true);
     Promise.all([
       getProject(projectId),
       getTasks(projectId),
-      getActivities(projectId),
+      getActivities(projectId, 20),
     ]).then(([projectData, tasksData, activitiesData]) => {
       setProject(projectData as Project | null);
       setTasks(tasksData as Task[]);
@@ -58,6 +63,43 @@ export default function ProjectOverview() {
       setLoading(false);
     });
   }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    refresh();
+    joinProject(projectId);
+    return () => {
+      leaveProject(projectId);
+    };
+  }, [projectId, refresh, joinProject, leaveProject]);
+
+  // Real-time: when someone joins or leaves this project, refresh + toast
+  useEffect(() => {
+    if (!projectId) return;
+    const handleJoined = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId: string; userId: string }>).detail;
+      if (detail?.projectId !== projectId) return;
+      refresh();
+      toast('Một thành viên vừa tham gia dự án', 'success');
+    };
+    const handleRemoved = (event: Event) => {
+      const detail = (event as CustomEvent<{ projectId: string; removedUserId: string; bySelf: boolean }>).detail;
+      if (detail?.projectId !== projectId) return;
+      if (detail.bySelf) {
+        toast('Bạn đã bị xoá khỏi dự án', 'warning');
+        navigate('/app', { replace: true });
+      } else {
+        refresh();
+        toast('Một thành viên vừa rời dự án', 'warning');
+      }
+    };
+    window.addEventListener('project:member:joined', handleJoined);
+    window.addEventListener('project:member:removed', handleRemoved);
+    return () => {
+      window.removeEventListener('project:member:joined', handleJoined);
+      window.removeEventListener('project:member:removed', handleRemoved);
+    };
+  }, [projectId, refresh, toast]);
 
   const stats = useMemo(() => {
     const now = Date.now();

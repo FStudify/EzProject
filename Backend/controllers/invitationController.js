@@ -87,6 +87,39 @@ function notifyInviter(req, invitation, project, action) {
   });
 }
 
+/**
+ * Broadcast to ALL members of a project that someone joined.
+ * Each member's socket is in room "user:<id>" AND we'll also broadcast
+ * to a project room so members browsing the same project see updates instantly.
+ */
+function broadcastMemberJoined(req, projectId, joinedUserId, role) {
+  const io = req.app?.get('io');
+  if (!io) return;
+  const payload = {
+    projectId: projectId.toString(),
+    userId: joinedUserId.toString(),
+    role,
+    timestamp: new Date().toISOString(),
+  };
+  io.to(`project:${projectId.toString()}`).emit('project:member:joined', payload);
+  io.to(`user:${joinedUserId.toString()}`).emit('project:member:joined', payload);
+}
+
+/**
+ * Broadcast to ALL members + the kicked user that someone was removed.
+ */
+function broadcastMemberRemoved(req, projectId, removedUserId) {
+  const io = req.app?.get('io');
+  if (!io) return;
+  const payload = {
+    projectId: projectId.toString(),
+    userId: removedUserId.toString(),
+    timestamp: new Date().toISOString(),
+  };
+  io.to(`project:${projectId.toString()}`).emit('project:member:removed', payload);
+  io.to(`user:${removedUserId.toString()}`).emit('project:member:removed', payload);
+}
+
 function getProjectMember(project, userId) {
   return project.members.find((m) => m.userId.toString() === userId);
 }
@@ -403,6 +436,9 @@ exports.acceptInviteByToken = async (req, res, next) => {
       // Email-link accept path: also notify the inviter in real-time
       notifyInviter(req, invitation, { _id: result.projectId, name: result.projectName }, 'accepted');
 
+      // Broadcast to all project members that someone joined via invite
+      broadcastMemberJoined(req, result.projectId, req.user.id, invitation.role || 'MEMBER');
+
       return res.json({
         success: true,
         data: result,
@@ -473,6 +509,9 @@ exports.acceptInviteByToken = async (req, res, next) => {
       project,
       'accepted',
     );
+
+    // Broadcast to all project members that someone joined via invite link
+    broadcastMemberJoined(req, project._id, req.user.id, 'MEMBER');
 
     return res.json({
       success: true,
@@ -671,6 +710,9 @@ exports.acceptInvitation = async (req, res, next) => {
 
     // Notify the inviter in real-time so they see "User accepted your invite"
     notifyInviter(req, invitation, project, 'accepted');
+
+    // Broadcast to all project members so they see the new member instantly
+    broadcastMemberJoined(req, project._id, userId, invitation.role || 'MEMBER');
 
     res.json({
       success: true,
