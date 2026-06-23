@@ -38,8 +38,14 @@ function normalizeUser(doc: Record<string, unknown>): { id: string; name: string
   };
 }
 
-function normalizeProjectMember(m: Record<string, unknown>): ProjectMember {
-  const userDoc = (m.userId ?? m.user) as Record<string, unknown>;
+function normalizeProjectMember(m: Record<string, unknown>, ownerDoc?: Record<string, unknown>): ProjectMember {
+  const rawUser = m.userId ?? m.user;
+  const userDoc =
+    typeof rawUser === 'object' && rawUser !== null
+      ? (rawUser as Record<string, unknown>)
+      : m.isOwner && ownerDoc
+        ? ownerDoc
+        : { _id: rawUser };
   return {
     member: normalizeUser(userDoc ?? m),
     isOwner: Boolean(m.isOwner),
@@ -49,14 +55,24 @@ function normalizeProjectMember(m: Record<string, unknown>): ProjectMember {
 
 function normalizeProject(raw: Record<string, unknown>): Project {
   const membersArr = (raw.members ?? []) as Record<string, unknown>[];
+  const ownerDoc = (raw.owner ?? raw.ownerId) as Record<string, unknown> | undefined;
+  const ownerId =
+    typeof raw.ownerId === 'string'
+      ? raw.ownerId
+      : typeof raw.ownerId === 'object' && raw.ownerId !== null
+        ? normalizeId(raw.ownerId as Record<string, unknown>)
+        : typeof raw.owner === 'object' && raw.owner !== null
+          ? normalizeId(raw.owner as Record<string, unknown>)
+          : undefined;
   return {
     id: normalizeId(raw),
+    ownerId,
     name: (raw.name as string) ?? '',
     description: (raw.description as string | null) ?? '',
     subject: (raw.subject as string | null) ?? undefined,
     status: ((raw.status as string) ?? 'active').toLowerCase() as Project['status'],
     progress: (raw.progress as number) ?? 0,
-    members: membersArr.map(normalizeProjectMember),
+    members: membersArr.map((member) => normalizeProjectMember(member, ownerDoc)),
     deadline: (raw.deadline as string | null) ?? new Date().toISOString(),
     totalTasks: (raw.totalTasks as number) ?? 0,
     completedTasks: (raw.completedTasks as number) ?? 0,

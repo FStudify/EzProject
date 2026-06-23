@@ -75,6 +75,7 @@ export default function MemberList() {
 
   const currentMembership = members.find((pm) => pm.user.id === authUser?.id);
   const isOwner = currentMembership?.isOwner === true;
+  const canShowActions = isOwner || !!currentMembership;
 
   const getRoleLabel = (role: ProjectRole) => {
     return t(ROLE_OPTIONS.find((o) => o.value === role)?.labelKey ?? 'role_member');
@@ -141,12 +142,8 @@ export default function MemberList() {
     }
   };
 
-  const handleLeaveProject = async (deleted: boolean) => {
-    if (deleted) {
-      navigate('/projects', { replace: true });
-    } else {
-      await fetchMembers();
-    }
+  const handleLeaveProject = async () => {
+    navigate('/app/projects', { replace: true });
   };
 
   const copyInviteLink = async () => {
@@ -272,7 +269,7 @@ export default function MemberList() {
                   <th className="px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#9a9086' }}>
                       {t('tasks_working')}
                   </th>
-                  {isOwner && (
+                  {canShowActions && (
                     <th className="w-32 px-4 py-3 text-xs font-semibold uppercase tracking-wider" style={{ color: '#9a9086' }}>
                       {t('actions')}
                     </th>
@@ -345,11 +342,11 @@ export default function MemberList() {
                       <td className="px-4 py-3">
                         <span className="text-sm font-medium" style={{ color: '#1F1F1F' }}>{activeTasks}</span>
                       </td>
-                      {isOwner && (
+                      {canShowActions && (
                         <td className="px-4 py-3">
                           <div className="flex items-center gap-1">
                             {/* Transfer ownership — not self, not already owner */}
-                            {!isMemberOwner && !isSelf && (
+                            {isOwner && !isMemberOwner && !isSelf && (
                               <button
                                 type="button"
                                 onClick={() => {
@@ -365,7 +362,7 @@ export default function MemberList() {
                               </button>
                             )}
                             {/* Kick — not owner, not self */}
-                            {!isMemberOwner && !isSelf && (
+                            {isOwner && !isMemberOwner && !isSelf && (
                               <button
                                 type="button"
                                 onClick={() => setKickConfirmId(user.id)}
@@ -379,7 +376,7 @@ export default function MemberList() {
                               </button>
                             )}
                             {/* Leave project — self only */}
-                            {isSelf && (
+                            {isSelf && !isMemberOwner && (
                               <button
                                 type="button"
                                 onClick={() => setShowLeaveModal(true)}
