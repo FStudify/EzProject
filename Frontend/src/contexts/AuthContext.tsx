@@ -105,14 +105,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       confirmPassword: string;
       inviteToken?: string;
     }): Promise<boolean> => {
-      try {
-        const res = await apiRegister(data);
-        setUser(res.user);
-        localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
-        return true;
-      } catch {
-        return false;
-      }
+      const res = await apiRegister(data);
+      setUser(res.user);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
+      return true;
     },
     [],
   );

@@ -24,7 +24,13 @@ function signTokens(payload) {
 exports.login = async (req, res, next) => {
   try {
     const { username, password } = req.body;
-    const user = await User.findOne({ username }).select('+passwordHash');
+    const identifier = String(username || '').trim();
+    const user = await User.findOne({
+      $or: [
+        { username: identifier },
+        { email: identifier.toLowerCase() },
+      ],
+    }).select('+passwordHash');
     if (!user) throw errors.Unauthorized('Invalid credentials');
 
     const valid = await bcrypt.compare(password, user.passwordHash);
@@ -49,18 +55,19 @@ exports.register = async (req, res, next) => {
   try {
     const { fullName, email, username, password, inviteToken } = req.body;
 
-    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedEmail = email;
+    const normalizedUsername = username;
 
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) throw errors.Conflict('Email already in use');
 
-    const existingUsername = await User.findOne({ username });
+    const existingUsername = await User.findOne({ username: normalizedUsername });
     if (existingUsername) throw errors.Conflict('Username already taken');
 
     const passwordHash = await bcrypt.hash(password, 12);
     const user = await User.create({
       email: normalizedEmail,
-      username,
+      username: normalizedUsername,
       passwordHash,
       fullName,
     });

@@ -24,11 +24,21 @@ const allowedOrigins = Array.isArray(config.cors.origin)
   ? config.cors.origin
   : [config.cors.origin];
 
+function isAllowedDevOrigin(origin) {
+  if (!config.isDev || !origin) return false;
+  try {
+    const { protocol, hostname } = new URL(origin);
+    return protocol === 'http:' && ['localhost', '127.0.0.1'].includes(hostname);
+  } catch {
+    return false;
+  }
+}
+
 app.use(
   cors({
     origin(origin, callback) {
       // Allow same-origin / curl (no Origin header) and matching origins
-      if (!origin || allowedOrigins.includes(origin)) {
+      if (!origin || allowedOrigins.includes(origin) || isAllowedDevOrigin(origin)) {
         return callback(null, true);
       }
       return callback(null, false);

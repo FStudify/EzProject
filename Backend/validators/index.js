@@ -6,16 +6,17 @@ const { errors: errorFactory } = require('../middlewares/errorHandler');
 const validators = {
   // ── Auth ───────────────────────────────────────────────
   login: z.object({
-    username: z.string().min(1, 'Username is required'),
+    username: z.string().trim().min(1, 'Username or email is required'),
     password: z.string().min(1, 'Password is required'),
   }),
 
   register: z
     .object({
       fullName: z.string().min(1, 'Full name is required'),
-      email: z.string().email('Invalid email format'),
+      email: z.string().trim().toLowerCase().email('Invalid email format'),
       username: z
         .string()
+        .trim()
         .min(3, 'Username must be at least 3 characters')
         .max(30, 'Username too long'),
       password: z.string().min(6, 'Password must be at least 6 characters'),
