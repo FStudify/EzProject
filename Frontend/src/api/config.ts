@@ -49,11 +49,25 @@ interface ApiConfig {
 }
 
 function normalizeApiBaseUrl(rawUrl: string): string {
+  if (!rawUrl) return '';
   return rawUrl.replace(/\/api\/v1\/?$/, '').replace(/\/$/, '');
 }
 
+function resolveApiBaseUrl(): string {
+  const envUrl = import.meta.env.VITE_API_URL;
+  const isLocalFrontend =
+    typeof window !== 'undefined' &&
+    ['localhost', '127.0.0.1'].includes(window.location.hostname);
+
+  if (isLocalFrontend) {
+    return '';
+  }
+
+  return envUrl || 'http://localhost:3000';
+}
+
 const config: ApiConfig = {
-  baseUrl: normalizeApiBaseUrl(import.meta.env.VITE_API_URL || 'http://localhost:3000'),
+  baseUrl: normalizeApiBaseUrl(resolveApiBaseUrl()),
   timeout: 10_000, // 10 seconds
   retryAttempts: 1,
   retryDelay: 1_000, // 1 second
@@ -201,7 +215,20 @@ function handleResponse<T>(response: Response): Promise<T> {
 
 function normalizeError(status: number, body: unknown): ApiError {
   const raw = body as Record<string, unknown> | null;
+  const details =
+    raw &&
+    typeof raw.error === 'object' &&
+    raw.error !== null &&
+    'errors' in raw.error &&
+    Array.isArray((raw.error as Record<string, unknown>).errors)
+      ? ((raw.error as Record<string, unknown>).errors as Array<Record<string, unknown>>)
+          .map((item) => (typeof item.message === 'string' ? item.message : ''))
+          .filter(Boolean)
+      : [];
   const msg =
+    details.length > 0
+      ? details.join(', ')
+      :
     raw && 'error' in raw
       ? typeof raw.error === 'string'
         ? raw.error

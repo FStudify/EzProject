@@ -18,6 +18,7 @@ interface RegisterInputProps {
   autoComplete?: string;
   required?: boolean;
   minLength?: number;
+  maxLength?: number;
   toggleButton?: {
     onClick: () => void;
     label: string;
@@ -36,6 +37,7 @@ function RegisterInput({
   autoComplete,
   required,
   minLength,
+  maxLength,
   toggleButton,
 }: RegisterInputProps) {
   return (
@@ -59,6 +61,7 @@ function RegisterInput({
           autoComplete={autoComplete}
           required={required}
           minLength={minLength}
+          maxLength={maxLength}
           style={{
             backgroundColor: '#FFFDFB',
             color: '#1F1F1F',
@@ -115,21 +118,38 @@ export default function RegisterPage() {
     e.preventDefault();
     setError('');
 
+    const trimmedUsername = username.trim();
+    const trimmedDisplayName = displayName.trim();
+    const trimmedEmail = email.trim();
+
+    if (trimmedUsername.length < 3) {
+      setError(lang === 'vi' ? 'Tên đăng nhập phải có ít nhất 3 ký tự' : 'Username must be at least 3 characters');
+      return;
+    }
+    if (trimmedUsername.length > 30) {
+      setError(lang === 'vi' ? 'Tên đăng nhập không được quá 30 ký tự' : 'Username must be 30 characters or fewer');
+      return;
+    }
+    if (!trimmedEmail) {
+      setError(lang === 'vi' ? 'Email là bắt buộc' : 'Email is required');
+      return;
+    }
+
     if (password !== confirmPassword) {
       setError(t('confirm_password'));
       return;
     }
-    if (password.length < 3) {
-      setError(t('error'));
+    if (password.length < 6) {
+      setError(lang === 'vi' ? 'Mật khẩu phải có ít nhất 6 ký tự' : 'Password must be at least 6 characters');
       return;
     }
 
     setLoading(true);
     try {
       const ok = await registerUser({
-        fullName: displayName || username,
-        email: email || `${username}@example.com`,
-        username,
+        fullName: trimmedDisplayName || trimmedUsername,
+        email: trimmedEmail,
+        username: trimmedUsername,
         password,
         confirmPassword,
         inviteToken: inviteToken || undefined,
@@ -141,11 +161,9 @@ export default function RegisterPage() {
         } else {
           navigate('/app', { replace: true });
         }
-      } else {
-        setError(t('error'));
       }
-    } catch {
-      setError(t('error'));
+    } catch (err) {
+      setError(err instanceof Error ? err.message : t('error'));
     } finally {
       setLoading(false);
     }
@@ -260,6 +278,8 @@ export default function RegisterPage() {
                     onChange={setUsername}
                     placeholder={t('username')}
                     required
+                    minLength={3}
+                    maxLength={30}
                     autoComplete="username"
                     icon={UserCircle2}
                   />
@@ -283,6 +303,7 @@ export default function RegisterPage() {
                       value={email}
                       onChange={setEmail}
                       placeholder={t('email')}
+                      required
                       autoComplete="email"
                       icon={AtSign}
                     />
@@ -296,7 +317,7 @@ export default function RegisterPage() {
                     onChange={setPassword}
                     placeholder="••••••••"
                     required
-                    minLength={3}
+                    minLength={6}
                     autoComplete="new-password"
                     icon={LockKeyhole}
                     toggleButton={{
