@@ -1,10 +1,12 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
-import { getProjects, createProject } from '@/api/project.api';
+import { getProjects, createProject, updateProject } from '@/api/project.api';
+import { createTask } from '@/api/task.api';
 import type { ProjectStatus } from '@/api/types';
 import { Button, Modal, useToast, SkeletonCard } from '@/components/ui';
 import ProjectCard from './ProjectCard';
 import type { Project } from '@/types';
+import { useAuth } from '@/contexts/AuthContext';
 import {
   BarChart3,
   Clock3,
@@ -181,6 +183,7 @@ type StatusFilter = 'all' | ProjectStatus;
 export default function ProjectListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
+  const [editingProject, setEditingProject] = useState<Project | null>(null);
   const [selectedCategory, setSelectedCategory] = useState('Tất cả');
   const [selectedTemplate, setSelectedTemplate] = useState<ProjectTemplate | null>(null);
   const [statusFilter, setStatusFilter] = useState<StatusFilter>('all');
@@ -188,10 +191,44 @@ export default function ProjectListPage() {
   const [sortBy, setSortBy] = useState<'newest' | 'deadline' | 'progress'>('newest');
 
   const [createForm, setCreateForm] = useState({ name: '', subject: '', description: '', deadline: '' });
+  const [editForm, setEditForm] = useState({ name: '', subject: '', description: '', deadline: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const { toast } = useToast();
+  const { user } = useAuth();
 
   const [projects, setProjects] = useState<Project[]>([]);
+
+  const reloadProjects = async () => {
+    const apiStatus: ProjectStatus | undefined = statusFilter === 'all' ? undefined : statusFilter;
+    const res = await getProjects({ status: apiStatus, search: search.trim() || undefined, limit: 100 });
+    setProjects(res.data);
+  };
+
+  const openCreateProject = () => {
+    setSelectedTemplate(null);
+    setCreateForm({ name: '', subject: '', description: '', deadline: '' });
+    setShowCreateModal(true);
+  };
+
+  const applyTemplateToCreateForm = (templateId: string) => {
+    const template = PROJECT_TEMPLATES.find((item) => item.id === templateId) ?? null;
+    setSelectedTemplate(template);
+    setCreateForm((prev) => ({
+      ...prev,
+      subject: template?.category ?? '',
+      description: template?.description ?? prev.description,
+    }));
+  };
+
+  const openEditProject = (project: Project) => {
+    setEditingProject(project);
+    setEditForm({
+      name: project.name,
+      subject: project.subject ?? '',
+      description: project.description ?? '',
+      deadline: project.deadline ? project.deadline.slice(0, 10) : '',
+    });
+  };
 
   const handleCreateProject = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -202,32 +239,59 @@ export default function ProjectListPage() {
     
     try {
       setIsSubmitting(true);
-      await createProject({
-        name: createForm.name,
-        subject: createForm.subject,
-        description: createForm.description,
+      const newProject = await createProject({
+        name: createForm.name.trim(),
+        subject: createForm.subject.trim(),
+        description: createForm.description.trim(),
         deadline: createForm.deadline ? new Date(createForm.deadline).toISOString() : undefined,
       });
 
-      // if (selectedTemplate && selectedTemplate.tasks.length > 0) {
-      //   for (const taskName of selectedTemplate.tasks) {
-      //     await createTask(newProj.id, { title: taskName, priority: 'MEDIUM' });
-      //   }
-      // }
+      if (selectedTemplate && selectedTemplate.tasks.length > 0) {
+        await Promise.all(
+          selectedTemplate.tasks.map((taskName) =>
+            createTask(newProject.id, { title: taskName, priority: 'MEDIUM' }),
+          ),
+        );
+      }
 
       toast('Tạo dự án thành công!', 'success');
       setShowCreateModal(false);
       setSelectedTemplate(null);
-      
-      const apiStatus: ProjectStatus | undefined = statusFilter === 'all' ? undefined : statusFilter;
-      const res = await getProjects({ status: apiStatus, search: search.trim() || undefined, limit: 100 });
-      setProjects(res.data);
+      setCreateForm({ name: '', subject: '', description: '', deadline: '' });
+      await reloadProjects();
     } catch (err: any) {
       toast(err?.message || 'Có lỗi xảy ra khi tạo dự án', 'error');
     } finally {
       setIsSubmitting(false);
     }
   };
+
+  const handleUpdateProject = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!editingProject) return;
+    if (!editForm.name.trim()) {
+      toast('Tên dự án là bắt buộc', 'error');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const updated = await updateProject(editingProject.id, {
+        name: editForm.name.trim(),
+        subject: editForm.subject.trim(),
+        description: editForm.description.trim(),
+        deadline: editForm.deadline ? new Date(editForm.deadline).toISOString() : undefined,
+      });
+      setProjects((prev) => prev.map((project) => (project.id === updated.id ? updated : project)));
+      setEditingProject(null);
+      toast('Cập nhật dự án thành công!', 'success');
+    } catch (err: any) {
+      toast(err?.message || 'Không thể cập nhật dự án', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -314,7 +378,7 @@ export default function ProjectListPage() {
         <Button
           variant="primary"
           size="md"
-          onClick={() => setShowTemplateModal(true)}
+          onClick={openCreateProject}
           className="inline-flex items-center gap-2 rounded-xl !bg-primary px-5 py-2.5 text-[16px] font-semibold text-white shadow-md hover:!bg-primary-dark"
         >
           <Plus className="h-[18px] w-[18px]" strokeWidth={2.2} />
@@ -414,7 +478,14 @@ export default function ProjectListPage() {
             Không có dự án phù hợp bộ lọc.
           </p>
         ) : (
-          sortedProjects.map((project) => <ProjectCard key={project.id} project={project} />)
+          sortedProjects.map((project) => (
+            <ProjectCard
+              key={project.id}
+              project={project}
+              currentUserId={user?.id}
+              onEdit={openEditProject}
+            />
+          ))
         )}
       </div>
 
@@ -644,6 +715,27 @@ export default function ProjectListPage() {
           {/* Form Right Side */}
           <form onSubmit={handleCreateProject} className="flex-1 flex flex-col space-y-6 min-w-0 py-2">
             <div className="space-y-2.5">
+              <label className="text-sm font-black text-slate-800 ml-1">Mẫu dự án</label>
+              <select
+                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-bold text-slate-800 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                value={selectedTemplate?.id ?? ''}
+                onChange={(e) => applyTemplateToCreateForm(e.target.value)}
+              >
+                <option value="">Dự án trống</option>
+                {PROJECT_TEMPLATES.map((template) => (
+                  <option key={template.id} value={template.id}>
+                    {template.name}
+                  </option>
+                ))}
+              </select>
+              {selectedTemplate && (
+                <p className="ml-1 text-xs font-medium text-slate-500">
+                  Sẽ tạo kèm {selectedTemplate.tasks.length} công việc gợi ý từ mẫu này.
+                </p>
+              )}
+            </div>
+
+            <div className="space-y-2.5">
               <label className="text-sm font-black text-slate-800 ml-1">Tên dự án <span className="text-rose-500">*</span></label>
               <input
                 autoFocus
@@ -695,6 +787,85 @@ export default function ProjectListPage() {
             </div>
           </form>
         </div>
+      </Modal>
+
+      {/* ===== Edit Project Modal ===== */}
+      <Modal
+        isOpen={!!editingProject}
+        onClose={() => setEditingProject(null)}
+        title="Chỉnh sửa dự án"
+        size="lg"
+        panelClassName="!max-w-[720px] !rounded-[2rem] !p-7 border-0 shadow-[0_24px_70px_-20px_rgba(0,0,0,0.28)]"
+        bodyClassName="!p-0 mt-6"
+      >
+        <form onSubmit={handleUpdateProject} className="space-y-5">
+          <div className="grid gap-5 md:grid-cols-2">
+            <div className="space-y-2.5">
+              <label className="text-sm font-black text-slate-800 ml-1">
+                Tên dự án <span className="text-rose-500">*</span>
+              </label>
+              <input
+                autoFocus
+                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                value={editForm.name}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, name: e.target.value }))}
+                placeholder="Nhập tên dự án"
+              />
+            </div>
+
+            <div className="space-y-2.5">
+              <label className="text-sm font-black text-slate-800 ml-1">Lĩnh vực / Môn học</label>
+              <input
+                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-bold text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+                value={editForm.subject}
+                onChange={(e) => setEditForm((prev) => ({ ...prev, subject: e.target.value }))}
+                placeholder="VD: Trí tuệ nhân tạo"
+              />
+            </div>
+          </div>
+
+          <div className="space-y-2.5">
+            <label className="text-sm font-black text-slate-800 ml-1">Mô tả dự án</label>
+            <textarea
+              className="w-full resize-none rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-medium leading-relaxed text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+              rows={4}
+              value={editForm.description}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, description: e.target.value }))}
+              placeholder="Mục tiêu, phạm vi hoặc ghi chú chính của dự án..."
+            />
+          </div>
+
+          <div className="space-y-2.5">
+            <label className="text-sm font-black text-slate-800 ml-1">Ngày đến hạn</label>
+            <input
+              type="date"
+              className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-bold text-slate-700 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all outline-none"
+              value={editForm.deadline}
+              onChange={(e) => setEditForm((prev) => ({ ...prev, deadline: e.target.value }))}
+            />
+          </div>
+
+          <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+            <Button
+              type="button"
+              variant="secondary"
+              size="lg"
+              onClick={() => setEditingProject(null)}
+              className="rounded-2xl font-bold px-8"
+            >
+              Hủy bỏ
+            </Button>
+            <Button
+              type="submit"
+              variant="primary"
+              size="lg"
+              disabled={isSubmitting || !editForm.name.trim()}
+              className="rounded-2xl font-black px-10 shadow-xl shadow-primary/20"
+            >
+              {isSubmitting ? 'Đang lưu...' : 'Lưu thay đổi'}
+            </Button>
+          </div>
+        </form>
       </Modal>
     </div>
   );

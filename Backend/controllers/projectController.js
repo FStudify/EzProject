@@ -158,9 +158,14 @@ exports.update = async (req, res, next) => {
   try {
     const project = await Project.findOne({
       _id: new ObjectId(req.params.projectId),
-      'members.userId': new ObjectId(req.user.id),
+      members: {
+        $elemMatch: {
+          userId: new ObjectId(req.user.id),
+          isOwner: true,
+        },
+      },
     });
-    if (!project) throw errors.NotFound('Project');
+    if (!project) throw errors.Forbidden('Only the owner can edit this project');
 
     const update = { ...req.body };
     if (update.deadline) update.deadline = new Date(update.deadline);
