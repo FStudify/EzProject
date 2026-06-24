@@ -29,4 +29,21 @@ const authLimiter = rateLimit({
   },
 });
 
-module.exports = { apiLimiter, authLimiter };
+const generateProjectLimiter = rateLimit({
+  windowMs: 60 * 1000,
+  max: 10,
+  keyGenerator: (req) => req.user?.id || req.ip,
+  standardHeaders: true,
+  legacyHeaders: false,
+  handler: (req, res) => {
+    res.status(429).json({
+      success: false,
+      error: {
+        code: 'TOO_MANY_REQUESTS',
+        message: 'Ban da tao qua nhieu du an AI. Vui long thu lai sau 1 phut.',
+      },
+    });
+  },
+});
+
+module.exports = { apiLimiter, authLimiter, generateProjectLimiter };

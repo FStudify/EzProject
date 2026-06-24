@@ -6,13 +6,15 @@
 
 export class ApiError extends Error {
   public readonly status: number;
+  public readonly code?: string;
   public readonly field?: string;
 
-  constructor(status: number, message: string, field?: string) {
+  constructor(status: number, message: string, field?: string, code?: string) {
     super(message);
     this.name = 'ApiError';
     this.status = status;
     this.field = field;
+    this.code = code;
   }
 }
 

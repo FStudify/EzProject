@@ -215,13 +215,19 @@ function handleResponse<T>(response: Response): Promise<T> {
 
 function normalizeError(status: number, body: unknown): ApiError {
   const raw = body as Record<string, unknown> | null;
-  const details =
+  const apiError =
     raw &&
     typeof raw.error === 'object' &&
-    raw.error !== null &&
-    'errors' in raw.error &&
-    Array.isArray((raw.error as Record<string, unknown>).errors)
-      ? ((raw.error as Record<string, unknown>).errors as Array<Record<string, unknown>>)
+    raw.error !== null
+      ? (raw.error as Record<string, unknown>)
+      : null;
+  const code = typeof apiError?.code === 'string' ? apiError.code : undefined;
+  const field = typeof apiError?.field === 'string' ? apiError.field : undefined;
+  const details =
+    apiError &&
+    'errors' in apiError &&
+    Array.isArray(apiError.errors)
+      ? (apiError.errors as Array<Record<string, unknown>>)
           .map((item) => (typeof item.message === 'string' ? item.message : ''))
           .filter(Boolean)
       : [];
@@ -233,7 +239,7 @@ function normalizeError(status: number, body: unknown): ApiError {
       ? typeof raw.error === 'string'
         ? raw.error
         : typeof raw.error === 'object' && raw.error !== null && 'message' in raw.error
-          ? String((raw.error as Record<string, unknown>).message)
+        ? String((raw.error as Record<string, unknown>).message)
           : JSON.stringify(body)
       : typeof body === 'string'
         ? body
@@ -241,7 +247,7 @@ function normalizeError(status: number, body: unknown): ApiError {
           ? String(raw.message)
           : `HTTP ${status}`;
 
-  return new ApiError(status, msg);
+  return new ApiError(status, msg, field, code);
 }
 
 // ── Token Refresh ─────────────────────────────────────────────
