@@ -68,6 +68,14 @@ const validators = {
     progress: z.number().min(0).max(100).optional(),
   }),
 
+  generateProject: z.object({
+    idea: z
+      .string()
+      .trim()
+      .min(10, 'Mo ta y tuong phai co it nhat 10 ky tu')
+      .max(2000, 'Mo ta qua dai'),
+  }),
+
   // ── Tasks ──────────────────────────────────────────────
   createTask: z.object({
     title: z.string().min(1, 'Task title is required'),

@@ -4,9 +4,155 @@ const mongoose = require('mongoose');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
 const { ChatRoom } = require('../models/Chat');
-const { errors } = require('../middlewares/errorHandler');
+const { AppError, errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
+
+const VALID_PRIORITIES = new Set(['LOW', 'MEDIUM', 'HIGH']);
+
+function daysFromToday(days) {
+  const safeDays = Number.isInteger(days) && days > 0 ? days : 1;
+  const date = new Date();
+  date.setHours(0, 0, 0, 0);
+  date.setDate(date.getDate() + safeDays);
+  return date.toISOString();
+}
+
+function parsePositiveInteger(value, field) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) {
+    throw new Error(`${field} must be greater than 0`);
+  }
+  return Math.max(1, Math.round(num));
+}
+
+function parseTaskDeadlineDays(value) {
+  const num = Number(value);
+  if (!Number.isFinite(num) || num <= 0) return 7;
+  return Math.max(1, Math.round(num));
+}
+
+function buildGenerateProjectPrompt(idea) {
+  return `You are a professional project manager. Analyze this project idea and return a complete project preview.
+
+Project idea: "${idea}"
+
+Return valid JSON only. Do not include markdown, code fences, or explanations. Use this exact schema:
+{
+  "name": "Short project name, max 100 characters",
+  "description": "Project description, 100-300 characters",
+  "subject": "Domain or school subject",
+  "suggestedDeadlineDays": 30,
+  "tasks": [
+    {
+      "title": "Short task title",
+      "description": "Task description",
+      "priority": "LOW | MEDIUM | HIGH",
+      "status": "BACKLOG",
+      "suggestedDeadlineDays": 7
+    }
+  ]
+}
+
+Requirements:
+- Generate 5 to 15 useful tasks.
+- priority must be one of LOW, MEDIUM, HIGH.
+- status must always be BACKLOG.
+- suggestedDeadlineDays must be a positive integer.
+- Reply in the same language as the input idea.`;
+}
+
+function extractJson(raw) {
+  const text = String(raw || '').trim();
+  const fenced = text.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (fenced) return fenced[1].trim();
+  const start = text.indexOf('{');
+  const end = text.lastIndexOf('}');
+  if (start >= 0 && end > start) return text.slice(start, end + 1);
+  return text;
+}
+
+function parseGeminiResponse(raw) {
+  const parsed = JSON.parse(extractJson(raw));
+  const requiredFields = ['name', 'description', 'subject', 'suggestedDeadlineDays', 'tasks'];
+
+  for (const field of requiredFields) {
+    if (parsed[field] === undefined || parsed[field] === null) {
+      throw new Error(`Missing required field: ${field}`);
+    }
+  }
+
+  if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
+    throw new Error('tasks must be a non-empty array');
+  }
+
+  const projectDays = parsePositiveInteger(parsed.suggestedDeadlineDays, 'suggestedDeadlineDays');
+  const tasks = parsed.tasks.map((task) => {
+    if (!task || typeof task !== 'object' || !String(task.title || '').trim()) {
+      throw new Error('Each task must have a title');
+    }
+    const taskDays = parseTaskDeadlineDays(task.suggestedDeadlineDays);
+    const priority = VALID_PRIORITIES.has(task.priority) ? task.priority : 'MEDIUM';
+
+    return {
+      title: String(task.title).trim(),
+      description: String(task.description || '').trim(),
+      priority,
+      status: 'BACKLOG',
+      suggestedDeadlineDays: taskDays,
+      deadline: daysFromToday(taskDays),
+    };
+  });
+
+  return {
+    name: String(parsed.name).trim(),
+    description: String(parsed.description).trim(),
+    subject: String(parsed.subject).trim(),
+    suggestedDeadlineDays: projectDays,
+    deadline: daysFromToday(projectDays),
+    tasks,
+  };
+}
+
+function mapGeminiError(err) {
+  const status = err?.status || err?.response?.status;
+  const message = String(err?.message || '');
+
+  if (
+    status === 429 ||
+    /quota|credits?|billing|prepayment/i.test(message)
+  ) {
+    return new AppError(
+      503,
+      'AI_QUOTA_EXCEEDED',
+      'Tai khoan Gemini da het quota hoac credits. Vui long kiem tra billing/API key.',
+    );
+  }
+
+  if (status === 400 || status === 401 || status === 403 || /api key/i.test(message)) {
+    return new AppError(
+      503,
+      'AI_AUTH_FAILED',
+      'GEMINI_API_KEY khong hop le hoac khong co quyen truy cap model',
+    );
+  }
+
+  return new AppError(503, 'AI_SERVICE_UNAVAILABLE', 'Dich vu AI tam thoi khong kha dung');
+}
+
+function getGeminiModelNames() {
+  const primary = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+  return [...new Set([primary, 'gemini-2.5-flash-lite'])];
+}
+
+function canTryFallbackModel(err) {
+  const status = err?.status || err?.response?.status;
+  const message = String(err?.message || '');
+  if (status === 400 || status === 401 || status === 403 || /api key/i.test(message)) {
+    return false;
+  }
+  return status === 429 || status === 500 || status === 503;
+}
 
 function formatDate(dateStr) {
   if (!dateStr) return 'chua co';
@@ -144,6 +290,62 @@ exports.chat = async (req, res, next) => {
         timestamp: new Date().toISOString(),
       },
     });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.generateProjectFromIdea = async (req, res, next) => {
+  try {
+    let GoogleGenerativeAI;
+    try {
+      ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+    } catch {
+      return next(new AppError(503, 'AI_UNAVAILABLE', 'Tinh nang AI chua duoc cau hinh tren server nay'));
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('[AI] GEMINI_API_KEY is not configured');
+      return next(new AppError(503, 'AI_NOT_CONFIGURED', 'Tinh nang AI chua duoc cau hinh'));
+    }
+
+    const { idea } = req.body;
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    let result;
+    let lastGeminiErr;
+    try {
+      const prompt = buildGenerateProjectPrompt(idea);
+      const modelNames = getGeminiModelNames();
+      for (const modelName of modelNames) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          result = await model.generateContent(prompt);
+          break;
+        } catch (modelErr) {
+          lastGeminiErr = modelErr;
+          console.error('[AI] Gemini API error:', modelErr?.message);
+          if (!canTryFallbackModel(modelErr) || modelName === modelNames[modelNames.length - 1]) {
+            throw modelErr;
+          }
+          console.warn(`[AI] Gemini model ${modelName} failed, trying fallback model`);
+        }
+      }
+    } catch (geminiErr) {
+      return next(mapGeminiError(geminiErr || lastGeminiErr));
+    }
+
+    const raw = result?.response?.text?.() || '';
+    let generated;
+    try {
+      generated = parseGeminiResponse(raw);
+    } catch (parseErr) {
+      console.error('[AI] Parse error:', parseErr?.message, '| Raw:', raw.slice(0, 200));
+      return next(new AppError(502, 'AI_INVALID_RESPONSE', 'AI tra ve du lieu khong dung dinh dang'));
+    }
+
+    res.json({ success: true, data: generated });
   } catch (err) {
     next(err);
   }
