@@ -15,6 +15,22 @@ interface TaskFilters {
   overdue?: boolean;
 }
 
+export interface AiTaskDraft {
+  title: string;
+  description: string;
+  deadline: string;
+  priority: Task['priority'];
+  status: 'BACKLOG';
+  assigneeId: null;
+}
+
+export interface BulkTaskDraft {
+  title: string;
+  description?: string;
+  deadline: string;
+  priority: Task['priority'];
+}
+
 /** Lay danh sach task cua project */
 export async function getTasks(
   projectId: string,
@@ -52,6 +68,18 @@ export async function createTask(
 ): Promise<Task> {
   const raw = await api.post<unknown>(Endpoints.TASK_LIST(projectId), data);
   return normalizeTaskList([raw])[0];
+}
+
+export async function generateAiTaskDrafts(
+  projectId: string,
+  data: { prompt: string; count: number },
+): Promise<AiTaskDraft[]> {
+  return api.post<AiTaskDraft[]>(Endpoints.TASK_AI_GENERATE(projectId), data, { timeout: 45_000 });
+}
+
+export async function bulkCreateTasks(projectId: string, tasks: BulkTaskDraft[]): Promise<Task[]> {
+  const raw = await api.post<unknown[]>(Endpoints.TASK_BULK_CREATE(projectId), { tasks });
+  return normalizeTaskList(raw);
 }
 
 /** Cap nhat task */

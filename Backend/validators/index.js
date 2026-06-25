@@ -85,6 +85,20 @@ const validators = {
     deadline: z.string().optional(),
   }),
 
+  generateAiTasks: z.object({
+    prompt: z.string().trim().min(1, 'Prompt is required').max(4000),
+    count: z.number().int().min(1).max(20).default(10),
+  }),
+
+  bulkCreateTasks: z.object({
+    tasks: z.array(z.object({
+      title: z.string().trim().min(1, 'Task title is required').max(300),
+      description: z.string().trim().max(5000).optional().default(''),
+      deadline: z.string().min(1, 'Task deadline is required'),
+      priority: z.enum(['LOW', 'MEDIUM', 'HIGH']),
+    })).min(1, 'Select at least one task').max(20),
+  }),
+
   updateTask: z.object({
     title: z.string().min(1).optional(),
     description: z.string().optional(),

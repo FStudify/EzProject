@@ -31,7 +31,7 @@ exports.login = async (req, res, next) => {
         { email: identifier.toLowerCase() },
       ],
     }).select('+passwordHash');
-    if (!user) throw errors.Unauthorized('Invalid credentials');
+    if (!user || !user.passwordHash) throw errors.Unauthorized('Invalid credentials');
 
     const valid = await bcrypt.compare(password, user.passwordHash);
     if (!valid) throw errors.Unauthorized('Invalid credentials');

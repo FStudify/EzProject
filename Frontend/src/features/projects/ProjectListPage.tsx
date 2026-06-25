@@ -322,20 +322,12 @@ export default function ProjectListPage() {
     
     try {
       setIsSubmitting(true);
-      const newProject = await createProject({
+      await createProject({
         name: createForm.name.trim(),
         subject: createForm.subject.trim(),
         description: createForm.description.trim(),
         deadline: createForm.deadline ? new Date(createForm.deadline).toISOString() : undefined,
       });
-
-      if (selectedTemplate && selectedTemplate.tasks.length > 0) {
-        await Promise.all(
-          selectedTemplate.tasks.map((taskName) =>
-            createTask(newProject.id, { title: taskName, priority: 'MEDIUM' }),
-          ),
-        );
-      }
 
       toast('Tạo dự án thành công!', 'success');
       setShowCreateModal(false);

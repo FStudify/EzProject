@@ -10,8 +10,9 @@ import { ChatPanel } from '@/features/chat';
 import TaskColumn from './TaskColumn';
 import TaskTimeline from './TaskTimeline';
 import TaskModal from './TaskModal';
-import AddTaskModal from './AddTaskModal';
+import TaskCreationModal from './TaskCreationModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'kanban' | 'timeline' | 'reminders';
 
@@ -42,6 +43,7 @@ const emptyFilters: Filters = {
 
 export default function TaskBoard() {
   const { t } = useLanguage();
+  const { user } = useAuth();
   const { toast } = useToast();
   const { projectId } = useParams<{ projectId: string }>();
 
@@ -58,6 +60,8 @@ export default function TaskBoard() {
   const filterRef = useRef<HTMLDivElement>(null);
 
   const members = project?.members.map((pm) => pm.member) ?? [];
+  const currentMembership = project?.members.find((pm) => pm.member.id === user?.id);
+  const canGenerateAi = Boolean(currentMembership && (currentMembership.isOwner || currentMembership.role === 'LEADER' || currentMembership.role === 'SUPERVISOR'));
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== '');
 
@@ -571,12 +575,18 @@ export default function TaskBoard() {
         currentUser={members[0]}
       />
       {projectId && (
-        <AddTaskModal
+        <TaskCreationModal
           isOpen={isAddOpen}
           onClose={() => setIsAddOpen(false)}
-          onAdd={handleAddTask}
           projectId={projectId}
           members={members}
+          projectDeadline={project?.deadline}
+          canGenerateAi={canGenerateAi}
+          onManualAdd={handleAddTask}
+          onAiCreated={(created) => {
+            setTasks((prev) => [...prev, ...created]);
+            toast(`${created.length} công việc đã được tạo`, 'success');
+          }}
         />
       )}
     </div>
