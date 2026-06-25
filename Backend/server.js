@@ -37,6 +37,8 @@ async function bootstrap() {
     console.log(`[EZProject] WebSocket ready at ws://localhost:${config.port}`);
     console.log(`[EZProject] Environment: ${config.env}`);
     console.log(`[EZProject] Database: ${config.db.cluster}`);
+    console.log(`[EZProject] Gemini configured: ${config.ai.geminiConfigured ? 'YES' : 'NO'}`);
+    console.log(`[EZProject] Gemini model: ${config.ai.geminiModel}`);
   });
 
   // ── Graceful shutdown ──────────────────────────────────────────────────────

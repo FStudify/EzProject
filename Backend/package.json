@@ -11,6 +11,7 @@
     "migrate:document-size": "node scripts/migrate-document-size.js"
   },
   "dependencies": {
+    "@google/generative-ai": "^0.24.1",
     "bcrypt": "^6.0.0",
     "cloudinary": "^2.10.0",
     "compression": "^1.7.5",

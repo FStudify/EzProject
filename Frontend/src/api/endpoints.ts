@@ -38,6 +38,8 @@ export const Endpoints = {
     `${BASE}/projects/${projectId}/tasks/${taskId}`,
   TASK_COMMENTS: (projectId: string, taskId: string) =>
     `${BASE}/projects/${projectId}/tasks/${taskId}/comments`,
+  TASK_AI_GENERATE: (projectId: string) => `${BASE}/projects/${projectId}/tasks/ai/generate`,
+  TASK_BULK_CREATE: (projectId: string) => `${BASE}/projects/${projectId}/tasks/bulk`,
 
   // ── Documents ───────────────────────────────────────────
   DOCUMENT_LIST: (projectId: string) => `${BASE}/projects/${projectId}/documents`,

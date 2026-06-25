@@ -64,6 +64,11 @@ const config = {
     windowMs: parseInt(process.env.RATE_LIMIT_WINDOW_MS || '60000', 10),
     max: parseInt(process.env.RATE_LIMIT_MAX || '100', 10),
   },
+
+  ai: {
+    geminiConfigured: Boolean(process.env.GEMINI_API_KEY),
+    geminiModel: process.env.GEMINI_MODEL || 'gemini-2.5-flash',
+  },
 };
 
 module.exports = config;
