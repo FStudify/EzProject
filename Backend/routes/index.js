@@ -16,6 +16,8 @@ const inviteRouter = require('./invite');
 const memberController = require('../controllers/memberController');
 const { requireAuth } = require('../middlewares/auth');
 const aiController = require('../controllers/aiController');
+const { validators, validate } = require('../validators');
+const { generateProjectLimiter } = require('../middlewares/rateLimit');
 
 const router = express.Router();
 
@@ -31,6 +33,13 @@ router.use('/users', userRouter);
 
 // ── AI Chat ─────────────────────────────────────────────────
 router.post('/ai/chat', requireAuth, aiController.chat);
+router.post(
+  '/ai/generate-project',
+  requireAuth,
+  generateProjectLimiter,
+  validate(validators.generateProject),
+  aiController.generateProjectFromIdea,
+);
 
 // ── Admin (Gap 1) ──────────────────────────────────────
 router.use('/admin', adminRouter);

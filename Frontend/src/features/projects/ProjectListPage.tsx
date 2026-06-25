@@ -1,10 +1,18 @@
 import { useEffect, useMemo, useState } from 'react';
 import { Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
 import { getProjects, createProject, updateProject } from '@/api/project.api';
+import { createTask } from '@/api/task.api';
+import {
+  convertDeadlineDaysToDateString,
+  generateProject,
+  generateTaskId,
+} from '@/api/ai.api';
 import type { ProjectStatus } from '@/api/types';
 import { Button, Modal, useToast, SkeletonCard } from '@/components/ui';
 import ProjectCard from './ProjectCard';
 import type { Project } from '@/types';
+import type { GeneratedTask } from '@/api/ai.api';
 import { useAuth } from '@/contexts/AuthContext';
 import {
   BarChart3,
@@ -20,6 +28,8 @@ import {
   BarChart,
   Check,
   Rocket,
+  Sparkles,
+  Trash2,
 } from 'lucide-react';
 
 // ===== Template Library Data =====
@@ -179,6 +189,9 @@ const CATEGORIES = ['Tất cả', 'Môn học', 'Loại bài'];
 
 type StatusFilter = 'all' | ProjectStatus;
 
+type CreateTab = 'manual' | 'ai';
+type AIPreviewTask = GeneratedTask & { _id: string };
+
 export default function ProjectListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
   const [showCreateModal, setShowCreateModal] = useState(false);
@@ -192,10 +205,80 @@ export default function ProjectListPage() {
   const [createForm, setCreateForm] = useState({ name: '', subject: '', description: '', deadline: '' });
   const [editForm, setEditForm] = useState({ name: '', subject: '', description: '', deadline: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [activeCreateTab, setActiveCreateTab] = useState<CreateTab>('manual');
+  const [aiIdea, setAiIdea] = useState('');
+  const [aiIdeaError, setAiIdeaError] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [aiPreview, setAiPreview] = useState<{
+    name: string;
+    description: string;
+    subject: string;
+    deadline: string;
+    tasks: AIPreviewTask[];
+  } | null>(null);
   const { toast } = useToast();
   const { user } = useAuth();
+  const navigate = useNavigate();
 
   const [projects, setProjects] = useState<Project[]>([]);
+
+  const resetAiCreateState = () => {
+    setActiveCreateTab('manual');
+    setAiIdea('');
+    setAiIdeaError(null);
+    setIsGenerating(false);
+    setAiPreview(null);
+  };
+
+  const toDateInputValue = (value?: string) => {
+    if (!value) return '';
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) return '';
+    return date.toISOString().slice(0, 10);
+  };
+
+  const getGenerateProjectError = (err: any) => {
+    if (err?.name === 'AbortError') {
+      return { message: 'Yêu cầu quá thời gian chờ. Vui lòng thử lại.', variant: 'error' as const };
+    }
+    if (err?.name === 'NetworkError') {
+      return { message: 'Không thể kết nối server. Vui lòng kiểm tra mạng.', variant: 'error' as const };
+    }
+
+    switch (err?.code) {
+      case 'AI_NOT_CONFIGURED':
+        return { message: 'Tính năng AI chưa được cấu hình trên server.', variant: 'error' as const };
+      case 'AI_UNAVAILABLE':
+        return { message: 'Tính năng AI chưa được cấu hình trên server này.', variant: 'error' as const };
+      case 'AI_SERVICE_UNAVAILABLE':
+        return { message: 'Dịch vụ AI tạm thời không khả dụng, vui lòng thử lại sau.', variant: 'error' as const };
+      case 'AI_INVALID_RESPONSE':
+        return { message: 'AI trả về dữ liệu không hợp lệ, vui lòng thử lại.', variant: 'error' as const };
+      case 'AI_QUOTA_EXCEEDED':
+        return { message: 'Tài khoản Gemini đã hết quota hoặc credits. Vui lòng kiểm tra billing/API key.', variant: 'error' as const };
+      case 'AI_AUTH_FAILED':
+        return { message: 'GEMINI_API_KEY không hợp lệ hoặc không có quyền truy cập model.', variant: 'error' as const };
+      case 'TOO_MANY_REQUESTS':
+        return { message: 'Bạn đã tạo bằng AI quá nhiều lần. Vui lòng chờ 1 phút.', variant: 'warning' as const };
+      case 'VALIDATION_ERROR':
+        return { message: err?.message || 'Mô tả ý tưởng không hợp lệ.', variant: 'error' as const };
+      default:
+        break;
+    }
+
+    switch (err?.status) {
+      case 400:
+        return { message: err?.message || 'Mô tả ý tưởng không hợp lệ.', variant: 'error' as const };
+      case 429:
+        return { message: 'Bạn đã tạo bằng AI quá nhiều lần. Vui lòng chờ 1 phút.', variant: 'warning' as const };
+      case 502:
+        return { message: 'AI trả về dữ liệu không hợp lệ, vui lòng thử lại.', variant: 'error' as const };
+      case 503:
+        return { message: err?.message || 'Dịch vụ AI tạm thời không khả dụng, vui lòng thử lại sau.', variant: 'error' as const };
+      default:
+        return { message: err?.message || 'Không thể tạo dự án bằng AI.', variant: 'error' as const };
+    }
+  };
 
   const reloadProjects = async () => {
     const apiStatus: ProjectStatus | undefined = statusFilter === 'all' ? undefined : statusFilter;
@@ -206,6 +289,7 @@ export default function ProjectListPage() {
   const openCreateProject = () => {
     setSelectedTemplate(null);
     setCreateForm({ name: '', subject: '', description: '', deadline: '' });
+    resetAiCreateState();
     setShowCreateModal(true);
   };
 
@@ -252,6 +336,87 @@ export default function ProjectListPage() {
       await reloadProjects();
     } catch (err: any) {
       toast(err?.message || 'Có lỗi xảy ra khi tạo dự án', 'error');
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+
+  const handleGenerateProject = async () => {
+    const idea = aiIdea.trim();
+    if (idea.length < 10) {
+      setAiIdeaError('Mô tả ý tưởng phải có ít nhất 10 ký tự.');
+      return;
+    }
+
+    try {
+      setIsGenerating(true);
+      setAiIdeaError(null);
+      const generated = await generateProject(idea);
+      setAiPreview({
+        name: generated.name,
+        description: generated.description,
+        subject: generated.subject,
+        deadline:
+          toDateInputValue(generated.deadline) ||
+          convertDeadlineDaysToDateString(generated.suggestedDeadlineDays),
+        tasks: generated.tasks.map((task) => ({
+          ...task,
+          deadline: task.deadline || convertDeadlineDaysToDateString(task.suggestedDeadlineDays),
+          _id: generateTaskId(),
+        })),
+      });
+      toast('Đã tạo bản xem trước bằng AI.', 'success');
+    } catch (err: any) {
+      const errorInfo = getGenerateProjectError(err);
+      if (err?.status === 400) {
+        setAiIdeaError(errorInfo.message);
+      }
+      toast(errorInfo.message, errorInfo.variant);
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
+  const handleCreateFromAiPreview = async () => {
+    if (!aiPreview) return;
+    if (!aiPreview.name.trim()) {
+      toast('Tên dự án là bắt buộc.', 'error');
+      return;
+    }
+
+    try {
+      setIsSubmitting(true);
+      const newProject = await createProject({
+        name: aiPreview.name.trim(),
+        subject: aiPreview.subject.trim(),
+        description: aiPreview.description.trim(),
+        deadline: aiPreview.deadline ? new Date(aiPreview.deadline).toISOString() : undefined,
+      });
+
+      const results = await Promise.allSettled(
+        aiPreview.tasks.map((task) =>
+          createTask(newProject.id, {
+            title: task.title.trim(),
+            description: task.description.trim(),
+            priority: task.priority,
+            deadline: task.deadline ? new Date(task.deadline).toISOString() : undefined,
+          }),
+        ),
+      );
+      const failedCount = results.filter((result) => result.status === 'rejected').length;
+
+      setShowCreateModal(false);
+      resetAiCreateState();
+      await reloadProjects();
+      navigate(`/app/projects/${newProject.id}`);
+
+      if (failedCount > 0) {
+        toast(`${failedCount} công việc không thể tạo được.`, 'warning');
+      } else {
+        toast('Tạo dự án bằng AI thành công!', 'success');
+      }
+    } catch (err: any) {
+      toast(err?.message || 'Có lỗi xảy ra khi tạo dự án.', 'error');
     } finally {
       setIsSubmitting(false);
     }
@@ -540,7 +705,7 @@ export default function ProjectListPage() {
                     Gợi ý công việc
                   </p>
                   <span className="rounded-full bg-primary/10 px-4 py-1.5 text-sm font-bold text-primary">
-                    {selectedTemplate.tasks.length} tasks
+                    {selectedTemplate.tasks.length} công việc
                   </span>
                 </div>
                 <div className="space-y-4">
@@ -667,12 +832,40 @@ export default function ProjectListPage() {
       {/* ===== Create Project Modal ===== */}
       <Modal
         isOpen={showCreateModal}
-        onClose={() => setShowCreateModal(false)}
+        onClose={() => {
+          setShowCreateModal(false);
+          resetAiCreateState();
+        }}
         title="Khởi tạo dự án"
         size="lg"
         panelClassName="!max-w-[800px] !rounded-[2.5rem] !p-8 border-0 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.3)] overflow-hidden"
         bodyClassName="[&::-webkit-scrollbar]:hidden !p-0 mt-6"
       >
+        <div className="mb-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
+          <button
+            type="button"
+            onClick={() => setActiveCreateTab('manual')}
+            className={`rounded-xl px-4 py-2.5 text-sm font-black transition-all ${
+              activeCreateTab === 'manual'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            Tự tạo
+          </button>
+          <button
+            type="button"
+            onClick={() => setActiveCreateTab('ai')}
+            className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-all ${
+              activeCreateTab === 'ai'
+                ? 'bg-white text-slate-900 shadow-sm'
+                : 'text-slate-500 hover:text-slate-800'
+            }`}
+          >
+            <Sparkles className="h-4 w-4" />
+            Tạo bằng AI
+          </button>
+        </div>
         <div className="flex flex-col md:flex-row gap-8 lg:gap-10">
           {/* Decorative Left Side */}
           <div className="hidden md:flex flex-col w-[280px] shrink-0 bg-gradient-to-br from-primary/10 via-primary/5 to-blue-500/10 rounded-[2rem] p-8 relative overflow-hidden border border-white/60 shadow-inner">
@@ -704,6 +897,7 @@ export default function ProjectListPage() {
           </div>
 
           {/* Form Right Side */}
+          {activeCreateTab === 'manual' ? (
           <form onSubmit={handleCreateProject} className="flex-1 flex flex-col space-y-6 min-w-0 py-2">
             <div className="space-y-2.5">
               <label className="text-sm font-black text-slate-800 ml-1">Mẫu dự án</label>
@@ -777,6 +971,153 @@ export default function ProjectListPage() {
               </Button>
             </div>
           </form>
+          ) : (
+          <div className="flex-1 flex flex-col space-y-5 min-w-0 py-2">
+            <div className="space-y-2.5">
+              <label className="text-sm font-black text-slate-900 ml-1">Ý tưởng dự án</label>
+              <textarea
+                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all resize-none outline-none leading-relaxed disabled:opacity-60"
+                placeholder="VD: Ứng dụng quản lý thư viện cho trường học..."
+                rows={4}
+                value={aiIdea}
+                disabled={isGenerating || isSubmitting}
+                onChange={(e) => {
+                  setAiIdea(e.target.value);
+                  if (aiIdeaError) setAiIdeaError(null);
+                }}
+              />
+              {aiIdeaError && <p className="ml-1 text-xs font-bold text-rose-500">{aiIdeaError}</p>}
+            </div>
+
+            <Button
+              type="button"
+              variant="primary"
+              size="lg"
+              disabled={isGenerating || isSubmitting || aiIdea.trim().length < 10}
+              onClick={handleGenerateProject}
+              className="w-full rounded-2xl font-black shadow-xl shadow-primary/20"
+            >
+              <Sparkles className="mr-2 h-5 w-5" />
+              {isGenerating ? 'Đang tạo dự án...' : 'Tạo dự án'}
+            </Button>
+
+            {aiPreview && (
+              <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
+                <div className="flex items-center justify-between gap-3">
+                  <p className="text-base font-black text-slate-900">Xem trước</p>
+                  <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
+                    {aiPreview.tasks.length} công việc
+                  </span>
+                </div>
+
+                <div className="grid gap-4 md:grid-cols-2">
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-slate-900">Tên dự án</label>
+                    <input
+                      className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
+                      value={aiPreview.name}
+                      onChange={(e) => setAiPreview((prev) => prev ? { ...prev, name: e.target.value } : prev)}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <label className="text-xs font-black uppercase text-slate-900">Lĩnh vực / Môn học</label>
+                    <input
+                      className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
+                      value={aiPreview.subject}
+                      onChange={(e) => setAiPreview((prev) => prev ? { ...prev, subject: e.target.value } : prev)}
+                    />
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-900">Mô tả</label>
+                  <textarea
+                    className="max-h-28 w-full overflow-y-auto rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-sm font-medium text-slate-800 outline-none focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
+                    rows={3}
+                    value={aiPreview.description}
+                    onChange={(e) => setAiPreview((prev) => prev ? { ...prev, description: e.target.value } : prev)}
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-xs font-black uppercase text-slate-900">Ngày đến hạn</label>
+                  <input
+                    type="date"
+                    className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
+                    value={aiPreview.deadline}
+                    onChange={(e) => setAiPreview((prev) => prev ? { ...prev, deadline: e.target.value } : prev)}
+                  />
+                </div>
+
+                <div className="space-y-3">
+                  <div className="sticky top-0 z-10 flex items-center justify-between bg-white">
+                    <p className="text-sm font-black text-slate-900">Công việc gợi ý</p>
+                    <span className="text-xs font-bold text-slate-600">{aiPreview.tasks.length} công việc</span>
+                  </div>
+                  <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
+                    {aiPreview.tasks.map((task) => (
+                      <div key={task._id} className="flex max-h-32 items-start gap-3 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 p-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-black text-slate-800">{task.title}</p>
+                          {task.description && (
+                            <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-slate-600">{task.description}</p>
+                          )}
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600">
+                              Ưu tiên: {task.priority === 'HIGH' ? 'Cao' : task.priority === 'LOW' ? 'Thấp' : 'Trung bình'}
+                            </span>
+                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600">
+                              Ngày đến hạn: {toDateInputValue(task.deadline) || `${task.suggestedDeadlineDays} ngày`}
+                            </span>
+                          </div>
+                        </div>
+                        <button
+                          type="button"
+                          onClick={() =>
+                            setAiPreview((prev) =>
+                              prev
+                                ? { ...prev, tasks: prev.tasks.filter((item) => item._id !== task._id) }
+                                : prev,
+                            )
+                          }
+                          className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                          aria-label="Xóa công việc"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </button>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
+                <div className="flex justify-end gap-3 border-t border-slate-100 pt-5">
+                  <Button
+                    type="button"
+                    variant="secondary"
+                    size="lg"
+                    onClick={() => {
+                      setShowCreateModal(false);
+                      resetAiCreateState();
+                    }}
+                    className="rounded-2xl font-bold px-8"
+                  >
+                    Hủy bỏ
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="primary"
+                    size="lg"
+                    disabled={isSubmitting || !aiPreview.name.trim()}
+                    onClick={handleCreateFromAiPreview}
+                    className="rounded-2xl font-black px-10 shadow-xl shadow-primary/20"
+                  >
+                    {isSubmitting ? 'Đang tạo...' : 'Tạo dự án'}
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+          )}
         </div>
       </Modal>
 

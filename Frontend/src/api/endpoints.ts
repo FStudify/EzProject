@@ -65,6 +65,7 @@ export const Endpoints = {
 
   // ── AI Chat ────────────────────────────────────────────────
   AI_CHAT: `${BASE}/ai/chat`,
+  AI_GENERATE_PROJECT: `${BASE}/ai/generate-project`,
 
   // ── Members ─────────────────────────────────────────────
   MEMBER_LIST: (projectId: string) => `${BASE}/projects/${projectId}/members`,
