@@ -17,7 +17,7 @@ export default function InviteLandingPage() {
 
   useEffect(() => {
     if (!token) {
-      setError('Invalid invitation link');
+      setError('Link lời mời không hợp lệ');
       setPhase('error');
       return;
     }
@@ -28,7 +28,7 @@ export default function InviteLandingPage() {
         setPhase('ready');
       })
       .catch((err: unknown) => {
-        setError(err instanceof Error ? err.message : 'Invalid or expired invitation');
+        setError(err instanceof Error ? err.message : 'Lời mời không hợp lệ hoặc đã hết hạn');
         setPhase('error');
       });
   }, [token]);
@@ -62,10 +62,10 @@ export default function InviteLandingPage() {
       <main className="flex min-h-screen items-center justify-center bg-gradient-to-br from-[#FFF8F3] to-[#F0EDE8] px-4">
         <section className="w-full max-w-md rounded-2xl p-8 text-center shadow-xl" style={{ backgroundColor: '#FFFDFB', border: '1px solid #E8D8CF' }}>
           <AlertCircle className="mx-auto h-12 w-12" style={{ color: '#EF4444' }} />
-          <h1 className="mt-4 text-xl font-bold" style={{ color: '#1F1F1F' }}>Invalid invitation</h1>
+          <h1 className="mt-4 text-xl font-bold" style={{ color: '#1F1F1F' }}>Lời mời không hợp lệ</h1>
           <p className="mt-2 text-sm" style={{ color: '#7D6F66' }}>{error}</p>
           <Link to="/" className="mt-6 inline-block text-sm font-medium" style={{ color: '#D97853' }}>
-            Go to homepage
+            Về trang chủ
           </Link>
         </section>
       </main>

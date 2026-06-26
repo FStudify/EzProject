@@ -131,7 +131,7 @@ export async function leaveChatRoom(
   options?: { newOwnerId?: string },
 ): Promise<{ deleted: boolean; transferredTo?: string; room?: ChatRoom }> {
   if (!roomId || !/^[0-9a-fA-F]{24}$/.test(roomId)) {
-    throw new Error('Invalid room ID format');
+    throw new Error('Mã phòng chat không hợp lệ');
   }
   const body = options?.newOwnerId ? { newOwnerId: options.newOwnerId } : {};
   const raw = await api.post<unknown>(Endpoints.CHAT_ROOM_LEAVE(projectId, roomId), body);

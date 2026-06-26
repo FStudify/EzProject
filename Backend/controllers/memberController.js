@@ -118,7 +118,7 @@ exports.updateRole = async (req, res, next) => {
       { new: true },
     );
     if (!result) throw errors.NotFound('Member');
-    res.json({ success: true, data: null, message: 'Role updated' });
+    res.json({ success: true, data: null, message: 'Đã cập nhật vai trò' });
   } catch (err) {
     next(err);
   }
@@ -230,7 +230,7 @@ exports.joinByInvite = async (req, res, next) => {
       return res.json({
         success: true,
         data: { projectId: project._id, alreadyMember: true },
-        message: 'You are already a member of this project',
+        message: 'Bạn đã là thành viên của dự án này',
       });
     }
 
@@ -248,7 +248,7 @@ exports.joinByInvite = async (req, res, next) => {
     res.status(201).json({
       success: true,
       data: { projectId: project._id, projectName: project.name },
-      message: `Successfully joined project "${project.name}"`,
+      message: `Đã tham gia dự án "${project.name}"`,
     });
   } catch (err) {
     next(err);
@@ -338,7 +338,7 @@ exports.leaveProject = async (req, res, next) => {
       if (!newOwnerId) {
         return res.status(400).json({
           success: false,
-          message: 'You are the owner. Please transfer ownership before leaving.',
+          message: 'Bạn là chủ sở hữu. Vui lòng chuyển quyền trước khi rời dự án.',
           code: 'OWNER_TRANSFER_REQUIRED',
         });
       }

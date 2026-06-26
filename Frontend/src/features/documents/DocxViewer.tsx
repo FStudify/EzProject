@@ -38,10 +38,10 @@ export default function DocxViewer({ fileUrl, fileBlob, className = '' }: DocxVi
           buf = await currentBlob.arrayBuffer();
         } else if (currentUrl) {
           const res = await fetch(currentUrl);
-          if (!res.ok) throw new Error(`HTTP ${res.status}`);
+          if (!res.ok) throw new Error(`Không thể tải tệp (HTTP ${res.status})`);
           buf = await res.arrayBuffer();
         } else {
-          throw new Error('No file provided');
+          throw new Error('Chưa có tệp để hiển thị');
         }
         if (!active) return;
 
@@ -63,7 +63,7 @@ export default function DocxViewer({ fileUrl, fileBlob, className = '' }: DocxVi
         if (active) setStatus('done');
       } catch (e: unknown) {
         if (active) {
-          setErrorMsg(e instanceof Error ? e.message : 'Unknown error');
+          setErrorMsg(e instanceof Error ? e.message : 'Đã xảy ra lỗi không xác định');
           setStatus('error');
         }
       }

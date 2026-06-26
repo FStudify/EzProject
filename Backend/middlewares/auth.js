@@ -11,7 +11,7 @@ async function requireAuth(req, res, next) {
   if (!auth || !auth.startsWith('Bearer ')) {
     return res.status(401).json({
       success: false,
-      error: { code: 'UNAUTHORIZED', message: 'Missing authorization header' },
+      error: { code: 'UNAUTHORIZED', message: 'Thiếu thông tin xác thực' },
     });
   }
 
@@ -23,7 +23,7 @@ async function requireAuth(req, res, next) {
     if (!user) {
       return res.status(401).json({
         success: false,
-        error: { code: 'UNAUTHORIZED', message: 'User no longer exists' },
+        error: { code: 'UNAUTHORIZED', message: 'Người dùng không còn tồn tại' },
       });
     }
     req.user = {
@@ -36,7 +36,7 @@ async function requireAuth(req, res, next) {
   } catch {
     res.status(401).json({
       success: false,
-      error: { code: 'UNAUTHORIZED', message: 'Invalid or expired token' },
+      error: { code: 'UNAUTHORIZED', message: 'Phiên đăng nhập không hợp lệ hoặc đã hết hạn' },
     });
   }
 }
@@ -47,7 +47,7 @@ function requireAdmin(req, res, next) {
   if (req.user?.role !== 'ADMIN') {
     return res.status(403).json({
       success: false,
-      error: { code: 'FORBIDDEN', message: 'Admin access required' },
+      error: { code: 'FORBIDDEN', message: 'Cần quyền quản trị viên' },
     });
   }
   next();

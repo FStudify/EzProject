@@ -80,7 +80,7 @@ exports.setUserRole = async (req, res, next) => {
       { new: true },
     ).select('-passwordHash');
     if (!user) throw errors.NotFound('User');
-    res.json({ success: true, data: user, message: `User role updated to ${role}` });
+    res.json({ success: true, data: user, message: `Đã cập nhật quyền người dùng thành ${role}` });
   } catch (err) {
     next(err);
   }

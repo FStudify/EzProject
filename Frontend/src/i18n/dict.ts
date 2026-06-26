@@ -16,7 +16,7 @@ export type DictKey =
   | 'you_are_owner' | 'select_new_owner_before_leave' | 'warning_delete_project' | 'last_member_warning' | 'last_member_delete_warning' | 'select_new_owner' | 'will_lose_access' | 'delete_and_leave' | 'confirm_leave' | 'admin'
   | 'meetings' | 'schedule_meeting' | 'meeting_topic' | 'meeting_date' | 'meeting_time' | 'meeting_duration' | 'meeting_location' | 'meeting_link' | 'meeting_notes' | 'attendees' | 'join' | 'will_attend' | 'decline' | 'pending' | 'no_meetings' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'online' | 'offline'
   | 'calendar' | 'list' | 'month' | 'week' | 'day'
-  | 'start_end_required' | 'invalid_date' | 'start_must_be_future' | 'end_after_start' | 'start_time_cannot_change' | 'task_created' | 'required'
+  | 'start_end_required' | 'invalid_date' | 'start_must_be_future' | 'end_after_start' | 'start_time_cannot_change' | 'task_created' | 'task_updated' | 'task_deleted' | 'required'
   | 'invite_selected_members' | 'select_attendees' | 'all_members_invited' | 'meeting_created' | 'meeting_deleted' | 'attendees_label' | 'pending_label' | 'declined_label' | 'no_attendees' | 'no_pending' | 'no_declined' | 'location_label' | 'meeting_link_label' | 'duration' | 'time' | 'status' | 'create_meeting' | 'edit_meeting' | 'delete_meeting' | 'decline_meeting' | 'decline_modal_text' | 'reason' | 'reason_placeholder' | 'confirm_decline' | 'decline_reason' | 'meeting_summary' | 'create_task_from_meeting' | 'summary_placeholder' | 'follow_up_task' | 'follow_up_task_created' | 'start' | 'end' | 'title' | 'address' | 'cant_change_owner_role_meeting' | 'description' | 'attendees_count' | 'will_attend_label' | 'decline_label' | 'meeting_delete_confirm' | 'meeting_deleted' | 'online_label' | 'offline_label'
   | 'chat' | 'channels' | 'direct_messages' | 'create_channel' | 'channel_name' | 'add_members' | 'selected' | 'search_conversation' | 'no_messages' | 'start_conversation' | 'select_conversation' | 'rename_channel' | 'leave_channel' | 'delete_channel' | 'new_channel_name' | 'channel_general_cant_edit' | 'direct_message' | 'create_channel_btn'
   | 'no_channels' | 'default_channel' | 'default_channel_subtitle'
@@ -334,6 +334,8 @@ export const vi = {
   end_after_start: 'Thời gian kết thúc phải sau thời gian bắt đầu',
   start_time_cannot_change: 'Cuộc họp đã bắt đầu, không thể đổi giờ bắt đầu',
   task_created: 'Đã tạo công việc',
+  task_updated: 'Đã cập nhật công việc',
+  task_deleted: 'Đã xóa công việc',
   required: 'bắt buộc',
   organizer: 'Người tổ chức',
   attendees_count: 'tham gia',
@@ -842,7 +844,9 @@ export const en = {
   start_must_be_future: 'Start time must be in the future',
   end_after_start: 'End time must be after start time',
   start_time_cannot_change: 'Meeting already started, cannot change start time',
-  task_created: 'Task created',
+  task_created: 'Đã tạo công việc',
+  task_updated: 'Đã cập nhật công việc',
+  task_deleted: 'Đã xóa công việc',
   required: 'required',
   organizer: 'Organizer',
   attendees_count: 'attendees',

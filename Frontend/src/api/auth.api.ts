@@ -47,7 +47,7 @@ export async function logout(): Promise<void> {
 /** Refresh token — goi khi access token het han */
 export async function refreshTokens(): Promise<{ accessToken: string; refreshToken: string }> {
   const currentRefreshToken = getRefreshToken();
-  if (!currentRefreshToken) throw new Error('No refresh token available');
+  if (!currentRefreshToken) throw new Error('Không tìm thấy refresh token');
   const res = await api.post<{ accessToken: string; refreshToken: string }>(Endpoints.AUTH_REFRESH, {
     refreshToken: currentRefreshToken,
   });

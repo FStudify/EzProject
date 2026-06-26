@@ -24,7 +24,7 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
   const t = useCallback(
     (key: DictKey): string => {
-      return dicts[lang][key] ?? String(key);
+      return dicts[lang][key] ?? (vi as Dict)[key] ?? String(key);
     },
     [lang],
   );

@@ -334,7 +334,7 @@ exports.rsvp = async (req, res, next) => {
     const io = req.app.get('io');
     emitMeetingEvent(io, req.params.projectId, 'meeting.response.updated', updated);
 
-    res.json({ success: true, data: updated, message: 'RSVP updated' });
+    res.json({ success: true, data: updated, message: 'Đã cập nhật phản hồi tham dự' });
   } catch (err) {
     next(err);
   }

@@ -29,7 +29,7 @@ export default function PdfViewer({ fileUrl, fileBlob, className = '' }: PdfView
 
     if (!currentUrl && !currentBlob) {
       setStatus('error');
-      setErrorMsg('No file provided');
+      setErrorMsg('Chưa có tệp để hiển thị');
       return;
     }
 
@@ -56,7 +56,7 @@ export default function PdfViewer({ fileUrl, fileBlob, className = '' }: PdfView
         setStatus('done');
       } catch (e) {
         if (!cancelled) {
-          setErrorMsg(e instanceof Error ? e.message : 'Cannot load PDF');
+          setErrorMsg(e instanceof Error ? e.message : 'Không thể tải tệp PDF');
           setStatus('error');
         }
       }

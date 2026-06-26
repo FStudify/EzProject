@@ -127,7 +127,7 @@ exports.evaluate = async (req, res, next) => {
       feedback: req.body.feedback,
     });
 
-    res.status(201).json({ success: true, data: null, message: 'Evaluation submitted' });
+    res.status(201).json({ success: true, data: null, message: 'Đã gửi đánh giá' });
   } catch (err) {
     next(err);
   }

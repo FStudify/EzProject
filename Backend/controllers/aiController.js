@@ -21,7 +21,7 @@ function daysFromToday(days) {
 function parsePositiveInteger(value, field) {
   const num = Number(value);
   if (!Number.isFinite(num) || num <= 0) {
-    throw new Error(`${field} must be greater than 0`);
+    throw new Error(`${field} phải lớn hơn 0`);
   }
   return Math.max(1, Math.round(num));
 }
@@ -78,18 +78,18 @@ function parseGeminiResponse(raw) {
 
   for (const field of requiredFields) {
     if (parsed[field] === undefined || parsed[field] === null) {
-      throw new Error(`Missing required field: ${field}`);
+      throw new Error(`Thiếu trường bắt buộc: ${field}`);
     }
   }
 
   if (!Array.isArray(parsed.tasks) || parsed.tasks.length === 0) {
-    throw new Error('tasks must be a non-empty array');
+    throw new Error('Danh sách công việc không được để trống');
   }
 
   const projectDays = parsePositiveInteger(parsed.suggestedDeadlineDays, 'suggestedDeadlineDays');
   const tasks = parsed.tasks.map((task) => {
     if (!task || typeof task !== 'object' || !String(task.title || '').trim()) {
-      throw new Error('Each task must have a title');
+      throw new Error('Mỗi công việc phải có tiêu đề');
     }
     const taskDays = parseTaskDeadlineDays(task.suggestedDeadlineDays);
     const priority = VALID_PRIORITIES.has(task.priority) ? task.priority : 'MEDIUM';
@@ -125,7 +125,7 @@ function mapGeminiError(err) {
     return new AppError(
       503,
       'AI_QUOTA_EXCEEDED',
-      'Tai khoan Gemini da het quota hoac credits. Vui long kiem tra billing/API key.',
+      'Tài khoản Gemini đã hết quota hoặc credits. Vui lòng kiểm tra billing/API key.',
     );
   }
 
@@ -133,11 +133,11 @@ function mapGeminiError(err) {
     return new AppError(
       503,
       'AI_AUTH_FAILED',
-      'GEMINI_API_KEY khong hop le hoac khong co quyen truy cap model',
+      'GEMINI_API_KEY không hợp lệ hoặc không có quyền truy cập model',
     );
   }
 
-  return new AppError(503, 'AI_SERVICE_UNAVAILABLE', 'Dich vu AI tam thoi khong kha dung');
+  return new AppError(503, 'AI_SERVICE_UNAVAILABLE', 'Dịch vụ AI tạm thời không khả dụng');
 }
 
 function getGeminiModelNames() {
@@ -155,40 +155,40 @@ function canTryFallbackModel(err) {
 }
 
 function formatDate(dateStr) {
-  if (!dateStr) return 'chua co';
+  if (!dateStr) return 'chưa có';
   const d = new Date(dateStr);
   return d.toLocaleDateString('vi-VN', { day: '2-digit', month: 'short', year: 'numeric' });
 }
 
 function classifyIntent(text) {
   const lower = text.toLowerCase();
-  if (lower.includes('nhiem vu') || lower.includes('task') || lower.includes('cong viec')) return 'tasks';
+  if (lower.includes('nhiem vu') || lower.includes('nhiệm vụ') || lower.includes('task') || lower.includes('cong viec') || lower.includes('công việc')) return 'tasks';
   if (lower.includes('thanh vien') || lower.includes('member') || lower.includes('nguoi')) return 'members';
-  if (lower.includes('deadline') || lower.includes('han chot') || lower.includes('ngay')) return 'deadline';
-  if (lower.includes('tien do') || lower.includes('progress') || lower.includes('%')) return 'progress';
+  if (lower.includes('deadline') || lower.includes('han chot') || lower.includes('hạn chót') || lower.includes('ngay') || lower.includes('ngày')) return 'deadline';
+  if (lower.includes('tien do') || lower.includes('tiến độ') || lower.includes('progress') || lower.includes('%')) return 'progress';
   if (lower.includes('kenh') || lower.includes('chat') || lower.includes('nhom')) return 'chat';
   return 'general';
 }
 
 function buildTasksSummary(tasks) {
-  if (!tasks || tasks.length === 0) return 'Hien tai chua co nhien vu nao trong du an.';
+  if (!tasks || tasks.length === 0) return 'Hiện tại chưa có nhiệm vụ nào trong dự án.';
   const done = tasks.filter((t) => t.status === 'DONE').length;
   const inProgress = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
   const overdue = tasks.filter((t) => t.status !== 'DONE' && t.deadline && new Date(t.deadline) < new Date()).length;
-  return `Du an co **${tasks.length} nhien vu**: **${done}** hoan thanh, **${inProgress}** dang lam, **${overdue}** qua han.`;
+  return `Dự án có **${tasks.length} nhiệm vụ**: **${done}** hoàn thành, **${inProgress}** đang làm, **${overdue}** quá hạn.`;
 }
 
 function buildMembersSummary(members) {
-  if (!members || members.length === 0) return 'Chua co thanh vien trong du an.';
+  if (!members || members.length === 0) return 'Chưa có thành viên trong dự án.';
   const roles = { LEADER: 0, SUPERVISOR: 0, MEMBER: 0 };
   for (const m of members) {
     const r = m.role || (m.userId && m.userId.role);
     if (r) roles[r] = (roles[r] || 0) + 1;
   }
-  const lines = [`Du an co **${members.length} thanh vien**:`];
-  if (roles.LEADER) lines.push(`- **LEADER**: ${roles.LEADER} nguoi`);
-  if (roles.SUPERVISOR) lines.push(`- **SUPERVISOR**: ${roles.SUPERVISOR} nguoi`);
-  if (roles.MEMBER) lines.push(`- **MEMBER**: ${roles.MEMBER} nguoi`);
+  const lines = [`Dự án có **${members.length} thành viên**:`];
+  if (roles.LEADER) lines.push(`- **LEADER**: ${roles.LEADER} người`);
+  if (roles.SUPERVISOR) lines.push(`- **SUPERVISOR**: ${roles.SUPERVISOR} người`);
+  if (roles.MEMBER) lines.push(`- **MEMBER**: ${roles.MEMBER} người`);
   return lines.join('\n');
 }
 
@@ -197,11 +197,11 @@ function buildDeadlinesSummary(tasks) {
     .filter((t) => t.status !== 'DONE' && t.deadline && new Date(t.deadline) >= new Date())
     .sort((a, b) => new Date(a.deadline) - new Date(b.deadline))
     .slice(0, 5);
-  if (upcoming.length === 0) return 'Khong co nhien vu nao co deadline sap toi.';
-  const lines = ['**Cac nhien vu sap den han:**'];
+  if (upcoming.length === 0) return 'Không có nhiệm vụ nào có deadline sắp tới.';
+  const lines = ['**Các nhiệm vụ sắp đến hạn:**'];
   for (const t of upcoming) {
     const days = Math.ceil((new Date(t.deadline) - new Date()) / (1000 * 60 * 60 * 24));
-    const dayLabel = days === 0 ? 'Hom nay' : days === 1 ? 'Ngay mai' : `Con ${days} ngay`;
+    const dayLabel = days === 0 ? 'Hôm nay' : days === 1 ? 'Ngày mai' : `Còn ${days} ngày`;
     lines.push(`- **${t.title}** (${dayLabel}, ${formatDate(t.deadline)})`);
   }
   return lines.join('\n');
@@ -212,10 +212,10 @@ function buildProgressSummary(project, tasks) {
   const done = tasks.filter((t) => t.status === 'DONE').length;
   const pct = total === 0 ? 0 : Math.round((done / total) * 100);
   const lines = [
-    `Tien do du an: **${pct}%**`,
-    `${done}/${total} nhien vu hoan thanh.`,
+    `Tiến độ dự án: **${pct}%**`,
+    `${done}/${total} nhiệm vụ hoàn thành.`,
   ];
-  if (project.status === 'ACTIVE') lines.push('Trang thai: **Dang hoat dong**');
+  if (project.status === 'ACTIVE') lines.push('Trạng thái: **Đang hoạt động**');
   if (project.deadline) lines.push(`Deadline du an: **${formatDate(project.deadline)}**`);
   return lines.join('\n');
 }
@@ -232,11 +232,11 @@ async function generateAIResponse(text, projectId, userId) {
       .populate('members.userId', 'fullName email avatar')
       .lean();
   } catch {
-    return 'Ban can dang nhap vao mot du an de toi co the ho tro ban.';
+    return 'Bạn cần đăng nhập vào một dự án để tôi có thể hỗ trợ bạn.';
   }
 
   if (!project) {
-    return 'Toi khong tim thay du an nay hoac ban khong co quyen truy cap.';
+    return 'Tôi không tìm thấy dự án này hoặc bạn không có quyền truy cập.';
   }
 
   let tasks = [];
@@ -258,15 +258,15 @@ async function generateAIResponse(text, projectId, userId) {
     case 'progress':
       return buildProgressSummary(project, tasks);
     case 'chat':
-      return 'Du an co cac kenh chat nhom va tin nhan truc tiep. Ban co the tao kenh moi tu giao dien Chat.';
+      return 'Dự án có các kênh chat nhóm và tin nhắn trực tiếp. Bạn có thể tạo kênh mới từ giao diện Trò chuyện.';
     case 'general':
     default: {
       const lines = [
-        `Xin chao! Toi dang ho tro du an **${project.name}**.`,
+        `Xin chào! Tôi đang hỗ trợ dự án **${project.name}**.`,
         buildTasksSummary(tasks),
         buildProgressSummary(project, tasks),
         '',
-        'Ban co the hoi toi ve: nhien vu, thanh vien, deadline, tien do, kenh chat.',
+        'Bạn có thể hỏi tôi về: nhiệm vụ, thành viên, deadline, tiến độ, kênh chat.',
       ];
       return lines.join('\n\n');
     }
@@ -278,7 +278,7 @@ exports.chat = async (req, res, next) => {
     const { projectId, message } = req.body;
 
     if (!projectId || !message || !message.trim()) {
-      throw errors.BadRequest('projectId and message are required');
+      throw errors.BadRequest('Thiếu projectId hoặc nội dung tin nhắn');
     }
 
     const response = await generateAIResponse(message.trim(), projectId, req.user.id);
@@ -301,13 +301,13 @@ exports.generateProjectFromIdea = async (req, res, next) => {
     try {
       ({ GoogleGenerativeAI } = require('@google/generative-ai'));
     } catch {
-      return next(new AppError(503, 'AI_UNAVAILABLE', 'Tinh nang AI chua duoc cau hinh tren server nay'));
+      return next(new AppError(503, 'AI_UNAVAILABLE', 'Tính năng AI chưa được cấu hình trên server này'));
     }
 
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) {
       console.warn('[AI] GEMINI_API_KEY is not configured');
-      return next(new AppError(503, 'AI_NOT_CONFIGURED', 'Tinh nang AI chua duoc cau hinh'));
+      return next(new AppError(503, 'AI_NOT_CONFIGURED', 'Tính năng AI chưa được cấu hình'));
     }
 
     const { idea } = req.body;
@@ -342,7 +342,7 @@ exports.generateProjectFromIdea = async (req, res, next) => {
       generated = parseGeminiResponse(raw);
     } catch (parseErr) {
       console.error('[AI] Parse error:', parseErr?.message, '| Raw:', raw.slice(0, 200));
-      return next(new AppError(502, 'AI_INVALID_RESPONSE', 'AI tra ve du lieu khong dung dinh dang'));
+      return next(new AppError(502, 'AI_INVALID_RESPONSE', 'AI trả về dữ liệu không đúng định dạng'));
     }
 
     res.json({ success: true, data: generated });

@@ -136,7 +136,7 @@ exports.createRoom = async (req, res, next) => {
     const rawType = (req.body.type ?? 'CHANNEL').toUpperCase();
     const validTypes = ['GENERAL', 'CHANNEL', 'DIRECT'];
     if (!validTypes.includes(rawType)) {
-      return res.status(400).json({ success: false, message: 'Invalid room type' });
+      return res.status(400).json({ success: false, message: 'Loại phòng chat không hợp lệ' });
     }
 
     const userId = req.user.id;
@@ -178,7 +178,7 @@ exports.createRoom = async (req, res, next) => {
 
     // GENERAL room: do not allow via API
     if (rawType === 'GENERAL') {
-      return res.status(400).json({ success: false, message: 'Cannot create General room via API' });
+      return res.status(400).json({ success: false, message: 'Không thể tạo phòng chung bằng API' });
     }
 
     // CHANNEL: validate unique name within project
@@ -188,7 +188,7 @@ exports.createRoom = async (req, res, next) => {
       name: req.body.name,
     }).lean();
     if (duplicate) {
-      return res.status(400).json({ success: false, message: 'Channel name already exists in this project' });
+      return res.status(400).json({ success: false, message: 'Tên kênh đã tồn tại trong dự án này' });
     }
 
     const room = await ChatRoom.create({
@@ -318,7 +318,7 @@ exports.leaveChannel = async (req, res, next) => {
       if (!body.newOwnerId) {
         return res.status(400).json({
           success: false,
-          message: 'You are the owner. Please specify newOwnerId to transfer ownership before leaving.',
+          message: 'Bạn là chủ sở hữu. Vui lòng chọn người nhận quyền trước khi rời kênh.',
           code: 'OWNER_TRANSFER_REQUIRED',
         });
       }

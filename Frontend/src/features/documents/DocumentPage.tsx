@@ -136,12 +136,12 @@ function DocumentFormModal({ open, initial, onClose, onSave }: DocumentFormModal
     e.preventDefault();
     setError('');
     if (!title.trim()) {
-      setError('Title is required');
+      setError('Vui lòng nhập tiêu đề');
       return;
     }
     const cleanUrl = url.trim();
     if (!isValidUrl(cleanUrl)) {
-      setError('Please enter a valid URL (http:// or https://)');
+      setError('Vui lòng nhập đường dẫn hợp lệ (http:// hoặc https://)');
       return;
     }
     setSaving(true);
@@ -153,7 +153,7 @@ function DocumentFormModal({ open, initial, onClose, onSave }: DocumentFormModal
       });
       onClose();
     } catch (err: any) {
-      setError(err?.message || 'Failed to save document');
+      setError(err?.message || 'Không thể lưu tài liệu');
     } finally {
       setSaving(false);
     }
@@ -288,7 +288,7 @@ export default function DocumentPage() {
       setDocuments(data);
     } catch (error) {
       console.error('Failed to fetch documents:', error);
-      toast('Failed to load documents', 'error');
+      toast('Không thể tải danh sách tài liệu', 'error');
     } finally {
       setIsLoading(false);
     }
@@ -314,9 +314,9 @@ export default function DocumentPage() {
     try {
       await deleteDocument(projectId, doc.id);
       setDocuments((prev) => prev.filter((d) => d.id !== doc.id));
-      toast('Document deleted', 'success');
+      toast('Đã xóa tài liệu', 'success');
     } catch (error: any) {
-      toast(error?.message || 'Failed to delete', 'error');
+      toast(error?.message || 'Không thể xóa tài liệu', 'error');
     }
   };
 
@@ -326,14 +326,14 @@ export default function DocumentPage() {
       if (editing) {
         const updated = await updateDocument(projectId, editing.id, payload);
         setDocuments((prev) => prev.map((d) => (d.id === editing.id ? updated : d)));
-        toast('Document updated', 'success');
+        toast('Đã cập nhật tài liệu', 'success');
       } else {
         const created = await createDocument(projectId, payload);
         setDocuments((prev) => [created, ...prev]);
-        toast('Document added', 'success');
+        toast('Đã thêm tài liệu', 'success');
       }
     } catch (error: any) {
-      toast(error?.message || 'Failed to save document', 'error');
+      toast(error?.message || 'Không thể lưu tài liệu', 'error');
     }
   };
 
@@ -347,7 +347,7 @@ export default function DocumentPage() {
       setCopiedId(doc.id);
       setTimeout(() => setCopiedId(null), 1500);
     } catch {
-      toast('Failed to copy link', 'error');
+      toast('Không thể sao chép liên kết', 'error');
     }
   };
 

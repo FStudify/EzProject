@@ -63,7 +63,7 @@ exports.changePassword = async (req, res, next) => {
 
     const passwordHash = await bcrypt.hash(req.body.newPassword, 12);
     await User.findByIdAndUpdate(req.user.id, { passwordHash });
-    res.json({ success: true, data: null, message: 'Password changed successfully' });
+    res.json({ success: true, data: null, message: 'Đã đổi mật khẩu thành công' });
   } catch (err) {
     next(err);
   }

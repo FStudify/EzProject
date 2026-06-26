@@ -289,7 +289,7 @@ exports.createEmailInvite = async (req, res, next) => {
           alreadyInvited: true,
           emailSent: false,
         },
-        message: 'Invitation already exists',
+        message: 'Lời mời đã tồn tại',
       });
     }
 
@@ -324,7 +324,7 @@ exports.createEmailInvite = async (req, res, next) => {
         emailSent: false,
         emailStatus: 'PENDING',
       },
-      message: 'Invitation created. Email is being sent in the background.',
+      message: 'Đã tạo lời mời. Email đang được gửi trong nền.',
     });
 
     // Real-time push to invited user if they already have an account
@@ -442,7 +442,7 @@ exports.acceptInviteByToken = async (req, res, next) => {
       return res.json({
         success: true,
         data: result,
-        message: `Successfully joined project "${result.projectName}"`,
+        message: `Đã tham gia dự án "${result.projectName}"`,
       });
     }
 
@@ -464,7 +464,7 @@ exports.acceptInviteByToken = async (req, res, next) => {
       return res.json({
         success: true,
         data: { projectId: project._id, projectName: project.name, alreadyMember: true },
-        message: 'You are already a member of this project',
+        message: 'Bạn đã là thành viên của dự án này',
       });
     }
 
@@ -516,7 +516,7 @@ exports.acceptInviteByToken = async (req, res, next) => {
     return res.json({
       success: true,
       data: { projectId: project._id, projectName: project.name },
-      message: `Successfully joined project "${project.name}"`,
+      message: `Đã tham gia dự án "${project.name}"`,
     });
   } catch (err) {
     next(err);
@@ -584,7 +584,7 @@ exports.createInvitation = async (req, res, next) => {
       return res.json({
         success: true,
         data: { id: existing._id, status: existing.status, alreadyInvited: true },
-        message: 'Invitation already sent',
+        message: 'Lời mời đã được gửi trước đó',
       });
     }
 
@@ -679,7 +679,7 @@ exports.acceptInvitation = async (req, res, next) => {
       return res.json({
         success: true,
         data: { projectId: project._id, projectName: project.name },
-        message: 'You are already a member of this project',
+        message: 'Bạn đã là thành viên của dự án này',
       });
     }
 
@@ -717,7 +717,7 @@ exports.acceptInvitation = async (req, res, next) => {
     res.json({
       success: true,
       data: { projectId: project._id, projectName: project.name },
-      message: `Successfully joined project "${project.name}"`,
+      message: `Đã tham gia dự án "${project.name}"`,
     });
   } catch (err) {
     next(err);
@@ -744,7 +744,7 @@ exports.declineInvitation = async (req, res, next) => {
     const project = await Project.findById(invitation.projectId).lean();
     if (project) notifyInviter(req, invitation, project, 'declined');
 
-    res.json({ success: true, message: 'Invitation declined' });
+    res.json({ success: true, message: 'Đã từ chối lời mời' });
   } catch (err) {
     next(err);
   }
@@ -819,7 +819,7 @@ exports.cancelInvite = async (req, res, next) => {
       throw errors.NotFound('Pending invitation');
     }
 
-    res.json({ success: true, message: 'Invitation cancelled' });
+    res.json({ success: true, message: 'Đã hủy lời mời' });
   } catch (err) {
     next(err);
   }
@@ -869,7 +869,7 @@ exports.resendInvite = async (req, res, next) => {
         emailStatus: emailResult.reason || 'SENT',
         expiresAt: invitation.expiresAt,
       },
-      message: emailResult.sent ? 'Invitation email resent' : 'Email could not be sent. Use the invite URL.',
+      message: emailResult.sent ? 'Đã gửi lại email mời' : 'Không thể gửi email. Vui lòng dùng URL lời mời.',
     });
   } catch (err) {
     next(err);

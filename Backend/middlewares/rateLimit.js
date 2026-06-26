@@ -11,7 +11,7 @@ const apiLimiter = rateLimit({
   handler: (req, res) => {
     res.status(429).json({
       success: false,
-      error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later' },
+      error: { code: 'TOO_MANY_REQUESTS', message: 'Bạn thao tác quá nhiều lần, vui lòng thử lại sau' },
     });
   },
 });
@@ -24,7 +24,7 @@ const authLimiter = rateLimit({
   handler: (req, res) => {
     res.status(429).json({
       success: false,
-      error: { code: 'TOO_MANY_REQUESTS', message: 'Too many requests, please try again later' },
+      error: { code: 'TOO_MANY_REQUESTS', message: 'Bạn thao tác quá nhiều lần, vui lòng thử lại sau' },
     });
   },
 });
@@ -40,7 +40,7 @@ const generateProjectLimiter = rateLimit({
       success: false,
       error: {
         code: 'TOO_MANY_REQUESTS',
-        message: 'Ban da tao qua nhieu du an AI. Vui long thu lai sau 1 phut.',
+        message: 'Bạn đã tạo quá nhiều dự án AI. Vui lòng thử lại sau 1 phút.',
       },
     });
   },

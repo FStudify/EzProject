@@ -22,16 +22,16 @@ function initSocket(io) {
         socket.handshake.auth?.token ||
         socket.handshake.headers?.authorization?.replace('Bearer ', '');
 
-      if (!token) return next(new Error('UNAUTHORIZED: missing token'));
+      if (!token) return next(new Error('UNAUTHORIZED: thiếu token'));
 
       const payload = jwt.verify(token, config.jwt.secret);
       const user = await User.findById(payload.sub).lean();
-      if (!user) return next(new Error('UNAUTHORIZED: user not found'));
+      if (!user) return next(new Error('UNAUTHORIZED: không tìm thấy người dùng'));
 
       socket.user = { id: payload.sub, fullName: user.fullName, avatar: user.avatar };
       next();
     } catch {
-      next(new Error('UNAUTHORIZED: invalid token'));
+      next(new Error('UNAUTHORIZED: token không hợp lệ'));
     }
   });
 
@@ -56,7 +56,7 @@ function initSocket(io) {
     socket.on('join_project', async ({ projectId }) => {
       try {
         if (!await isMember(projectId, socket.user.id)) {
-          return socket.emit('error', { message: 'Not a project member' });
+          return socket.emit('error', { message: 'Bạn không phải là thành viên của dự án này' });
         }
         socket.join(`project:${projectId}`);
         socket.emit('project_joined', { projectId });
@@ -74,13 +74,13 @@ function initSocket(io) {
     socket.on('join_room', async ({ projectId, roomId }) => {
       try {
         if (!await isMember(projectId, socket.user.id)) {
-          return socket.emit('error', { message: 'Not a project member' });
+          return socket.emit('error', { message: 'Bạn không phải là thành viên của dự án này' });
         }
         const room = await ChatRoom.findOne({
           _id: new ObjectId(roomId),
           projectId: new ObjectId(projectId),
         }).lean();
-        if (!room) return socket.emit('error', { message: 'Room not found' });
+        if (!room) return socket.emit('error', { message: 'Không tìm thấy phòng chat này' });
 
         socket.join(roomId);
         socket.emit('room_joined', { roomId, name: room.name });
@@ -97,16 +97,16 @@ function initSocket(io) {
     // ── send_message ──────────────────────────────────────────────────────
     socket.on('send_message', async ({ roomId, projectId, content, channel, targetId }) => {
       try {
-        if (!content?.trim()) return socket.emit('error', { message: 'Message cannot be empty' });
+        if (!content?.trim()) return socket.emit('error', { message: 'Tin nhắn không được để trống' });
         if (!await isMember(projectId, socket.user.id)) {
-          return socket.emit('error', { message: 'Not a project member' });
+          return socket.emit('error', { message: 'Bạn không phải là thành viên của dự án này' });
         }
 
         const room = await ChatRoom.findOne({
           _id: new ObjectId(roomId),
           projectId: new ObjectId(projectId),
         }).lean();
-        if (!room) return socket.emit('error', { message: 'Room not found' });
+        if (!room) return socket.emit('error', { message: 'Không tìm thấy phòng chat này' });
 
         const msg = await ChatMessage.create({
           roomId: new ObjectId(roomId),

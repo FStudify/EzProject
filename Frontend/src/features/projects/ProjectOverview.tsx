@@ -12,8 +12,11 @@ import {
   ClipboardList,
   CheckCircle2,
   PlayCircle,
+  Pencil,
+  Save,
+  X,
 } from 'lucide-react';
-import { getProject } from '@/api/project.api';
+import { getProject, updateProject } from '@/api/project.api';
 import { getTasks } from '@/api/task.api';
 import { getActivities } from '@/api/member.api';
 import type { Project, Task, Activity } from '@/types';
@@ -34,6 +37,13 @@ function timeAgo(ts: string) {
   return new Date(ts).toLocaleDateString('vi-VN', { day: 'numeric', month: 'short' });
 }
 
+function toDateInputValue(value?: string | null) {
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return date.toISOString().slice(0, 10);
+}
+
 export default function ProjectOverview() {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
@@ -41,6 +51,10 @@ export default function ProjectOverview() {
   const [tasks, setTasks] = useState<Task[]>([]);
   const [activities, setActivities] = useState<Activity[]>([]);
   const [loading, setLoading] = useState(true);
+  const [isEditingProject, setIsEditingProject] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [editDeadline, setEditDeadline] = useState('');
+  const [savingProject, setSavingProject] = useState(false);
   const { joinProject, leaveProject } = useChatSocket();
   const { toast } = useToast();
 
@@ -101,6 +115,46 @@ export default function ProjectOverview() {
     };
   }, [projectId, refresh, toast]);
 
+  const startEditProject = () => {
+    if (!project) return;
+    setEditName(project.name);
+    setEditDeadline(toDateInputValue(project.deadline));
+    setIsEditingProject(true);
+  };
+
+  const cancelEditProject = () => {
+    setIsEditingProject(false);
+    setEditName('');
+    setEditDeadline('');
+  };
+
+  const saveProjectInfo = async () => {
+    if (!projectId || !project) return;
+
+    const name = editName.trim();
+    if (!name) {
+      toast('Vui lòng nhập tên dự án', 'error');
+      return;
+    }
+    if (!editDeadline) {
+      toast('Vui lòng chọn hạn chót dự án', 'error');
+      return;
+    }
+
+    setSavingProject(true);
+    try {
+      const deadline = new Date(editDeadline).toISOString();
+      await updateProject(projectId, { name, deadline });
+      setProject((current) => current ? { ...current, name, deadline } : current);
+      setIsEditingProject(false);
+      toast('Đã cập nhật thông tin dự án', 'success');
+    } catch (err) {
+      toast(err instanceof Error ? err.message : 'Không thể cập nhật dự án', 'error');
+    } finally {
+      setSavingProject(false);
+    }
+  };
+
   const stats = useMemo(() => {
     const now = Date.now();
     return {
@@ -135,8 +189,9 @@ export default function ProjectOverview() {
     );
   }
 
-  const daysLeft = Math.ceil((new Date(project.deadline ?? '').getTime() - Date.now()) / 86400000);
-  const deadlineColor = daysLeft < 0 ? 'text-danger' : daysLeft <= 3 ? 'text-warning' : 'text-success';
+  const deadlineTime = project.deadline ? new Date(project.deadline).getTime() : Number.NaN;
+  const daysLeft = Number.isNaN(deadlineTime) ? null : Math.ceil((deadlineTime - Date.now()) / 86400000);
+  const deadlineColor = daysLeft === null || daysLeft < 0 ? 'text-danger' : daysLeft <= 3 ? 'text-warning' : 'text-success';
 
   const quickLinks = [
     { to: 'tasks', icon: CheckSquare, label: 'Công việc', count: stats.total },
@@ -149,16 +204,78 @@ export default function ProjectOverview() {
     <div className="space-y-5">
       {/* Header */}
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
-        <div>
-          <h1 className="text-xl font-bold text-ink">{project.name}</h1>
-          <p className="mt-1 text-sm text-ink-muted">{project.description}</p>
+        <div className="min-w-0 flex-1">
+          {isEditingProject ? (
+            <div className="max-w-xl rounded-xl border border-border bg-surface p-4 shadow-sm">
+              <div className="grid gap-3 sm:grid-cols-[1fr_180px]">
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">Tên dự án</span>
+                  <input
+                    type="text"
+                    value={editName}
+                    onChange={(event) => setEditName(event.target.value)}
+                    className="ez-input w-full"
+                    maxLength={120}
+                    autoFocus
+                  />
+                </label>
+                <label className="block">
+                  <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">Hạn chót</span>
+                  <input
+                    type="date"
+                    value={editDeadline}
+                    onChange={(event) => setEditDeadline(event.target.value)}
+                    className="ez-input w-full"
+                  />
+                </label>
+              </div>
+              <div className="mt-3 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  onClick={saveProjectInfo}
+                  disabled={savingProject}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg bg-primary px-3 text-sm font-semibold text-white transition hover:bg-primary-hover disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  {savingProject ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                  Lưu
+                </button>
+                <button
+                  type="button"
+                  onClick={cancelEditProject}
+                  disabled={savingProject}
+                  className="inline-flex h-9 items-center gap-2 rounded-lg border border-border bg-surface px-3 text-sm font-semibold text-ink-secondary transition hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-60"
+                >
+                  <X className="h-4 w-4" />
+                  Hủy
+                </button>
+              </div>
+            </div>
+          ) : (
+            <>
+              <div className="flex flex-wrap items-center gap-2">
+                <h1 className="text-xl font-bold text-ink">{project.name}</h1>
+                <button
+                  type="button"
+                  onClick={startEditProject}
+                  className="inline-flex h-8 items-center gap-1.5 rounded-lg border border-border bg-surface px-2.5 text-xs font-semibold text-ink-secondary transition hover:border-primary/40 hover:text-primary"
+                  title="Chỉnh sửa tên và hạn chót dự án"
+                >
+                  <Pencil className="h-3.5 w-3.5" />
+                  Chỉnh sửa
+                </button>
+              </div>
+              <p className="mt-1 text-sm text-ink-muted">{project.description}</p>
+            </>
+          )}
         </div>
         <div className="shrink-0 text-center rounded-xl border border-border bg-surface px-4 py-2">
           <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">Hạn chót</p>
           <p className={`mt-0.5 text-lg font-bold ${deadlineColor}`}>
-            {daysLeft < 0
-              ? `Quá ${Math.abs(daysLeft)} ngày`
-              : daysLeft === 0 ? 'Hôm nay' : `Còn ${daysLeft} ngày`}
+            {daysLeft === null
+              ? 'Chưa đặt'
+              : daysLeft < 0
+                ? `Quá ${Math.abs(daysLeft)} ngày`
+                : daysLeft === 0 ? 'Hôm nay' : `Còn ${daysLeft} ngày`}
           </p>
         </div>
       </div>
@@ -179,7 +296,7 @@ export default function ProjectOverview() {
           { label: 'Hoàn thành', value: stats.done, color: 'text-success', icon: CheckCircle2, bg: 'bg-emerald-50/50 border-emerald-100', iconColor: 'text-emerald-600' },
           { label: 'Đang làm', value: stats.inProgress, color: 'text-primary', icon: PlayCircle, bg: 'bg-blue-50/50 border-blue-100', iconColor: 'text-blue-600' },
           { label: 'Thành viên', value: project.members.length, color: 'text-orange-600', icon: Users, bg: 'bg-orange-50/50 border-orange-100', iconColor: 'text-orange-600' },
-          { label: 'Ngày còn lại', value: daysLeft < 0 ? 0 : daysLeft, color: deadlineColor, icon: Calendar, bg: daysLeft < 0 ? 'bg-rose-50/50 border-rose-100' : 'bg-teal-50/50 border-teal-100', iconColor: daysLeft < 0 ? 'text-rose-600' : 'text-teal-600' },
+          { label: 'Ngày còn lại', value: daysLeft === null || daysLeft < 0 ? 0 : daysLeft, color: deadlineColor, icon: Calendar, bg: daysLeft === null || daysLeft < 0 ? 'bg-rose-50/50 border-rose-100' : 'bg-teal-50/50 border-teal-100', iconColor: daysLeft === null || daysLeft < 0 ? 'text-rose-600' : 'text-teal-600' },
         ].map(s => {
           const Icon = s.icon;
           return (

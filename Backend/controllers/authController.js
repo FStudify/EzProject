@@ -176,7 +176,7 @@ exports.refresh = async (req, res, next) => {
 exports.logout = async (req, res, next) => {
   try {
     await RefreshToken.deleteMany({ userId: req.user.id });
-    res.json({ success: true, data: null, message: 'Logged out successfully' });
+    res.json({ success: true, data: null, message: 'Đã đăng xuất thành công' });
   } catch (err) {
     next(err);
   }

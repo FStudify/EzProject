@@ -5,7 +5,7 @@ const rateLimit = require('express-rate-limit');
 const tooManyUploads = (req, res) => {
   res.status(429).json({
     success: false,
-    error: { code: 'TOO_MANY_REQUESTS', message: 'Too many upload requests' },
+    error: { code: 'TOO_MANY_REQUESTS', message: 'Bạn tải lên quá nhiều lần, vui lòng thử lại sau' },
   });
 };
 
