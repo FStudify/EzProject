@@ -2,6 +2,11 @@ import { createContext, useCallback, useContext, useEffect, useState, type React
 import { vi, en, type Lang, type Dict, type DictKey } from '../i18n/dict';
 
 const dicts: Record<Lang, Dict> = { vi, en };
+const fallbackLang: Lang = 'vi';
+
+function isLang(value: unknown): value is Lang {
+  return value === 'vi' || value === 'en';
+}
 
 export interface LanguageContextValue {
   lang: Lang;
@@ -13,18 +18,22 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 
 export function LanguageProvider({ children }: { children: ReactNode }) {
   const [lang, setLangState] = useState<Lang>(() => {
-    if (typeof window === 'undefined') return 'vi';
-    return (localStorage.getItem('lang') as Lang) ?? 'vi';
+    if (typeof window === 'undefined') return fallbackLang;
+    const savedLang = localStorage.getItem('lang');
+    return isLang(savedLang) ? savedLang : fallbackLang;
   });
 
   const setLang = useCallback((l: Lang) => {
+    if (!isLang(l)) return;
     setLangState(l);
     localStorage.setItem('lang', l);
   }, []);
 
   const t = useCallback(
     (key: DictKey): string => {
-      return dicts[lang][key] ?? (vi as Dict)[key] ?? String(key);
+      const currentDict = dicts[lang] as Record<string, string>;
+      const fallbackDict = vi as Record<string, string>;
+      return currentDict[key] ?? fallbackDict[key] ?? String(key);
     },
     [lang],
   );

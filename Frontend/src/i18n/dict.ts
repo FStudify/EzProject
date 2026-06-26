@@ -207,6 +207,7 @@ export const vi = {
   member_saved: 'Đã lưu thông tin thành viên',
   member_removed: 'Đã xóa thành viên khỏi dự án',
   invite_link_copied: 'Đã sao chép link mời',
+  copied: 'Đã sao chép',
 
   // Member management (new)
   owner_manage_members: 'Bạn có quyền quản lý thành viên',
@@ -1051,4 +1052,4 @@ export const en = {
   landing_feature_chat_desc: 'Communicate in channels and direct messages, keeping all conversations in one place.',
 } as const;
 
-export type Dict = Record<string, string>;
+export type Dict = Record<keyof typeof vi, string>;
