@@ -10,6 +10,7 @@ const config = require('../config');
 const { errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
+const INVALID_LOGIN_MESSAGE = 'Tài khoản hoặc mật khẩu sai';
 
 function signTokens(payload) {
   const accessToken = jwt.sign(payload, config.jwt.secret, {
@@ -31,10 +32,10 @@ exports.login = async (req, res, next) => {
         { email: identifier.toLowerCase() },
       ],
     }).select('+passwordHash');
-    if (!user || !user.passwordHash) throw errors.Unauthorized('Invalid credentials');
+    if (!user || !user.passwordHash) throw errors.Unauthorized(INVALID_LOGIN_MESSAGE);
 
     const valid = await bcrypt.compare(password, user.passwordHash);
-    if (!valid) throw errors.Unauthorized('Invalid credentials');
+    if (!valid) throw errors.Unauthorized(INVALID_LOGIN_MESSAGE);
 
     const payload = { sub: user._id.toString(), email: user.email, username: user.username };
     const { accessToken, refreshToken } = signTokens(payload);
@@ -55,8 +56,9 @@ exports.register = async (req, res, next) => {
   try {
     const { fullName, email, username, password, inviteToken } = req.body;
 
-    const normalizedEmail = email;
-    const normalizedUsername = username;
+    const normalizedEmail = String(email || '').trim().toLowerCase();
+    const normalizedUsername = String(username || '').trim();
+    const normalizedFullName = String(fullName || '').trim();
 
     const existingEmail = await User.findOne({ email: normalizedEmail });
     if (existingEmail) throw errors.Conflict('Email already in use');
@@ -69,7 +71,7 @@ exports.register = async (req, res, next) => {
       email: normalizedEmail,
       username: normalizedUsername,
       passwordHash,
-      fullName,
+      fullName: normalizedFullName,
     });
 
     let joinedProject = null;
@@ -118,6 +120,14 @@ exports.register = async (req, res, next) => {
       },
     });
   } catch (err) {
+    if (err?.code === 11000) {
+      if (err.keyPattern?.email || err.keyValue?.email) {
+        return next(errors.Conflict('Email đã được sử dụng'));
+      }
+      if (err.keyPattern?.username || err.keyValue?.username) {
+        return next(errors.Conflict('Tên đăng nhập đã tồn tại'));
+      }
+    }
     next(err);
   }
 };

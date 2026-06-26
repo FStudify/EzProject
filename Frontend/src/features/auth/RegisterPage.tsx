@@ -7,6 +7,40 @@ import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import BrandingPanel from './components/BrandingPanel';
 
+const registerMessages = {
+  vi: {
+    usernameRequired: 'Vui lòng nhập tên đăng nhập',
+    usernameMin: 'Tên đăng nhập phải có ít nhất 3 ký tự',
+    usernameMax: 'Tên đăng nhập không được quá 30 ký tự',
+    usernameFormat: 'Tên đăng nhập chỉ được chứa chữ cái, số, dấu gạch dưới hoặc dấu chấm',
+    emailRequired: 'Vui lòng nhập email',
+    emailInvalid: 'Email không đúng định dạng',
+    passwordRequired: 'Vui lòng nhập mật khẩu',
+    passwordMin: 'Mật khẩu phải có ít nhất 6 ký tự',
+    confirmRequired: 'Vui lòng xác nhận mật khẩu',
+    passwordMismatch: 'Mật khẩu xác nhận không khớp',
+    emailTaken: 'Email đã được sử dụng',
+    usernameTaken: 'Tên đăng nhập đã tồn tại',
+  },
+  en: {
+    usernameRequired: 'Please enter a username',
+    usernameMin: 'Username must be at least 3 characters',
+    usernameMax: 'Username must be 30 characters or fewer',
+    usernameFormat: 'Username can only contain letters, numbers, underscores, or dots',
+    emailRequired: 'Please enter an email',
+    emailInvalid: 'Email format is invalid',
+    passwordRequired: 'Please enter a password',
+    passwordMin: 'Password must be at least 6 characters',
+    confirmRequired: 'Please confirm your password',
+    passwordMismatch: 'Password confirmation does not match',
+    emailTaken: 'Email is already in use',
+    usernameTaken: 'Username is already taken',
+  },
+} as const;
+
+const usernamePattern = /^[a-zA-Z0-9_.]+$/;
+const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+
 interface RegisterInputProps {
   id: string;
   label: string;
@@ -121,26 +155,46 @@ export default function RegisterPage() {
     const trimmedUsername = username.trim();
     const trimmedDisplayName = displayName.trim();
     const trimmedEmail = email.trim();
+    const messages = registerMessages[lang];
 
+    if (!trimmedUsername) {
+      setError(messages.usernameRequired);
+      return;
+    }
     if (trimmedUsername.length < 3) {
-      setError(lang === 'vi' ? 'Tên đăng nhập phải có ít nhất 3 ký tự' : 'Username must be at least 3 characters');
+      setError(messages.usernameMin);
       return;
     }
     if (trimmedUsername.length > 30) {
-      setError(lang === 'vi' ? 'Tên đăng nhập không được quá 30 ký tự' : 'Username must be 30 characters or fewer');
+      setError(messages.usernameMax);
+      return;
+    }
+    if (!usernamePattern.test(trimmedUsername)) {
+      setError(messages.usernameFormat);
       return;
     }
     if (!trimmedEmail) {
-      setError(lang === 'vi' ? 'Email là bắt buộc' : 'Email is required');
+      setError(messages.emailRequired);
       return;
     }
-
-    if (password !== confirmPassword) {
-      setError(t('confirm_password'));
+    if (!emailPattern.test(trimmedEmail)) {
+      setError(messages.emailInvalid);
+      return;
+    }
+    if (!password) {
+      setError(messages.passwordRequired);
       return;
     }
     if (password.length < 6) {
-      setError(lang === 'vi' ? 'Mật khẩu phải có ít nhất 6 ký tự' : 'Password must be at least 6 characters');
+      setError(messages.passwordMin);
+      return;
+    }
+    if (!confirmPassword) {
+      setError(messages.confirmRequired);
+      return;
+    }
+    if (password !== confirmPassword) {
+      setError(messages.passwordMismatch);
       return;
     }
 
@@ -163,7 +217,14 @@ export default function RegisterPage() {
         }
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'));
+      const message = err instanceof Error ? err.message : '';
+      if (message.includes('Email already in use') || message.includes('Email đã được sử dụng')) {
+        setError(messages.emailTaken);
+      } else if (message.includes('Username already taken') || message.includes('Tên đăng nhập đã tồn tại')) {
+        setError(messages.usernameTaken);
+      } else {
+        setError(message || t('error'));
+      }
     } finally {
       setLoading(false);
     }

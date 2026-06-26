@@ -7,6 +7,19 @@ import { useLanguage } from '@/contexts/LanguageContext';
 import BrandingPanel from './components/BrandingPanel';
 import LoginForm from './components/LoginForm';
 
+const loginMessages = {
+  vi: {
+    usernameRequired: 'Vui lòng nhập tên đăng nhập hoặc email',
+    passwordRequired: 'Vui lòng nhập mật khẩu',
+    invalidCredentials: 'Tài khoản hoặc mật khẩu sai',
+  },
+  en: {
+    usernameRequired: 'Please enter your username or email',
+    passwordRequired: 'Please enter your password',
+    invalidCredentials: 'Incorrect account or password',
+  },
+} as const;
+
 export default function LoginPage() {
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
@@ -24,14 +37,28 @@ export default function LoginPage() {
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setError('');
+
+    const trimmedUsername = username.trim();
+    const messages = loginMessages[lang];
+
+    if (!trimmedUsername) {
+      setError(messages.usernameRequired);
+      return;
+    }
+    if (!password) {
+      setError(messages.passwordRequired);
+      return;
+    }
+
     setLoading(true);
     try {
-      const ok = await login(username, password);
+      const ok = await login(trimmedUsername, password);
       if (ok) {
         navigate(from, { replace: true });
       }
     } catch (err) {
-      setError(err instanceof Error ? err.message : t('error'));
+      const message = err instanceof Error ? err.message : '';
+      setError(message === 'Tài khoản hoặc mật khẩu sai' ? messages.invalidCredentials : message || t('error'));
     } finally {
       setLoading(false);
     }
