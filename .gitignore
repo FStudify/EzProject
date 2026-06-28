@@ -1,0 +1,121 @@
+# Logs
+logs
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+lerna-debug.log*
+pnpm-store
+
+# Environment
+.env
+.env.local
+.env.*.local
+# Allow committing .env.example as templates
+!.env.example
+!Backend/.env.example
+!Frontend/.env.example
+
+# Dependencies
+node_modules
+.npm
+.eslintcache
+.stylelintcache
+.cache
+
+# Build outputs
+dist
+dist-ssr
+build
+out
+*.local
+.tsbuildinfo
+*.tsbuildinfo
+coverage
+.nyc_output
+
+# Testing
+.nyc_output
+coverage
+*.lcov
+junit-*.xml
+test-results
+playwright-report
+cypress/videos
+cypress/screenshots
+
+# IDE
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.idea
+*.suo
+*.ntvs*
+*.njsproj
+*.sln
+*.sw?
+.cursor
+*.code-workspace
+.history
+
+# OS
+.DS_Store
+Thumbs.db
+desktop.ini
+ehthumbs.db
+$RECYCLE.BIN/
+
+# Documentation (project-internal docs are kept locally only)
+docs/
+# AI assistant prompts/skills (not part of deployable source)
+.claude/
+
+# Project-specific uploads — runtime artifacts uploaded by users
+# Should never be committed; production should use S3/Cloudinary (see 04-FILE_STORAGE.md)
+Backend/uploads
+Backend/uploads/*
+!Backend/uploads/.gitkeep
+
+# Backend runtime artifacts
+Backend/logs
+*.pid
+*.seed
+*.pid.lock
+
+# Frontend build artifacts
+Frontend/node_modules
+Frontend/dist
+Frontend/dist-ssr
+Frontend/.next
+Frontend/.nuxt
+Frontend/.vuepress
+Frontend/.cache
+Frontend/*.local
+Frontend/coverage
+Frontend/.vite
+Frontend/.tsbuildinfo
+
+# Vercel / Render deployment artifacts
+.vercel
+.netlify
+.render
+
+# Temporary / backup files
+*.swp
+*.swo
+*~
+*.bak
+*.tmp
+*.orig
+*.rej
+.DS_Store
+
+# Secrets & keys (defense in depth — even if .env is ignored, never commit keys)
+*.pem
+*.key
+*.crt
+*.p12
+*.pfx
+secrets/
+credentials/

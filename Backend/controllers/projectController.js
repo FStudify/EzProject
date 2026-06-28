@@ -1,0 +1,246 @@
+'use strict';
+
+const mongoose = require('mongoose');
+const Project = require('../models/Project');
+const Task = require('../models/Task');
+const { ChatRoom } = require('../models/Chat');
+const Meeting = require('../models/Meeting');
+const { Folder, Document } = require('../models/Document');
+const InviteLink = require('../models/InviteLink');
+const Invitation = require('../models/Invitation');
+const { Activity, Notification, MemberEvaluation } = require('../models/Activity');
+const { errors } = require('../middlewares/errorHandler');
+
+const ObjectId = mongoose.Types.ObjectId;
+
+async function ensureGeneralRoom(project) {
+  const existing = await ChatRoom.findOne({
+    projectId: project._id,
+    type: 'GENERAL',
+  }).lean();
+  if (existing) return existing;
+
+  const allMemberIds = project.members.map((m) => m.userId);
+  const room = await ChatRoom.create({
+    projectId: project._id,
+    name: 'General',
+    type: 'GENERAL',
+    members: allMemberIds,
+    createdBy: project.ownerId,
+    chatAdmins: [],
+    memberRoles: project.members.map((m) => ({
+      userId: m.userId,
+      role: m.isOwner ? 'OWNER' : 'MEMBER',
+      joinedAt: m.joinedAt || new Date(),
+    })),
+  });
+  return room;
+}
+
+exports.list = async (req, res, next) => {
+  try {
+    const { status, search, page = 1, limit = 10 } = req.query;
+    const skip = (page - 1) * limit;
+
+    const match = { 'members.userId': new ObjectId(req.user.id) };
+    if (status) match.status = status;
+    if (search) match.name = { $regex: search, $options: 'i' };
+
+    const [projects, total] = await Promise.all([
+      Project.aggregate([
+        { $match: match },
+        { $sort: { createdAt: -1 } },
+        { $skip: skip },
+        { $limit: parseInt(limit, 10) },
+        {
+          $lookup: {
+            from: 'users',
+            localField: 'ownerId',
+            foreignField: '_id',
+            as: 'owner',
+          },
+        },
+        { $unwind: '$owner' },
+        {
+          $addFields: {
+            'owner.passwordHash': '***',
+          },
+        },
+        {
+          $lookup: {
+            from: 'tasks',
+            localField: '_id',
+            foreignField: 'projectId',
+            as: 'tasks',
+          },
+        },
+        {
+          $addFields: {
+            totalTasks: { $size: '$tasks' },
+            completedTasks: {
+              $size: {
+                $filter: {
+                  input: '$tasks',
+                  cond: { $eq: ['$$this.status', 'DONE'] },
+                },
+              },
+            },
+          },
+        },
+        { $project: { tasks: 0, passwordHash: 0, __v: 0 } },
+      ]),
+      Project.countDocuments(match),
+    ]);
+
+    res.json({
+      success: true,
+      data: {
+        data: projects,
+        pagination: {
+          page: parseInt(page, 10),
+          limit: parseInt(limit, 10),
+          total,
+          totalPages: Math.ceil(total / limit),
+        },
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.getById = async (req, res, next) => {
+  try {
+    const project = await Project.findOne({
+      _id: new ObjectId(req.params.projectId),
+      'members.userId': new ObjectId(req.user.id),
+    })
+      .populate('ownerId', 'id fullName avatar')
+      .populate('members.userId', 'id fullName email avatar')
+      .lean();
+
+    if (!project) throw errors.NotFound('Project');
+    res.json({ success: true, data: project });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.create = async (req, res, next) => {
+  try {
+    const uid = new ObjectId(req.user.id);
+    const members = [
+      { userId: uid, role: 'LEADER', isOwner: true, joinedAt: new Date() },
+      ...(req.body.members || []).map((m) => ({
+        userId: new ObjectId(m.userId),
+        role: m.role,
+        isOwner: false,
+        joinedAt: new Date(),
+      })),
+    ];
+
+    const project = await Project.create({
+      ...req.body,
+      deadline: req.body.deadline ? new Date(req.body.deadline) : undefined,
+      ownerId: uid,
+      members,
+    });
+
+    await ensureGeneralRoom(project);
+
+    res.status(201).json({ success: true, data: project });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.update = async (req, res, next) => {
+  try {
+    const project = await Project.findOne({
+      _id: new ObjectId(req.params.projectId),
+      members: {
+        $elemMatch: {
+          userId: new ObjectId(req.user.id),
+          isOwner: true,
+        },
+      },
+    });
+    if (!project) throw errors.Forbidden('Only the owner can edit this project');
+
+    const update = { ...req.body };
+    if (update.deadline) update.deadline = new Date(update.deadline);
+
+    const updated = await Project.findByIdAndUpdate(
+      req.params.projectId,
+      { $set: update },
+      { new: true, runValidators: true },
+    );
+    res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.delete = async (req, res, next) => {
+  try {
+    const project = await Project.findOne({
+      _id: new ObjectId(req.params.projectId),
+      members: {
+        $elemMatch: {
+          userId: new ObjectId(req.user.id),
+          isOwner: true,
+        },
+      },
+    });
+    if (!project) throw errors.Forbidden('Only the owner can delete this project');
+
+    const ChatMessage = require('../models/Chat').ChatMessage;
+    const ChatRoom = require('../models/Chat').ChatRoom;
+    const rooms = await ChatRoom.find({ projectId: project._id }, '_id').lean();
+    const roomIds = rooms.map((r) => r._id);
+    await ChatMessage.deleteMany({ roomId: { $in: roomIds } });
+    await ChatRoom.deleteMany({ projectId: project._id });
+    await Promise.all([
+      Task.deleteMany({ projectId: project._id }),
+      Meeting.deleteMany({ projectId: project._id }),
+      Folder.deleteMany({ projectId: project._id }),
+      Document.deleteMany({ projectId: project._id }),
+      InviteLink.deleteMany({ projectId: project._id }),
+      Invitation.deleteMany({ projectId: project._id }),
+      Activity.deleteMany({ projectId: project._id }),
+      Notification.deleteMany({ projectId: project._id }),
+      MemberEvaluation.deleteMany({ projectId: project._id }),
+    ]);
+    await Project.findByIdAndDelete(req.params.projectId);
+    res.status(204).send();
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.updateProgress = async (req, res, next) => {
+  try {
+    const project = await Project.findOne({
+      _id: new ObjectId(req.params.projectId),
+      'members.userId': new ObjectId(req.user.id),
+    });
+    if (!project) throw errors.NotFound('Project');
+
+    const tasks = await Task.find({
+      projectId: new ObjectId(req.params.projectId),
+    }).lean();
+    const total = tasks.length;
+    const done = tasks.filter((t) => t.status === 'DONE').length;
+    const progress = total === 0 ? 0 : Math.round((done / total) * 100);
+
+    const updated = await Project.findByIdAndUpdate(
+      req.params.projectId,
+      { $set: { progress } },
+      { new: true },
+    );
+
+    res.json({ success: true, data: { progress: updated.progress } });
+  } catch (err) {
+    next(err);
+  }
+};

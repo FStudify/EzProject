@@ -1,0 +1,203 @@
+/**
+ * ============================================================
+ * Member, Performance, Activity API Modules
+ * ============================================================
+ */
+import { api } from './config';
+import { Endpoints } from './endpoints';
+import {
+  normalizeMemberList,
+  normalizePerformanceList,
+  normalizeActivityList,
+} from './normalize';
+import type { Activity } from '@/types';
+import type { ProjectMemberDetail, MemberPerformance } from './types';
+
+/** ── Members ─────────────────────────────────────────── */
+
+/** Lay danh sach thanh vien project */
+export async function getProjectMembers(projectId: string): Promise<ProjectMemberDetail[]> {
+  const raw = await api.get<unknown[]>(Endpoints.MEMBER_LIST(projectId));
+  return normalizeMemberList(raw);
+}
+
+/** Cap nhat vai tro thanh vien */
+export async function updateMemberRole(
+  projectId: string,
+  userId: string,
+  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER',
+): Promise<void> {
+  return api.put(`${Endpoints.MEMBER_ROLE(projectId, userId)}`, { role });
+}
+
+/** Xoa thanh vien khoi project */
+export async function removeMember(projectId: string, userId: string): Promise<void> {
+  return api.delete(Endpoints.MEMBER_REMOVE(projectId, userId));
+}
+
+/** ── Invite Links ─────────────────────────────────────── */
+
+/** Tao invite link moi (7 ngay) */
+export async function createInviteLink(
+  projectId: string,
+): Promise<{ inviteLink: string; token: string; expiresAt: string }> {
+  return api.post(`${Endpoints.MEMBER_INVITE(projectId)}`, undefined, { timeout: 20_000 });
+}
+
+export interface EmailInviteResponse {
+  id: string;
+  email: string;
+  role: 'MEMBER' | 'SUPERVISOR' | 'LEADER';
+  token: string;
+  inviteUrl: string;
+  expiresAt: string;
+  emailSent: boolean;
+  emailStatus: string;
+  alreadyInvited?: boolean;
+}
+
+/** Create and send an email-based project invitation. */
+export async function createEmailInvite(
+  projectId: string,
+  email: string,
+  role: 'MEMBER' | 'SUPERVISOR' | 'LEADER' = 'MEMBER',
+): Promise<EmailInviteResponse> {
+  // Email invitations can be slow on Render free tier (cold start + SMTP).
+  // Use a 30s timeout to avoid AbortError on first hit after deploy.
+  return api.post(Endpoints.EMAIL_INVITE(projectId), { email, role }, { timeout: 30_000 });
+}
+
+export interface InviteTokenDetails {
+  email: string;
+  role: 'MEMBER' | 'SUPERVISOR' | 'LEADER';
+  expiresAt: string;
+  project: { _id: string; name: string; description?: string | null };
+  invitedBy?: { fullName?: string; avatar?: string | null };
+}
+
+/** Validate an email invite token. This endpoint is public. */
+export async function getInviteByToken(token: string): Promise<InviteTokenDetails> {
+  return api.get(Endpoints.INVITE_TOKEN(token));
+}
+
+/** Accept an email invite token as the current authenticated user. */
+export async function acceptInviteByToken(
+  token: string,
+): Promise<{ projectId: string; projectName: string }> {
+  return api.post(Endpoints.INVITE_TOKEN_ACCEPT(token));
+}
+
+/** Join project bang invite token */
+export async function joinByInvite(
+  token: string,
+): Promise<{ projectId: string; projectName?: string; alreadyMember?: boolean }> {
+  return api.post(Endpoints.JOIN_PROJECT, { token });
+}
+
+/** ── Invitations ─────────────────────────────────────── */
+
+/** Tao invitation bang username hoac email (owner only) */
+export async function createInvitation(
+  projectId: string,
+  data: { username?: string; email?: string },
+): Promise<{
+  id: string;
+  invitedUser: { id: string; fullName: string; email: string; avatar: string | null };
+  status: string;
+  expiresAt: string;
+}> {
+  return api.post(Endpoints.MEMBER_INVITATIONS(projectId), data, { timeout: 20_000 });
+}
+
+/** Lay danh sach invitation cua project (owner only) */
+export async function getProjectInvitations(projectId: string): Promise<unknown[]> {
+  return api.get(Endpoints.MEMBER_INVITATIONS(projectId));
+}
+
+/** Accept invitation */
+export async function acceptInvitation(
+  projectId: string,
+  invitationId: string,
+): Promise<{ projectId: string; projectName?: string }> {
+  return api.post(Endpoints.INVITATION_ACCEPT(projectId, invitationId), undefined, { timeout: 20_000 });
+}
+
+/** Decline invitation */
+export async function declineInvitation(projectId: string, invitationId: string): Promise<void> {
+  return api.post(Endpoints.INVITATION_DECLINE(projectId, invitationId), undefined, { timeout: 15_000 });
+}
+
+/** Lay invitation cua minh */
+export async function getMyInvitations(): Promise<unknown[]> {
+  return api.get(Endpoints.MY_INVITATIONS);
+}
+
+/** Revoke invitation (owner only) */
+export async function revokeInvitation(projectId: string, invitationId: string): Promise<void> {
+  return api.delete(Endpoints.INVITATION_DETAIL(projectId, invitationId));
+}
+
+/** Resend invitation email (owner only) */
+export async function resendInvitation(
+  projectId: string,
+  invitationId: string,
+): Promise<{ inviteUrl: string; emailSent: boolean; emailStatus?: string; expiresAt: string }> {
+  return api.post(Endpoints.INVITATION_RESEND(projectId, invitationId));
+}
+
+/** Cancel pending invitation (owner only) */
+export async function cancelInvitation(projectId: string, invitationId: string): Promise<void> {
+  return api.delete(Endpoints.INVITATION_CANCEL(projectId, invitationId));
+}
+
+/** ── Leave / Transfer ─────────────────────────────────── */
+
+/** Rời dự án — handle all 3 cases:
+ * 1. MEMBER/SUPERVISOR: remove from members
+ * 2. OWNER + other members: requires newOwnerId (400 if missing)
+ * 3. OWNER last: delete project
+ */
+export async function leaveProject(
+  projectId: string,
+  options?: { newOwnerId?: string },
+): Promise<{ deleted?: boolean; transferredTo?: string }> {
+  const body = options?.newOwnerId ? { newOwnerId: options.newOwnerId } : {};
+  const raw = await api.post<unknown>(Endpoints.PROJECT_LEAVE(projectId), body);
+  const data = (raw ?? {}) as Record<string, unknown>;
+  return {
+    deleted: data.deleted as boolean | undefined,
+    transferredTo: data.transferredTo as string | undefined,
+  };
+}
+
+/** Chuyển quyền sở hữu (owner only) */
+export async function transferOwnership(projectId: string, newOwnerId: string): Promise<void> {
+  return api.post(Endpoints.PROJECT_TRANSFER(projectId), { newOwnerId });
+}
+
+/** ── Performance ─────────────────────────────────────── */
+
+/** Lay danh sach hieu suat thanh vien */
+export async function getPerformance(projectId: string): Promise<MemberPerformance[]> {
+  const raw = await api.get<unknown[]>(Endpoints.PERFORMANCE_LIST(projectId));
+  return normalizePerformanceList(raw);
+}
+
+/** Danh gia thanh vien */
+export async function evaluateMember(
+  projectId: string,
+  data: { memberId: string; rating: number; feedback?: string },
+): Promise<void> {
+  return api.post(Endpoints.PERFORMANCE_EVALUATE(projectId), data);
+}
+
+/** ── Activity ─────────────────────────────────────────── */
+
+/** Lay feed hoat dong */
+export async function getActivities(
+  projectId: string,
+  limit = 20,
+): Promise<Activity[]> {
+  const raw = await api.get<unknown[]>(`${Endpoints.ACTIVITY_LIST(projectId)}?limit=${limit}`);
+  return normalizeActivityList(raw);
+}
