@@ -3,6 +3,7 @@
 const jwt = require('jsonwebtoken');
 const User = require('../models/User');
 const config = require('../config');
+const { describeBlock, clearExpiredBlock } = require('../utils/blockStatus');
 
 // ── requireAuth ───────────────────────────────────────────────────────────────
 // Xác thực JWT, gắn req.user = { id, email, username, role }
@@ -24,6 +25,18 @@ async function requireAuth(req, res, next) {
       return res.status(401).json({
         success: false,
         error: { code: 'UNAUTHORIZED', message: 'Người dùng không còn tồn tại' },
+      });
+    }
+    await clearExpiredBlock(user);
+    if (user.isBlocked) {
+      const block = describeBlock(user);
+      return res.status(403).json({
+        success: false,
+        error: {
+          code: 'ACCOUNT_BLOCKED',
+          message: block.message,
+          ...block,
+        },
       });
     }
     req.user = {

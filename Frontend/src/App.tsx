@@ -11,13 +11,24 @@ import MeetingList from '@/features/meetings/MeetingList';
 import { ChatPage } from '@/features/chat';
 import { PerformancePage } from '@/features/performance';
 import { ProfilePage, SettingsPage } from '@/features/profile';
-import { ProtectedRoute, GuestRoute, LoginPage, RegisterPage, GoogleCallbackPage } from '@/features/auth';
+import { ProtectedRoute, GuestRoute, LoginPage, RegisterPage, GoogleCallbackPage, ForgotPasswordPage, ResetPasswordPage } from '@/features/auth';
 import { ToastProvider } from '@/components/ui';
 import { ThemeProvider, LanguageProvider, AuthProvider } from '@/contexts';
 import { ChatSocketProvider } from '@/contexts/ChatSocketContext';
 import LandingPage from '@/features/landing/LandingPage';
 import JoinProjectPage from '@/features/members/JoinProjectPage';
 import InviteLandingPage from '@/features/members/InviteLandingPage';
+import {
+  AdminRoute,
+  AdminLayout,
+  AdminOverviewPage,
+  AdminUsersPage,
+  AdminProjectsPage,
+  AdminLogsPage,
+  AdminHealthPage,
+  AdminAnnouncementsPage,
+  AdminProfilePage,
+} from '@/features/admin';
 
 const router = createBrowserRouter([
   {
@@ -35,6 +46,20 @@ const router = createBrowserRouter([
         <RegisterPage />
       </GuestRoute>
     ),
+  },
+  {
+    path: '/forgot-password',
+    element: (
+      <GuestRoute>
+        <ForgotPasswordPage />
+      </GuestRoute>
+    ),
+  },
+  {
+    // Không bọc GuestRoute: token có thể được mở từ email trong khi user
+    // vẫn còn đăng nhập ở tab khác — không cần ép logout để đặt lại pass.
+    path: '/reset-password',
+    element: <ResetPasswordPage />,
   },
   {
     // Trang nhận callback từ Google OAuth
@@ -78,6 +103,24 @@ const router = createBrowserRouter([
           { path: 'performance', element: <PerformancePage /> },
         ],
       },
+    ],
+  },
+  // ── Admin Panel ──────────────────────────────────────────────
+  {
+    path: '/admin',
+    element: (
+      <AdminRoute>
+        <AdminLayout />
+      </AdminRoute>
+    ),
+    children: [
+      { index: true, element: <AdminOverviewPage /> },
+      { path: 'users', element: <AdminUsersPage /> },
+      { path: 'projects', element: <AdminProjectsPage /> },
+      { path: 'logs', element: <AdminLogsPage /> },
+      { path: 'health', element: <AdminHealthPage /> },
+      { path: 'announcements', element: <AdminAnnouncementsPage /> },
+      { path: 'profile', element: <AdminProfilePage /> },
     ],
   },
 ]);

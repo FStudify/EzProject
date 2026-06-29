@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const idVirtual = require('./plugins/idVirtual');
 
 const activitySchema = new mongoose.Schema({
   projectId: {
@@ -53,6 +54,10 @@ const memberEvaluationSchema = new mongoose.Schema({
 activitySchema.index({ projectId: 1, timestamp: -1 });
 notificationSchema.index({ userId: 1, read: 1 });
 memberEvaluationSchema.index({ projectId: 1, memberId: 1 });
+
+activitySchema.plugin(idVirtual);
+notificationSchema.plugin(idVirtual);
+memberEvaluationSchema.plugin(idVirtual);
 
 const Activity = mongoose.model('Activity', activitySchema);
 const Notification = mongoose.model('Notification', notificationSchema);

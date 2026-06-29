@@ -2,6 +2,7 @@ import { Outlet } from 'react-router-dom';
 import Sidebar from './Sidebar';
 import Topbar from './Topbar';
 import { SidebarProvider, useSidebar } from './SidebarContext';
+import AnnouncementBanner from '@/features/admin/AnnouncementBanner';
 
 export default function AppLayout() {
   return (
@@ -39,6 +40,7 @@ function AppMain() {
       }`}
     >
       <Topbar title="EZProject" />
+      <AnnouncementBanner />
       <div className="flex-1 min-w-0 overflow-y-auto bg-canvas p-6">
         <div className="mx-auto w-full max-w-[1200px]">
           <Outlet />

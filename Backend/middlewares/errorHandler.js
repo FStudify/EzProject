@@ -10,6 +10,16 @@ class AppError extends Error {
   }
 }
 
+/**
+ * Tạo AppError kèm thêm payload mở rộng (vd: blockedUntil).
+ * Các key trong `extras` sẽ được merge vào response `error`.
+ */
+function makeExtendedError(statusCode, code, message, extras = {}) {
+  const err = new AppError(statusCode, code, message);
+  Object.assign(err, extras);
+  return err;
+}
+
 const exactMessages = {
   Unauthorized: 'Chưa xác thực',
   Forbidden: 'Bạn không có quyền thực hiện thao tác này',
@@ -182,6 +192,11 @@ function errorHandler(err, req, res, next) {
       },
     };
     if (err.field) body.error.field = err.field;
+    // Forward các trường mở rộng (blockedUntil, blockedReason, ...) nếu có
+    Object.keys(err).forEach((k) => {
+      if (['message', 'name', 'statusCode', 'code', 'field', 'errors'].includes(k)) return;
+      body.error[k] = err[k];
+    });
     if (err.errors) {
       body.error.errors = err.errors.map((item) => ({
         ...item,
@@ -212,6 +227,7 @@ function notFoundHandler(req, res) {
 
 module.exports = {
   AppError,
+  makeExtendedError,
   errors: errorFactory,
   errorHandler,
   notFoundHandler,

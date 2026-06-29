@@ -201,7 +201,7 @@ export default function RegisterPage() {
 
     setLoading(true);
     try {
-      const ok = await registerUser({
+      const result = await registerUser({
         fullName: trimmedDisplayName || trimmedUsername,
         email: trimmedEmail,
         username: trimmedUsername,
@@ -209,10 +209,13 @@ export default function RegisterPage() {
         confirmPassword,
         inviteToken: inviteToken || undefined,
       });
-      if (ok) {
-        // If signup was for an invite, go to /app/join/{token} which will auto-accept
+      if (result.ok) {
+        // Mới đăng ký — role mặc định là CUSTOMER, nên vào /app.
+        // (Trừ khi có invite, đi qua /app/join/{token} để auto-accept.)
         if (inviteToken) {
           navigate(`/app/join/${inviteToken}`, { replace: true });
+        } else if (result.user?.role === 'ADMIN') {
+          navigate('/admin', { replace: true });
         } else {
           navigate('/app', { replace: true });
         }

@@ -9,7 +9,7 @@ const User = require('../models/User');
 const { ChatRoom } = require('../models/Chat');
 const { Activity } = require('../models/Activity');
 const { errors } = require('../middlewares/errorHandler');
-const { sendProjectInviteEmail, buildInviteUrl } = require('../services/emailService');
+const { sendProjectInviteEmail, buildInviteUrl, hasSmtpConfig } = require('../services/emailService');
 
 const ObjectId = mongoose.Types.ObjectId;
 
@@ -324,7 +324,10 @@ exports.createEmailInvite = async (req, res, next) => {
         emailSent: false,
         emailStatus: 'PENDING',
       },
-      message: 'Đã tạo lời mời. Email đang được gửi trong nền.',
+      message: hasSmtpConfig()
+        ? 'Đã tạo lời mời. Email đang được gửi trong nền.'
+        : 'Đã tạo lời mời (SMTP chưa cấu hình — copy URL để gửi thủ công).',
+      inviteUrl: buildInviteUrl(token),
     });
 
     // Real-time push to invited user if they already have an account

@@ -3,26 +3,30 @@
  * ------------------
  * Backend redirect về đây sau OAuth Google:
  *   /auth/google/callback?accessToken=...&refreshToken=...
- *   hoặc
  *   /auth/google/callback?error=oauth_failed
  *
- * Trang này chỉ làm một việc: đọc params, lưu token, redirect vào app.
+ * Ngoài ra backend có thể redirect về /login?error=account_blocked&message=...
+ * nếu user Google bị admin khoá — nhưng vì đây là entry Google, ta cũng xử
+ * lý luôn: nếu callback là success nhưng later `/me` trả 403 ACCOUNT_BLOCKED,
+ * thì xoá token và đẩy về /login với thông tin block.
+ *
+ * Trang này làm:
+ *  1. Đọc params, lưu token (nếu có).
+ *  2. Gọi `/me` để verify.
+ *  3. Nếu role=ADMIN → redirect /admin; ngược lại → /app.
  */
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap } from 'lucide-react';
-import { setTokens } from '@/api/config';
+import { setTokens, getAccessToken, clearTokens } from '@/api/config';
 import { getMe } from '@/api/user.api';
-import { useAuth } from '@/contexts/AuthContext';
 
 export default function GoogleCallbackPage() {
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { refreshUser } = useAuth();
   const processed = useRef(false);
 
   useEffect(() => {
-    // Chỉ chạy 1 lần (StrictMode mount 2 lần)
     if (processed.current) return;
     processed.current = true;
 
@@ -35,15 +39,34 @@ export default function GoogleCallbackPage() {
       return;
     }
 
-    // Lưu tokens
     setTokens(accessToken, refreshToken);
 
-    // Load user profile rồi redirect
     getMe()
-      .then(() => refreshUser())
-      .then(() => navigate('/app', { replace: true }))
-      .catch(() => navigate('/login?error=google_auth_failed', { replace: true }));
+      .then((user) => {
+        const target = user?.role === 'ADMIN' ? '/admin' : '/app';
+        navigate(target, { replace: true });
+      })
+      .catch((err) => {
+        // Lỗi thường gặp: ACCOUNT_BLOCKED — xoá token và chuyển về login kèm thông báo.
+        const message = err?.message || '';
+        if (/bị\s*khoá|ACCOUNT_BLOCKED/i.test(message)) {
+          clearTokens();
+          navigate(`/login?error=account_blocked&message=${encodeURIComponent(message)}`, { replace: true });
+          return;
+        }
+        clearTokens();
+        navigate('/login?error=google_auth_failed', { replace: true });
+      });
   }, []);
+
+  if (getAccessToken() === null) {
+    // Đang chuyển trang — render nhẹ để tránh flash
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-canvas">
+        <p className="text-sm text-text-secondary">Đang chuyển hướng...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas">

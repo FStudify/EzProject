@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const idVirtual = require('./plugins/idVirtual');
 
 const projectMemberSchema = new mongoose.Schema({
   userId: {
@@ -35,5 +36,7 @@ const projectSchema = new mongoose.Schema({
 projectSchema.index({ ownerId: 1 });
 projectSchema.index({ 'members.userId': 1 });
 projectSchema.index({ status: 1 });
+
+projectSchema.plugin(idVirtual);
 
 module.exports = mongoose.model('Project', projectSchema);

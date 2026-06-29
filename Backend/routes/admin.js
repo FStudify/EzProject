@@ -10,17 +10,71 @@ const router = express.Router();
 // Tất cả routes đều cần ADMIN
 router.use(requireAuth, requireAdmin);
 
-// ── Stats ─────────────────────────────────────────────
+// ── 1. Overview Dashboard ─────────────────────────────────────
 router.get('/stats', adminController.getStats);
+router.get('/dashboard/recent', adminController.getDashboardRecent);
 
-// ── Users ─────────────────────────────────────────────
+// ── 2. User Management ───────────────────────────────────────
 router.get('/users', adminController.listUsers);
+router.get('/users/export', adminController.exportUsers);
 router.get('/users/:userId', adminController.getUser);
-router.put('/users/:userId/role', validate(validators.setSystemRole), adminController.setUserRole);
-router.delete('/users/:userId', adminController.deleteUser);
+router.put(
+  '/users/:userId/block',
+  validate(validators.blockUser),
+  adminController.blockUser,
+);
+router.put(
+  '/users/:userId/unblock',
+  validate(validators.unblockUser),
+  adminController.unblockUser,
+);
 
-// ── Projects ──────────────────────────────────────────
+// (legacy: role change still available for ops)
+router.put(
+  '/users/:userId/role',
+  validate(validators.setSystemRole),
+  adminController.setUserRole,
+);
+
+// ── 3. Project Management ─────────────────────────────────────
 router.get('/projects', adminController.listAllProjects);
-router.delete('/projects/:projectId', adminController.deleteProject);
+
+// ── 4. Activity Logs ──────────────────────────────────────────
+router.get('/logs', adminController.listLogs);
+
+// ── 5. System Health ──────────────────────────────────────────
+router.get('/health', adminController.getHealth);
+
+// ── 6. Announcements ──────────────────────────────────────────
+router.get('/announcements', adminController.listAnnouncements);
+router.get('/announcements/active', adminController.listActiveAnnouncements);
+router.get('/announcements/:id', adminController.getAnnouncement);
+router.post(
+  '/announcements',
+  validate(validators.createAnnouncement),
+  adminController.createAnnouncement,
+);
+router.put(
+  '/announcements/:id',
+  validate(validators.updateAnnouncement),
+  adminController.updateAnnouncement,
+);
+router.delete('/announcements/:id', adminController.deleteAnnouncement);
+
+// ── 7. Admin Profile ──────────────────────────────────────────
+router.get('/profile', adminController.getProfile);
+router.put(
+  '/profile/password',
+  validate(validators.changePassword),
+  adminController.changePassword,
+);
+
+// ── 8. Email Diagnostics ──────────────────────────────────────
+router.get('/email/status', adminController.getEmailStatus);
+router.post(
+  '/email/test',
+  validate(validators.sendTestEmail),
+  adminController.sendTestEmail,
+);
 
 module.exports = router;

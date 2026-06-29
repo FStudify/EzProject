@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const idVirtual = require('./plugins/idVirtual');
 
 const userSchema = new mongoose.Schema({
   email: {
@@ -49,10 +50,17 @@ const userSchema = new mongoose.Schema({
   department: { type: String, default: null },
   position: { type: String, default: null },
   bio: { type: String, default: null },
+  // ── Admin moderation ────────────────────────────────
+  isBlocked: { type: Boolean, default: false, index: true },
+  blockedAt: { type: Date, default: null },
+  blockedUntil: { type: Date, default: null },
+  blockedReason: { type: String, default: null },
   // ── Preferences ──────────────────────────────────────
   language: { type: String, enum: ['VI', 'EN'], default: 'VI' },
   theme: { type: String, enum: ['LIGHT', 'DARK'], default: 'LIGHT' },
 }, { timestamps: true });
+
+userSchema.plugin(idVirtual);
 
 userSchema.index({ role: 1 });
 

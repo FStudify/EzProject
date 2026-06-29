@@ -1,0 +1,21 @@
+{
+  "name": "ezproject",
+  "version": "1.0.0",
+  "private": true,
+  "description": "EZProject monorepo root — runs both Backend (Express) and Frontend (Vite) with one command.",
+  "scripts": {
+    "dev": "concurrently -k -n backend,frontend -c blue,magenta \"npm:dev:backend\" \"npm:dev:frontend\"",
+    "dev:backend": "npm --prefix Backend run dev",
+    "dev:frontend": "npm --prefix Frontend run dev",
+    "dev:backend-only": "npm --prefix Backend run dev",
+    "dev:frontend-only": "npm --prefix Frontend run dev",
+    "build": "npm --prefix Frontend run build",
+    "type-check": "npm --prefix Frontend run type-check",
+    "seed": "npm --prefix Backend run seed",
+    "seed:admin": "npm --prefix Backend run seed:admin",
+    "start:install": "npm install && npm --prefix Backend install && npm --prefix Frontend install"
+  },
+  "devDependencies": {
+    "concurrently": "^9.1.0"
+  }
+}

@@ -30,7 +30,7 @@ interface AuthContextValue {
   user: User | null;
   isLoading: boolean;
   isAuthenticated: boolean;
-  login: (username: string, password: string) => Promise<boolean>;
+  login: (username: string, password: string) => Promise<{ ok: boolean; user: User | null }>;
   register: (data: {
     fullName: string;
     email: string;
@@ -38,7 +38,7 @@ interface AuthContextValue {
     password: string;
     confirmPassword: string;
     inviteToken?: string;
-  }) => Promise<boolean>;
+  }) => Promise<{ ok: boolean; user: User | null }>;
   logout: () => Promise<void>;
   refreshUser: () => Promise<void>;
   /** Merge a partial update into the current user without a round-trip to the server. */
@@ -89,12 +89,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return () => window.removeEventListener('auth:logout', handleForcedLogout);
   }, []);
 
-  const login = useCallback(async (username: string, password: string): Promise<boolean> => {
-    const res = await apiLogin(username, password);
-    setUser(res.user);
-    localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
-    return true;
-  }, []);
+  const login = useCallback(
+    async (username: string, password: string): Promise<{ ok: boolean; user: User | null }> => {
+      const res = await apiLogin(username, password);
+      setUser(res.user);
+      localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
+      return { ok: true, user: res.user };
+    },
+    [],
+  );
 
   const register = useCallback(
     async (data: {
@@ -104,11 +107,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       password: string;
       confirmPassword: string;
       inviteToken?: string;
-    }): Promise<boolean> => {
+    }): Promise<{ ok: boolean; user: User | null }> => {
       const res = await apiRegister(data);
       setUser(res.user);
       localStorage.setItem(USER_STORAGE_KEY, JSON.stringify(res.user));
-      return true;
+      return { ok: true, user: res.user };
     },
     [],
   );

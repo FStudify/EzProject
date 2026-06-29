@@ -1,6 +1,7 @@
 'use strict';
 
 const mongoose = require('mongoose');
+const idVirtual = require('./plugins/idVirtual');
 
 const taskCommentSchema = new mongoose.Schema({
   authorId: {
@@ -41,5 +42,7 @@ const taskSchema = new mongoose.Schema({
 taskSchema.index({ projectId: 1, status: 1 });
 taskSchema.index({ assigneeId: 1 });
 taskSchema.index({ deadline: 1 });
+
+taskSchema.plugin(idVirtual);
 
 module.exports = mongoose.model('Task', taskSchema);

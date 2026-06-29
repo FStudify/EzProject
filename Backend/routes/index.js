@@ -13,6 +13,7 @@ const performanceRouter = require('./performance');
 const activityRouter = require('./activity');
 const adminRouter = require('./admin');
 const inviteRouter = require('./invite');
+const announcementPublicRouter = require('./announcementPublic');
 const memberController = require('../controllers/memberController');
 const { requireAuth } = require('../middlewares/auth');
 const aiController = require('../controllers/aiController');
@@ -43,6 +44,7 @@ router.post(
 
 // ── Admin (Gap 1) ──────────────────────────────────────
 router.use('/admin', adminRouter);
+router.use('/announcements', announcementPublicRouter);
 router.use('/', inviteRouter);
 
 // ── Projects & nested resources ────────────────────────

@@ -44,6 +44,38 @@ const validators = {
       path: ['confirmPassword'],
     }),
 
+  // Quên mật khẩu — endpoint public. Không trả lỗi "user không tồn tại"
+  // để tránh email enumeration. Validator chỉ check format email.
+  forgotPassword: z.object({
+    email: z.string().trim().toLowerCase().email('Email không hợp lệ'),
+  }),
+
+  // Đặt lại mật khẩu với token trong URL.
+  // Token thô ≥ 32 ký tự (URL-safe base64 của 24 byte ngẫu nhiên).
+  resetPassword: z
+    .object({
+      token: z
+        .string()
+        .trim()
+        .min(32, 'Token không hợp lệ')
+        .max(256, 'Token không hợp lệ'),
+      newPassword: z.string().min(6, 'Mật khẩu mới phải có ít nhất 6 ký tự'),
+      confirmPassword: z.string(),
+    })
+    .refine((d) => d.newPassword === d.confirmPassword, {
+      message: 'Mật khẩu xác nhận không khớp',
+      path: ['confirmPassword'],
+    }),
+
+  // Validate token trước khi user nhập mật khẩu mới (optional nhưng UX tốt hơn).
+  validateResetToken: z.object({
+    token: z
+      .string()
+      .trim()
+      .min(32, 'Token không hợp lệ')
+      .max(256, 'Token không hợp lệ'),
+  }),
+
   // ── Projects ────────────────────────────────────────────
   createProject: z.object({
     name: z.string().min(1, 'Project name is required'),
@@ -231,6 +263,48 @@ const validators = {
   setSystemRole: z.object({
     role: z.enum(['ADMIN', 'CUSTOMER']),
   }),
+  blockUser: z
+    .object({
+      reason: z.string().max(500).optional(),
+      // Số giờ khoá. Bỏ trống = khoá vĩnh viễn.
+      durationHours: z.number().positive().max(8760).optional(),
+    })
+    .strict(),
+  unblockUser: z.object({}).optional(),
+
+  // ── Admin: Announcements ─────────────────────────────
+  // ── Admin: Email Diagnostics ────────────────────────
+  sendTestEmail: z.object({
+    to: z.string().trim().email('A valid email is required'),
+  }),
+
+  createAnnouncement: z.object({
+    title: z.string().min(1, 'Title is required').max(200),
+    content: z.string().min(1, 'Content is required').max(5000),
+    type: z.enum(['INFO', 'WARNING', 'MAINTENANCE']).default('INFO'),
+    startsAt: z.string().optional(),
+    endsAt: z.string().optional(),
+    isActive: z.boolean().optional().default(true),
+  }),
+  updateAnnouncement: z
+    .object({
+      title: z.string().min(1).max(200).optional(),
+      content: z.string().min(1).max(5000).optional(),
+      type: z.enum(['INFO', 'WARNING', 'MAINTENANCE']).optional(),
+      startsAt: z.string().optional(),
+      endsAt: z.string().optional(),
+      isActive: z.boolean().optional(),
+    })
+    .refine(
+      (d) =>
+        d.title !== undefined ||
+        d.content !== undefined ||
+        d.type !== undefined ||
+        d.startsAt !== undefined ||
+        d.endsAt !== undefined ||
+        d.isActive !== undefined,
+      { message: 'At least one field must be provided' },
+    ),
 
   // ── Performance ─────────────────────────────────────────
   evaluate: z.object({

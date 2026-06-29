@@ -54,43 +54,55 @@ EzProject/
 
 ## Quick Start
 
-### Frontend
+### Chạy cả Backend + Frontend cùng lúc (khuyến nghị)
+
+Từ **thư mục root** của repo (`EzProject/`), chỉ cần 1 lệnh:
 
 ```bash
-cd Frontend
-npm install
-npm run dev
-# Opens at http://localhost:5173
+npm install            # Cài concurrently cho root (đã có sẵn trong package.json)
+npm run dev            # Chạy đồng thời Backend (port 3000) + Frontend (port 5173)
 ```
 
-> Frontend gọi Backend ở `VITE_API_URL` (mặc định `http://localhost:3000`).
+Kết quả:
+- Backend: `http://localhost:3000`
+- Frontend: `http://localhost:5173`
+- Nhấn `Ctrl+C` 1 lần là tắt cả 2.
 
-### Backend
+> Lần đầu cũng cần `cd Backend && npm install` và `cd Frontend && npm install`. Chạy `npm run start:install` ở root để cài cả 3 folder một lúc.
+
+### Các lệnh hữu ích ở root
+
+| Lệnh | Tác dụng |
+|------|---------|
+| `npm run dev` | Chạy Backend + Frontend đồng thời |
+| `npm run dev:backend-only` | Chỉ chạy Backend |
+| `npm run dev:frontend-only` | Chỉ chạy Frontend |
+| `npm run build` | Build Frontend production |
+| `npm run type-check` | TypeScript check cho Frontend |
+| `npm run seed` | Seed dữ liệu demo (5 user + 2 project) |
+| `npm run seed:admin` | Tạo tài khoản admin |
+| `npm run start:install` | Cài deps cho cả 3 folder (root + Backend + Frontend) |
+
+### Chạy tách 2 terminal (cách cũ, vẫn dùng được)
+
+```bash
+# Terminal 1
+cd Backend && npm run dev
+
+# Terminal 2
+cd Frontend && npm run dev
+```
+
+### Setup `.env` lần đầu
+
+Trước khi `npm run dev`, đảm bảo đã có `.env` cho cả 2 phía:
 
 ```powershell
-# Ở root repo, tự động copy .env.example -> .env (hỏi trước khi ghi đè)
-.\gundsetupdeploy.ps1 -Mode init
-
-# Hoặc thủ công:
-cd Backend
-copy .env.example .env
-# Sửa .env: set MONGO_URI, JWT_SECRET, ...
-
-npm install
-npm run dev   # = node --watch server.js
-# Runs at http://localhost:3000
+.\gundsetupdeploy.ps1 -Mode init          # copy .env.example -> .env cho cả Backend + Frontend
+.\gundsetupdeploy.ps1 -Mode validate      # kiểm tra đủ biến bắt buộc chưa
 ```
 
-### Seed demo data (optional)
-
-```bash
-cd Backend
-npm run seed
-# Tạo 5 user test (admin/leader1/member1/member2/supervisor1, password 123456)
-# + 2 project mẫu + 7 tasks + 3 meetings + chat/activities/notifications
-```
-
-> `seed.js` xóa data cũ trước khi insert. Chỉ dùng cho dev/demo.
+Sửa `Backend/.env` (điền `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, ...) và `Frontend/.env` (`VITE_API_URL=http://localhost:3000`).
 
 ---
 
@@ -114,10 +126,11 @@ Dự án có **25 biến môi trường** (24 Backend + 1 Frontend). File `.env.
 # 4. Validate da du keys chua
 .\gundsetupdeploy.ps1 -Mode validate
 
-# 5. Chay app
-cd Backend && npm run seed && npm run dev
-# Terminal khac:
-cd Frontend && npm run dev
+# 5. Chay app — chi can 1 lenh o root (se chay ca Backend va Frontend cung luc)
+npm run dev
+# Muon chay tach 2 terminal thi giu cach cu:
+#   Terminal 1: cd Backend && npm run dev
+#   Terminal 2: cd Frontend && npm run dev
 ```
 
 ### Lay gia tri o dau?

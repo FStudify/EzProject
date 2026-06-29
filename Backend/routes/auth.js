@@ -9,6 +9,8 @@ const passport = require('../config/passport');
 const jwt = require('jsonwebtoken');
 const config = require('../config');
 const RefreshToken = require('../models/RefreshToken');
+const User = require('../models/User');
+const { clearExpiredBlock, describeBlock } = require('../utils/blockStatus');
 
 const router = express.Router();
 
@@ -34,6 +36,49 @@ router.post(
 
 router.post('/logout', requireAuth, authController.logout);
 
+// ── Forgot / Reset password (Magic-link qua Gmail) ────────────
+//
+// Không yêu cầu auth. Rate-limited để chống spam enumeration.
+//
+//  POST /auth/forgot-password           body: { email }
+//  POST /auth/reset-password            body: { token, newPassword, confirmPassword }
+//  GET  /auth/reset-password/validate?token=...
+//
+router.post(
+  '/forgot-password',
+  authLimiter,
+  validate(validators.forgotPassword),
+  authController.forgotPassword,
+);
+
+router.post(
+  '/reset-password',
+  authLimiter,
+  validate(validators.resetPassword),
+  authController.resetPassword,
+);
+
+router.get(
+  '/reset-password/validate',
+  validate(validators.validateResetToken, 'query'),
+  authController.validateResetToken,
+);
+
+/**
+ * Build URL để redirect user về frontend (path mặc định: `/auth/google/callback`).
+ * Hỗ trợ cả `cors.origin` là string hoặc array.
+ */
+function buildFrontendUrl(pathname = '/auth/google/callback', params = {}) {
+  const origin = config.cors.origin instanceof Array
+    ? config.cors.origin[0]
+    : config.cors.origin;
+  const url = new URL(pathname, origin);
+  Object.entries(params).forEach(([k, v]) => {
+    if (v !== undefined && v !== null) url.searchParams.set(k, String(v));
+  });
+  return url.toString();
+}
+
 // ── Google OAuth ──────────────────────────────────────────────
 
 /**
@@ -57,7 +102,33 @@ router.get(
   passport.authenticate('google', { session: false, failureRedirect: null }),
   async (req, res) => {
     try {
-      const user = req.user;
+      const baseUser = req.user;
+      if (!baseUser) {
+        res.redirect(buildFrontendUrl('/auth/google/callback', { error: 'oauth_failed' }));
+        return;
+      }
+
+      // Re-fetch latest block state (lean) trước khi cấp token
+      const user = await User.findById(baseUser._id).lean();
+      if (!user) {
+        res.redirect(buildFrontendUrl('/auth/google/callback', { error: 'oauth_failed' }));
+        return;
+      }
+
+      // Lazy-unblock và kiểm tra trạng thái khoá
+      await clearExpiredBlock(user);
+      const blockInfo = describeBlock(user);
+      if (blockInfo.blocked) {
+        res.redirect(
+          buildFrontendUrl('/login', {
+            error: 'account_blocked',
+            message: blockInfo.message,
+            blockedUntil: blockInfo.blockedUntil,
+            blockedReason: blockInfo.blockedReason,
+          }),
+        );
+        return;
+      }
 
       // Sign tokens
       const payload = {
@@ -79,22 +150,12 @@ router.get(
 
       // Redirect về frontend kèm tokens trong query string
       // Frontend sẽ đọc params rồi lưu vào localStorage
-      const frontendUrl = config.cors.origin instanceof Array
-        ? config.cors.origin[0]
-        : config.cors.origin;
-
-      const redirectUrl = new URL('/auth/google/callback', frontendUrl);
-      redirectUrl.searchParams.set('accessToken', accessToken);
-      redirectUrl.searchParams.set('refreshToken', refreshToken);
-
-      res.redirect(redirectUrl.toString());
+      res.redirect(
+        buildFrontendUrl('/auth/google/callback', { accessToken, refreshToken }),
+      );
     } catch (err) {
-      const frontendUrl = config.cors.origin instanceof Array
-        ? config.cors.origin[0]
-        : config.cors.origin;
-      const redirectUrl = new URL('/auth/google/callback', frontendUrl);
-      redirectUrl.searchParams.set('error', 'oauth_failed');
-      res.redirect(redirectUrl.toString());
+      console.error('[Google callback] error:', err);
+      res.redirect(buildFrontendUrl('/auth/google/callback', { error: 'oauth_failed' }));
     }
   },
 );
@@ -103,10 +164,7 @@ router.get(
  * Fallback nếu passport.authenticate redirect về đây với lỗi
  */
 router.get('/google/error', (_req, res) => {
-  const frontendUrl = config.cors.origin instanceof Array
-    ? config.cors.origin[0]
-    : config.cors.origin;
-  res.redirect(`${frontendUrl}/login?error=google_auth_failed`);
+  res.redirect(buildFrontendUrl('/login', { error: 'google_auth_failed' }));
 });
 
 module.exports = router;

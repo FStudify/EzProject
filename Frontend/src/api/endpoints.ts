@@ -19,6 +19,9 @@ export const Endpoints = {
   AUTH_REFRESH: `${BASE}/auth/refresh`,
   AUTH_LOGOUT: `${BASE}/auth/logout`,
   AUTH_GOOGLE: `${BASE}/auth/google`,
+  AUTH_FORGOT_PASSWORD: `${BASE}/auth/forgot-password`,
+  AUTH_RESET_PASSWORD: `${BASE}/auth/reset-password`,
+  AUTH_RESET_PASSWORD_VALIDATE: `${BASE}/auth/reset-password/validate`,
 
   // ── Users ───────────────────────────────────────────────
   USER_ME: `${BASE}/users/me`,
@@ -120,9 +123,22 @@ export const Endpoints = {
 
   // ── Admin ───────────────────────────────────────────────
   ADMIN_STATS: `${BASE}/admin/stats`,
+  ADMIN_DASHBOARD_RECENT: `${BASE}/admin/dashboard/recent`,
   ADMIN_USERS: `${BASE}/admin/users`,
+  ADMIN_USERS_EXPORT: `${BASE}/admin/users/export`,
   ADMIN_USER_DETAIL: (userId: string) => `${BASE}/admin/users/${userId}`,
+  ADMIN_USER_BLOCK: (userId: string) => `${BASE}/admin/users/${userId}/block`,
+  ADMIN_USER_UNBLOCK: (userId: string) => `${BASE}/admin/users/${userId}/unblock`,
   ADMIN_USER_ROLE: (userId: string) => `${BASE}/admin/users/${userId}/role`,
   ADMIN_PROJECTS: `${BASE}/admin/projects`,
   ADMIN_PROJECT_DETAIL: (projectId: string) => `${BASE}/admin/projects/${projectId}`,
+  ADMIN_LOGS: `${BASE}/admin/logs`,
+  ADMIN_HEALTH: `${BASE}/admin/health`,
+  ADMIN_EMAIL_STATUS: `${BASE}/admin/email/status`,
+  ADMIN_EMAIL_TEST: `${BASE}/admin/email/test`,
+  ADMIN_ANNOUNCEMENTS: `${BASE}/admin/announcements`,
+  ADMIN_ANNOUNCEMENT_DETAIL: (id: string) => `${BASE}/admin/announcements/${id}`,
+  ADMIN_ANNOUNCEMENTS_ACTIVE: `${BASE}/announcements/active`,
+  ADMIN_PROFILE: `${BASE}/admin/profile`,
+  ADMIN_PROFILE_PASSWORD: `${BASE}/admin/profile/password`,
 } as const;

@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { Link } from 'react-router-dom';
-import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon } from 'lucide-react';
+import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon, Shield } from 'lucide-react';
 import { Avatar, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
@@ -252,6 +252,23 @@ export default function Topbar({ title }: TopbarProps) {
                   marginTop: '8px',
                 }}
               >
+                {user?.role === 'ADMIN' && (
+                  <Link
+                    to="/admin"
+                    role="menuitem"
+                    onClick={() => setIsMenuOpen(false)}
+                    className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
+                    style={{ color: '#b91c1c' }}
+                    onMouseEnter={e => (e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2d261c' : '#FFF8F3')}
+                    onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                  >
+                    <Shield className="h-4 w-4" />
+                    Admin Panel
+                  </Link>
+                )}
+                {user?.role === 'ADMIN' && (
+                  <div className="my-1" style={{ borderTop: `1px solid ${theme === 'dark' ? '#4a3d2e' : '#E8D8CF'}` }} />
+                )}
                 <Link
                   to="/app/profile"
                   role="menuitem"

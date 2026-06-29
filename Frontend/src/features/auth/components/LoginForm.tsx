@@ -135,15 +135,15 @@ export default function LoginForm({
             />
             <span>{t('remember_me')}</span>
           </label>
-          <button
-            type="button"
+          <Link
+            to="/forgot-password"
             className="text-sm font-semibold transition"
             style={{ color: '#635648' }}
             onMouseEnter={e => { e.currentTarget.style.color = '#D97853'; }}
             onMouseLeave={e => { e.currentTarget.style.color = '#635648'; }}
           >
             {t('forgot_password')}
-          </button>
+          </Link>
         </div>
 
         {/* Error */}

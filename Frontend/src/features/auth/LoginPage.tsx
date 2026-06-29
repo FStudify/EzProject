@@ -1,9 +1,10 @@
-import { useState } from 'react';
-import { useLocation, useNavigate } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
 import { GraduationCap, Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { homePathForRole } from './homePath';
 import BrandingPanel from './components/BrandingPanel';
 import LoginForm from './components/LoginForm';
 
@@ -32,7 +33,21 @@ export default function LoginPage() {
   const { t, lang, setLang } = useLanguage();
   const navigate = useNavigate();
   const location = useLocation();
-  const from = (location.state as { from?: { pathname: string } })?.from?.pathname ?? '/app';
+  const [searchParams] = useSearchParams();
+
+  // Đọc error/message từ URL khi Google OAuth redirect về login.
+  //  - error=account_blocked + message=<vi>: user Google bị admin khoá
+  //  - error=google_auth_failed: lỗi OAuth chung
+  useEffect(() => {
+    const urlError = searchParams.get('error');
+    if (!urlError) return;
+    if (urlError === 'account_blocked') {
+      const msg = searchParams.get('message');
+      if (msg) setError(decodeURIComponent(msg));
+    } else if (urlError === 'google_auth_failed') {
+      setError('Đăng nhập bằng Google thất bại. Vui lòng thử lại.');
+    }
+  }, [searchParams]);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -52,9 +67,11 @@ export default function LoginPage() {
 
     setLoading(true);
     try {
-      const ok = await login(trimmedUsername, password);
-      if (ok) {
-        navigate(from, { replace: true });
+      const result = await login(trimmedUsername, password);
+      if (result.ok) {
+        const attempted = (location.state as { from?: { pathname: string } })?.from?.pathname;
+        const target = attempted || homePathForRole(result.user?.role);
+        navigate(target, { replace: true });
       }
     } catch (err) {
       const message = err instanceof Error ? err.message : '';
