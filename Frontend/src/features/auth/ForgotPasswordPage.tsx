@@ -4,8 +4,6 @@ import {
   ArrowLeft,
   GraduationCap,
   Mail,
-  Moon,
-  Sun,
   KeyRound,
   CheckCircle2,
 } from 'lucide-react';
