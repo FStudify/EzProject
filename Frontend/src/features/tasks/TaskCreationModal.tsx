@@ -215,7 +215,7 @@ export default function TaskCreationModal({
                     className={`${inputClass} h-10`}
                   />
                   <div className="mt-2 rounded-xl bg-primary-50 px-3 py-2 text-xs font-medium leading-5 text-primary-dark">
-                    Task mới vào Backlog và chưa gán người phụ trách.
+                    Task mới vào Cần làm và chưa gán người phụ trách.
                   </div>
                 </div>
               </div>

@@ -1,10 +1,10 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
-import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock } from 'lucide-react';
+import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock, ClipboardList, Plus, CheckCircle2 } from 'lucide-react';
 import { projectService } from '@/services';
 import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
 import type { Task, TaskStatus } from '@/types';
-import { Button, EmptyState, useToast, Skeleton } from '@/components/ui';
+import { Button, useToast, Skeleton } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
 import { ChatPanel } from '@/features/chat';
 import TaskColumn from './TaskColumn';
@@ -416,13 +416,48 @@ export default function TaskBoard() {
 
         {/* Views */}
         {!isLoading && tasks.length === 0 ? (
-          <div className="flex flex-1 items-center justify-center bg-surface rounded-xl border border-border p-8">
-            <EmptyState
-              title={t('no_tasks_title') || 'Chưa có công việc nào'}
-              description={t('no_tasks_description') || 'Tạo công việc đầu tiên để bắt đầu quản lý dự án!'}
-              actionLabel={t('add_task') || 'Thêm công việc'}
-              onAction={() => setIsAddOpen(true)}
-            />
+          <div className="flex flex-1 items-center justify-center overflow-hidden rounded-xl border border-[#E8D8CF] bg-[#FFFDFB] p-6 shadow-[0_18px_36px_-30px_rgba(63,38,22,0.52)]">
+            <div className="w-full max-w-3xl">
+              <div className="mx-auto mb-7 flex h-16 w-16 items-center justify-center rounded-2xl bg-[#FFF5EC] text-[#D97853] shadow-[0_16px_28px_-24px_rgba(201,107,72,0.85)]">
+                <ClipboardList className="h-8 w-8" aria-hidden />
+              </div>
+
+              <div className="text-center">
+                <h3 className="text-xl font-bold text-[#1F1F1F]">{t('no_tasks_title')}</h3>
+                <p className="mx-auto mt-2 max-w-md text-sm leading-6 text-[#7D6F66]">
+                  {t('no_tasks_description')}
+                </p>
+                <Button
+                  variant="accent"
+                  size="sm"
+                  onClick={() => setIsAddOpen(true)}
+                  className="mt-5 !inline-flex !items-center !gap-2"
+                >
+                  <Plus className="h-4 w-4" aria-hidden />
+                  {t('add_task')}
+                </Button>
+              </div>
+
+              <div className="mt-8 grid grid-cols-1 gap-3 sm:grid-cols-3">
+                {[
+                  { label: t('task_empty_backlog'), dot: '#D97853', icon: ClipboardList },
+                  { label: t('task_empty_progress'), dot: '#0651A0', icon: Clock },
+                  { label: t('task_empty_done'), dot: '#3F9A5F', icon: CheckCircle2 },
+                ].map(({ label, dot, icon: Icon }) => (
+                  <div key={label} className="rounded-xl border border-[#E8D8CF] bg-[#FFF8F3] px-4 py-3">
+                    <div className="flex items-center gap-2">
+                      <span className="h-2.5 w-2.5 rounded-full" style={{ backgroundColor: dot }} />
+                      <span className="text-sm font-semibold text-[#1F1F1F]">{label}</span>
+                      <Icon className="ml-auto h-4 w-4 text-[#8D7B70]" aria-hidden />
+                    </div>
+                    <div className="mt-3 space-y-2">
+                      <div className="h-2 rounded-full bg-white" />
+                      <div className="h-2 w-2/3 rounded-full bg-white" />
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </div>
           </div>
         ) : (
           <>

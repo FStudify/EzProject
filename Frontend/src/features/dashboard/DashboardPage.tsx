@@ -16,6 +16,7 @@ import { getProjects } from '@/api/project.api';
 import { getTasks } from '@/api/task.api';
 import { getActivities } from '@/api/member.api';
 import { getMeetings } from '@/api/meeting.api';
+import { getUserActivities } from '@/api/user.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getTimeGreeting } from '@/lib/greeting';
@@ -47,6 +48,14 @@ function timeAgo(ts: string) {
   return `${d}d`;
 }
 
+function isOpenProject(status?: Project['status']) {
+  return !['COMPLETED', 'ARCHIVED', 'completed', 'archived'].includes(String(status));
+}
+
+function isTaskClosed(status: Task['status']) {
+  return status === 'DONE' || status === 'CANCELLED';
+}
+
 export default function DashboardPage() {
   const { t } = useLanguage();
   const { user } = useAuth();
@@ -71,18 +80,23 @@ export default function DashboardPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const projectsRes = await getProjects();
+      const projectsRes = await getProjects({ limit: 100 });
       const projectList: Project[] = projectsRes.data ?? [];
 
-      const [tasksData, activitiesData, meetingsData] = await Promise.all([
+      const [tasksData, projectActivitiesData, userActivitiesData, meetingsData] = await Promise.all([
         Promise.all(projectList.map((p) => getTasks(p.id))),
         Promise.all(projectList.map((p) => getActivities(p.id))),
+        getUserActivities(20).catch(() => []),
         Promise.all(projectList.map((p) => getMeetings(p.id))),
       ]);
+      const activitiesById = new Map<string, Activity>();
+      [...projectActivitiesData.flat(), ...userActivitiesData].forEach((activity) => {
+        activitiesById.set(activity.id, activity);
+      });
 
       setProjects(projectList);
       setTasks(tasksData.flat());
-      setActivities(activitiesData.flat());
+      setActivities(Array.from(activitiesById.values()));
       setMeetings(meetingsData.flat());
     } catch {
       setError(t('error_load_data') || 'Không thể tải dữ liệu');
@@ -94,7 +108,7 @@ export default function DashboardPage() {
   useEffect(() => { fetchData(); }, [fetchData]);
 
   const activeProjects = useMemo(
-    () => projects.filter((p) => p.status !== 'COMPLETED' && p.status !== 'ARCHIVED'),
+    () => projects.filter((p) => isOpenProject(p.status)),
     [projects],
   );
 
@@ -104,8 +118,7 @@ export default function DashboardPage() {
         .filter(
           (t) =>
             userId && t.assignee?.id === userId &&
-            t.status !== 'DONE' &&
-            t.status !== 'CANCELLED' &&
+            !isTaskClosed(t.status) &&
             t.deadline != null &&
             new Date(t.deadline).getTime() <= endOfTodayMs,
         )
@@ -160,7 +173,7 @@ export default function DashboardPage() {
   }, [activities, activityFilter, userId]);
 
   const myTasksCount = useMemo(
-    () => tasks.filter((t) => userId && t.assignee?.id === userId && t.status !== 'DONE' && t.status !== 'CANCELLED').length,
+    () => tasks.filter((t) => userId && t.assignee?.id === userId && !isTaskClosed(t.status)).length,
     [tasks, userId],
   );
   const doneTasks = useMemo(
@@ -168,9 +181,30 @@ export default function DashboardPage() {
     [tasks, userId],
   );
   const overdueCount = useMemo(
-    () => tasks.filter((t) => userId && t.assignee?.id === userId && t.status !== 'DONE' && t.deadline != null && new Date(t.deadline).getTime() < now).length,
+    () => tasks.filter((t) => userId && t.assignee?.id === userId && !isTaskClosed(t.status) && t.deadline != null && new Date(t.deadline).getTime() < now).length,
     [tasks, userId, now],
   );
+  const monthTasks = useMemo(() => {
+    const start = new Date();
+    start.setDate(1);
+    start.setHours(0, 0, 0, 0);
+    const end = new Date(start);
+    end.setMonth(end.getMonth() + 1);
+    return tasks.filter((task) => {
+      if (!userId || task.assignee?.id !== userId) return false;
+      const rawDate = task.deadline ?? task.updatedAt ?? task.createdAt;
+      const time = new Date(rawDate).getTime();
+      return time >= start.getTime() && time < end.getTime();
+    });
+  }, [tasks, userId]);
+  const monthDoneTasks = useMemo(
+    () => monthTasks.filter((task) => task.status === 'DONE').length,
+    [monthTasks],
+  );
+  const monthCompletionRate =
+    monthTasks.length > 0 ? Math.round((monthDoneTasks / monthTasks.length) * 100) : 0;
+  const noDueTasksText = activeProjects.length > 0 ? 'Chưa có công việc đến hạn' : t('no_projects');
+  const noDeadlinesText = activeProjects.length > 0 ? 'Chưa có hạn chót trong 7 ngày tới' : t('no_projects');
 
   if (isLoading) {
     return (
@@ -237,8 +271,8 @@ export default function DashboardPage() {
           },
           {
             icon: CalendarCheck,
-            label: t('of_total').replace(':total', ''),
-            value: '88%',
+            label: t('of_total').replace(':total', String(monthTasks.length)),
+            value: `${monthCompletionRate}%`,
             sub: t('this_month'),
             iconBg: 'bg-primary-50 text-primary',
           },
@@ -273,7 +307,7 @@ export default function DashboardPage() {
             </div>
             {todayTasks.length === 0 ? (
               <div className="flex items-center justify-center p-8">
-                <p className="text-sm" style={{ color: '#7D6F66' }}>{t('no_projects')}</p>
+                <p className="text-sm" style={{ color: '#7D6F66' }}>{noDueTasksText}</p>
               </div>
             ) : (
               <ul>
@@ -346,24 +380,30 @@ export default function DashboardPage() {
                 </Link>
               </div>
               <ul>
-                {activeProjects.slice(0, 3).map((p) => (
-                  <li key={p.id}>
-                    <Link
-                      to={`/app/projects/${p.id}`}
-                      className="flex items-center gap-3 px-4 py-3 transition-colors"
-                      style={{ borderBottom: '1px solid #E8D8CF' }}
-                      onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FFF8F3'; }}
-                      onMouseLeave={e => { e.currentTarget.style.backgroundColor = ''; }}
-                    >
-                      <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: '#D97853' }} />
-                      <div className="min-w-0 flex-1">
-                        <p className="truncate text-sm font-medium" style={{ color: '#1F1F1F' }}>{p.name}</p>
-                        <p className="text-xs" style={{ color: '#7D6F66' }}>{p.progress}% {t('completed')}</p>
-                      </div>
-                      <ArrowRight className="h-3.5 w-3.5 shrink-0" style={{ color: '#7D6F66' }} />
-                    </Link>
+                {activeProjects.length === 0 ? (
+                  <li className="px-4 py-6 text-center text-xs" style={{ color: '#7D6F66' }}>
+                    {t('no_projects')}
                   </li>
-                ))}
+                ) : (
+                  activeProjects.slice(0, 3).map((p) => (
+                    <li key={p.id}>
+                      <Link
+                        to={`/app/projects/${p.id}`}
+                        className="flex items-center gap-3 px-4 py-3 transition-colors"
+                        style={{ borderBottom: '1px solid #E8D8CF' }}
+                        onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#FFF8F3'; }}
+                        onMouseLeave={e => { e.currentTarget.style.backgroundColor = ''; }}
+                      >
+                        <div className="h-2 w-2 shrink-0 rounded-full" style={{ backgroundColor: '#D97853' }} />
+                        <div className="min-w-0 flex-1">
+                          <p className="truncate text-sm font-medium" style={{ color: '#1F1F1F' }}>{p.name}</p>
+                          <p className="text-xs" style={{ color: '#7D6F66' }}>{p.progress}% {t('completed')}</p>
+                        </div>
+                        <ArrowRight className="h-3.5 w-3.5 shrink-0" style={{ color: '#7D6F66' }} />
+                      </Link>
+                    </li>
+                  ))
+                )}
               </ul>
             </Card>
           </div>
@@ -378,7 +418,7 @@ export default function DashboardPage() {
               <h2 className="text-sm font-semibold" style={{ color: '#1F1F1F' }}>{t('due_date')}</h2>
             </div>
             {weekDeadlines.length === 0 ? (
-              <p className="px-4 py-6 text-center text-xs" style={{ color: '#7D6F66' }}>{t('no_projects')}</p>
+              <p className="px-4 py-6 text-center text-xs" style={{ color: '#7D6F66' }}>{noDeadlinesText}</p>
             ) : (
               <div>
                 {weekDeadlines.map(({ date, tasks: dlTasks }) => {
@@ -439,20 +479,24 @@ export default function DashboardPage() {
                 ))}
               </div>
             </div>
-            <ul>
-              {activityFeed.map((act) => (
-                <li key={act.id} className="px-4 py-3" style={{ borderBottom: '1px solid #E8D8CF' }}>
-                  <p className="text-xs" style={{ color: '#635648' }}>
-                    <span className="font-semibold" style={{ color: '#1F1F1F' }}>{act.user?.fullName}</span>{' '}
-                    {act.action}{' '}
-                    <span style={{ color: '#1F1F1F', fontWeight: 500 }}>{act.target}</span>
-                  </p>
-                  <p className="mt-0.5 text-[11px]" style={{ color: '#7D6F66' }}>
-                    {timeAgo(act.timestamp)} {t('previous')}
-                  </p>
-                </li>
-              ))}
-            </ul>
+            {activityFeed.length === 0 ? (
+              <p className="px-4 py-6 text-center text-xs" style={{ color: '#7D6F66' }}>{t('no_recent_activity')}</p>
+            ) : (
+              <ul>
+                {activityFeed.map((act) => (
+                  <li key={act.id} className="px-4 py-3" style={{ borderBottom: '1px solid #E8D8CF' }}>
+                    <p className="text-xs" style={{ color: '#635648' }}>
+                      <span className="font-semibold" style={{ color: '#1F1F1F' }}>{act.user?.fullName}</span>{' '}
+                      {act.action}{' '}
+                      <span style={{ color: '#1F1F1F', fontWeight: 500 }}>{act.target}</span>
+                    </p>
+                    <p className="mt-0.5 text-[11px]" style={{ color: '#7D6F66' }}>
+                      {timeAgo(act.timestamp)} {t('previous')}
+                    </p>
+                  </li>
+                ))}
+              </ul>
+            )}
           </Card>
         </div>
       </div>

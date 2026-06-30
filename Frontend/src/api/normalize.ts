@@ -158,6 +158,7 @@ function normalizeMeeting(raw: Record<string, unknown>): Meeting {
 
 function normalizeActivity(raw: Record<string, unknown>): Activity {
   const userDoc = (raw.userId ?? raw.user) as Record<string, unknown>;
+  const projectDoc = raw.projectId as Record<string, unknown> | string | null;
   return {
     id: normalizeId(raw),
     user: normalizeUser(userDoc ?? raw),
@@ -166,6 +167,9 @@ function normalizeActivity(raw: Record<string, unknown>): Activity {
     targetType: (raw.targetType as string | null) ?? null,
     targetId: (raw.targetId as string | null) ?? null,
     timestamp: (raw.timestamp as string) ?? new Date().toISOString(),
+    projectId: typeof projectDoc === 'object' && projectDoc !== null
+      ? normalizeId(projectDoc)
+      : (projectDoc as string | undefined),
   };
 }
 

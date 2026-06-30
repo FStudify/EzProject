@@ -164,7 +164,11 @@ exports.getUserStats = async (req, res, next) => {
       }
     });
     const onTimeRate =
-      completedTasks.length > 0 ? Math.round((onTimeCount / completedTasks.length) * 100) : 100;
+      completedTasks.length > 0 ? Math.round((onTimeCount / completedTasks.length) * 100) : 0;
+    const [activeProjects, assignedTasks] = await Promise.all([
+      Project.countDocuments({ 'members.userId': userId, status: { $ne: 'ARCHIVED' } }),
+      Task.countDocuments({ assigneeId: userId }),
+    ]);
 
     // Badges
     const badges = [];
@@ -217,7 +221,16 @@ exports.getUserStats = async (req, res, next) => {
       });
     }
 
-    res.json({ success: true, data: { onTimeRate, badges } });
+    res.json({
+      success: true,
+      data: {
+        onTimeRate,
+        badges,
+        activeProjects,
+        assignedTasks,
+        completedTasks: completedTasks.length,
+      },
+    });
   } catch (err) {
     next(err);
   }
@@ -234,8 +247,9 @@ exports.getUserActivities = async (req, res, next) => {
     const userObjId = new mongoose.Types.ObjectId(req.user.id);
 
     const activities = await Activity.find({ userId: userObjId })
-      .sort({ createdAt: -1 })
+      .sort({ timestamp: -1 })
       .limit(limit)
+      .populate('userId', 'id fullName email avatar')
       .populate('projectId', 'name')
       .lean();
 

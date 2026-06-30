@@ -1,7 +1,6 @@
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
-  GraduationCap,
   LayoutDashboard,
   FolderKanban,
   User,
@@ -71,23 +70,14 @@ export default function Sidebar() {
     >
       {/* Logo */}
       <div
-        className="flex h-14 shrink-0 items-center"
+        className="flex h-16 shrink-0 items-center"
         style={{ borderBottom: '1px solid rgba(186, 114, 75, 0.6)' }}
       >
-        <div className={`flex flex-1 items-center ${collapsed ? 'justify-center px-0' : 'gap-3 px-4'}`}>
-          <span
-            className="flex h-9 w-9 shrink-0 items-center justify-center rounded-xl text-white"
-            style={{
-              background: 'linear-gradient(145deg, #A75C3A, #8B4A2F)',
-              boxShadow: '0 14px 24px -18px rgba(31,12,3,0.7)',
-            }}
-          >
-            <GraduationCap className="h-5 w-5" aria-hidden />
-          </span>
-          {!collapsed && (
-            <span className="truncate text-[22px] font-extrabold tracking-tight" style={{ fontWeight: 700 }}>
-              EZProject
-            </span>
+        <div className={`flex flex-1 items-center ${collapsed ? 'justify-center px-0' : 'px-3'}`}>
+          {collapsed ? (
+            <img src="/logo-icon.svg" alt="EZProject" className="h-10 w-10 rounded-2xl" />
+          ) : (
+            <img src="/logo-ezproject.svg" alt="EZProject" className="h-12 w-full rounded-sm object-contain object-left" />
           )}
         </div>
       </div>
