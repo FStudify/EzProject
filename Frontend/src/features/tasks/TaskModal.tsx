@@ -38,6 +38,7 @@ interface TaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   onSave?: (task: Task) => void;
+  onAddComment?: (task: Task, content: string, mentions?: string[]) => Promise<Task>;
   onDelete?: (task: Task) => void;
   members?: Member[];
   projectMembers?: ProjectMember[];
@@ -49,6 +50,7 @@ interface TaskModalContentProps {
   isOpen: boolean;
   onClose: () => void;
   onSave?: (task: Task) => void;
+  onAddComment?: (task: Task, content: string, mentions?: string[]) => Promise<Task>;
   onDelete?: (task: Task) => void;
   members?: Member[];
   projectMembers?: ProjectMember[];
@@ -57,7 +59,7 @@ interface TaskModalContentProps {
 
 export default function TaskModal({ task, ...props }: TaskModalProps) {
   if (!task) return null;
-  return <TaskModalContent key={task.id} task={task} {...props} />;
+  return <TaskModalContent key={`${task.id}-${task.updatedAt ?? ''}`} task={task} {...props} />;
 }
 
 function TaskModalContent({
@@ -65,6 +67,7 @@ function TaskModalContent({
   isOpen,
   onClose,
   onSave,
+  onAddComment,
   onDelete,
   members = [],
   projectMembers = [],
@@ -81,6 +84,7 @@ function TaskModalContent({
   const [requestNote, setRequestNote] = useState(task.requestNote ?? '');
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<TaskComment[]>(task.comments ?? []);
+  const [isAddingComment, setIsAddingComment] = useState(false);
   const [activeTab, setActiveTab] = useState<'details' | 'focus'>('details');
 
   const assigneeOptions = useMemo<ModalSelectOption[]>(
@@ -88,6 +92,10 @@ function TaskModalContent({
     [members],
   );
   const commenter = currentUser ?? members[0] ?? task.assignee;
+
+  useEffect(() => {
+    setComments(task.comments ?? []);
+  }, [task.comments]);
 
   const handleSave = () => {
     const assignee = members.find((member) => member.id === assigneeId) ?? task.assignee;
@@ -112,19 +120,35 @@ function TaskModalContent({
     onClose();
   };
 
-  const handleAddComment = () => {
-    if (!newComment.trim()) return;
+  const handleAddComment = async () => {
+    const content = newComment.trim();
+    if (!content || isAddingComment) return;
 
     const comment: TaskComment = {
       id: `comment-${Date.now()}`,
-      content: newComment.trim(),
+      content,
       author: commenter,
       createdAt: new Date().toISOString(),
     };
 
+    const previousComments = comments;
     setComments((prev) => [...prev, comment]);
     setNewComment('');
-    onSave?.({ ...task, comments: [...comments, comment] });
+    setIsAddingComment(true);
+
+    try {
+      if (onAddComment) {
+        const freshTask = await onAddComment(task, content);
+        setComments(freshTask.comments ?? []);
+      } else {
+        onSave?.({ ...task, comments: [...comments, comment] });
+      }
+    } catch {
+      setComments(previousComments);
+      setNewComment(content);
+    } finally {
+      setIsAddingComment(false);
+    }
   };
 
   const handleQuickUpdate = (text: string) => {
@@ -329,11 +353,11 @@ function TaskModalContent({
                         variant="primary"
                         size="sm"
                         onClick={handleAddComment}
-                        disabled={!newComment.trim()}
+                        disabled={!newComment.trim() || isAddingComment}
                         className="!rounded-xl !bg-primary hover:!bg-primary-dark"
                       >
                         <Send className="mr-1.5 h-3.5 w-3.5" />
-                        Gửi
+                        {isAddingComment ? 'Đang gửi...' : 'Gửi'}
                       </Button>
                     </div>
                   </div>

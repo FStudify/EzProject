@@ -15,6 +15,13 @@ router.post(
   validate(validators.createTask),
   taskController.create,
 );
+router.post('/:taskId/approve', requireAuth, taskController.approveTask);
+router.post(
+  '/:taskId/reject',
+  requireAuth,
+  validate(validators.rejectTask),
+  taskController.rejectTask,
+);
 router.put(
   '/:taskId',
   requireAuth,

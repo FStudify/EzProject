@@ -58,6 +58,9 @@ export interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   assignee: Member | null;
   creator?: Member;
+  reviewer?: Member | null;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
   deadline: string | null;
   requestType: string | null;
   requestNote: string | null;

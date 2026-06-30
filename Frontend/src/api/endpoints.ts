@@ -38,6 +38,10 @@ export const Endpoints = {
     `${BASE}/projects/${projectId}/tasks/${taskId}`,
   TASK_COMMENTS: (projectId: string, taskId: string) =>
     `${BASE}/projects/${projectId}/tasks/${taskId}/comments`,
+  TASK_APPROVE: (projectId: string, taskId: string) =>
+    `${BASE}/projects/${projectId}/tasks/${taskId}/approve`,
+  TASK_REJECT: (projectId: string, taskId: string) =>
+    `${BASE}/projects/${projectId}/tasks/${taskId}/reject`,
 
   // ── Documents ───────────────────────────────────────────
   DOCUMENT_LIST: (projectId: string) => `${BASE}/projects/${projectId}/documents`,
@@ -64,6 +68,7 @@ export const Endpoints = {
   // ── AI Chat ────────────────────────────────────────────────
   AI_CHAT: `${BASE}/ai/chat`,
   AI_GENERATE_PROJECT: `${BASE}/ai/generate-project`,
+  AI_GENERATE_TASK: `${BASE}/ai/generate-task`,
 
   // ── Members ─────────────────────────────────────────────
   MEMBER_LIST: (projectId: string) => `${BASE}/projects/${projectId}/members`,

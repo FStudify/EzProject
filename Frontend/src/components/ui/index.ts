@@ -11,3 +11,4 @@ export { default as Modal } from './Modal';
 export { default as RoleIcons } from './RoleIcons';
 export { default as MemberAvatar } from './MemberAvatar';
 export { default as ProjectMemberAvatar } from './ProjectMemberAvatar';
+export { default as QuickActionButton } from './QuickActionButton';

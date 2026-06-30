@@ -5,7 +5,7 @@
  */
 import { api } from './config';
 import { Endpoints } from './endpoints';
-import { normalizeTaskList } from './normalize';
+import { normalizeTaskComment, normalizeTaskList } from './normalize';
 import type { Task } from '@/types';
 
 interface TaskFilters {
@@ -64,6 +64,7 @@ export async function updateTask(
     status: Task['status'];
     priority: Task['priority'];
     assigneeId: string;
+    reviewerId: string;
     deadline: string;
   }>,
 ): Promise<Task> {
@@ -82,8 +83,21 @@ export async function addTaskComment(
   taskId: string,
   data: { content: string; mentions?: string[] },
 ): Promise<Task['comments'][number]> {
-  return api.put<Task['comments'][number]>(
+  const raw = await api.put<unknown>(
     Endpoints.TASK_COMMENTS(projectId, taskId),
     data,
   );
+  return normalizeTaskComment(raw as Record<string, unknown>);
+}
+
+/** Phe duyet task dang o trang thai review */
+export async function approveTask(projectId: string, taskId: string): Promise<Task> {
+  const raw = await api.post<unknown>(Endpoints.TASK_APPROVE(projectId, taskId));
+  return normalizeTaskList([raw])[0];
+}
+
+/** Tu choi task dang o trang thai review */
+export async function rejectTask(projectId: string, taskId: string, reason: string): Promise<Task> {
+  const raw = await api.post<unknown>(Endpoints.TASK_REJECT(projectId, taskId), { reason });
+  return normalizeTaskList([raw])[0];
 }

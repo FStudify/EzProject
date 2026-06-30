@@ -191,6 +191,7 @@ type StatusFilter = 'all' | ProjectStatus;
 
 type CreateTab = 'manual' | 'ai';
 type AIPreviewTask = GeneratedTask & { _id: string };
+const EMPTY_CREATE_FORM = { name: '', subject: '', description: '', deadline: '' };
 
 export default function ProjectListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -202,7 +203,7 @@ export default function ProjectListPage() {
   const [search, setSearch] = useState('');
   const [sortBy, setSortBy] = useState<'newest' | 'deadline' | 'progress'>('newest');
 
-  const [createForm, setCreateForm] = useState({ name: '', subject: '', description: '', deadline: '' });
+  const [createForm, setCreateForm] = useState(EMPTY_CREATE_FORM);
   const [editForm, setEditForm] = useState({ name: '', subject: '', description: '', deadline: '' });
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [activeCreateTab, setActiveCreateTab] = useState<CreateTab>('manual');
@@ -222,12 +223,39 @@ export default function ProjectListPage() {
 
   const [projects, setProjects] = useState<Project[]>([]);
 
-  const resetAiCreateState = () => {
-    setActiveCreateTab('manual');
+  const resetManualCreateState = () => {
+    setSelectedTemplate(null);
+    setCreateForm(EMPTY_CREATE_FORM);
+  };
+
+  const resetAiCreateOnlyState = () => {
     setAiIdea('');
     setAiIdeaError(null);
     setIsGenerating(false);
     setAiPreview(null);
+  };
+
+  const resetCreateModalState = () => {
+    setActiveCreateTab('manual');
+    resetManualCreateState();
+    resetAiCreateOnlyState();
+  };
+
+  const handleCreateTabChange = (nextTab: CreateTab) => {
+    if (nextTab === activeCreateTab) return;
+    if (nextTab === 'manual') {
+      resetAiCreateOnlyState();
+      resetManualCreateState();
+    } else {
+      resetManualCreateState();
+      resetAiCreateOnlyState();
+    }
+    setActiveCreateTab(nextTab);
+  };
+
+  const closeCreateProject = () => {
+    setShowCreateModal(false);
+    resetCreateModalState();
   };
 
   const toDateInputValue = (value?: string) => {
@@ -287,9 +315,7 @@ export default function ProjectListPage() {
   };
 
   const openCreateProject = () => {
-    setSelectedTemplate(null);
-    setCreateForm({ name: '', subject: '', description: '', deadline: '' });
-    resetAiCreateState();
+    resetCreateModalState();
     setShowCreateModal(true);
   };
 
@@ -338,9 +364,7 @@ export default function ProjectListPage() {
       }
 
       toast('Tạo dự án thành công!', 'success');
-      setShowCreateModal(false);
-      setSelectedTemplate(null);
-      setCreateForm({ name: '', subject: '', description: '', deadline: '' });
+      closeCreateProject();
       await reloadProjects();
     } catch (err: any) {
       toast(err?.message || 'Có lỗi xảy ra khi tạo dự án', 'error');
@@ -413,8 +437,7 @@ export default function ProjectListPage() {
       );
       const failedCount = results.filter((result) => result.status === 'rejected').length;
 
-      setShowCreateModal(false);
-      resetAiCreateState();
+      closeCreateProject();
       await reloadProjects();
       navigate(`/app/projects/${newProject.id}`);
 
@@ -733,6 +756,8 @@ export default function ProjectListPage() {
                 size="lg"
                 onClick={() => {
                   setShowTemplateModal(false);
+                  setActiveCreateTab('manual');
+                  resetAiCreateOnlyState();
                   setCreateForm({ name: selectedTemplate.name, subject: selectedTemplate.category, description: selectedTemplate.description, deadline: '' });
                   setShowCreateModal(true);
                 }}
@@ -782,8 +807,7 @@ export default function ProjectListPage() {
                 type="button"
                 onClick={() => {
                   setShowTemplateModal(false);
-                  setSelectedTemplate(null);
-                  setCreateForm({ name: '', subject: '', description: '', deadline: '' });
+                  resetCreateModalState();
                   setShowCreateModal(true);
                 }}
                 className="group relative flex flex-col justify-center items-center gap-5 rounded-[2rem] border-2 border-dashed border-slate-300 bg-white/50 p-8 text-center transition-all duration-300 hover:border-primary/50 hover:bg-white hover:shadow-2xl hover:-translate-y-2"
@@ -840,10 +864,7 @@ export default function ProjectListPage() {
       {/* ===== Create Project Modal ===== */}
       <Modal
         isOpen={showCreateModal}
-        onClose={() => {
-          setShowCreateModal(false);
-          resetAiCreateState();
-        }}
+        onClose={closeCreateProject}
         title="Khởi tạo dự án"
         size="lg"
         panelClassName="!max-w-[800px] !rounded-[2.5rem] !p-8 border-0 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.3)] overflow-hidden"
@@ -852,7 +873,7 @@ export default function ProjectListPage() {
         <div className="mb-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
           <button
             type="button"
-            onClick={() => setActiveCreateTab('manual')}
+            onClick={() => handleCreateTabChange('manual')}
             className={`rounded-xl px-4 py-2.5 text-sm font-black transition-all ${
               activeCreateTab === 'manual'
                 ? 'bg-white text-slate-900 shadow-sm'
@@ -863,7 +884,7 @@ export default function ProjectListPage() {
           </button>
           <button
             type="button"
-            onClick={() => setActiveCreateTab('ai')}
+            onClick={() => handleCreateTabChange('ai')}
             className={`inline-flex items-center justify-center gap-2 rounded-xl px-4 py-2.5 text-sm font-black transition-all ${
               activeCreateTab === 'ai'
                 ? 'bg-white text-slate-900 shadow-sm'
@@ -971,7 +992,7 @@ export default function ProjectListPage() {
             </div>
 
             <div className="pt-8 mt-auto flex justify-end gap-3 border-t border-slate-100/80">
-              <Button type="button" variant="secondary" size="lg" onClick={() => setShowCreateModal(false)} className="rounded-2xl font-bold px-8 hover:bg-slate-100 transition-colors">
+              <Button type="button" variant="secondary" size="lg" onClick={closeCreateProject} className="rounded-2xl font-bold px-8 hover:bg-slate-100 transition-colors">
                 Hủy bỏ
               </Button>
               <Button type="submit" variant="primary" size="lg" disabled={isSubmitting || !createForm.name.trim()} className="rounded-2xl font-black px-10 shadow-xl shadow-primary/20 hover:-translate-y-1 hover:shadow-primary/30 transition-all">
@@ -1103,10 +1124,7 @@ export default function ProjectListPage() {
                     type="button"
                     variant="secondary"
                     size="lg"
-                    onClick={() => {
-                      setShowCreateModal(false);
-                      resetAiCreateState();
-                    }}
+                    onClick={closeCreateProject}
                     className="rounded-2xl font-bold px-8"
                   >
                     Hủy bỏ

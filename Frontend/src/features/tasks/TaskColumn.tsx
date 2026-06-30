@@ -17,6 +17,11 @@ interface TaskColumnProps {
   status: TaskStatus;
   onTaskClick?: (task: Task) => void;
   onDrop?: (taskId: string, newStatus: TaskStatus) => void;
+  onQuickAction?: (taskId: string, newStatus: TaskStatus) => Promise<void> | void;
+  onApprove?: (task: Task) => Promise<void> | void;
+  onReject?: (task: Task) => void;
+  currentUserId?: string;
+  pendingTaskIds?: Set<string>;
 }
 
 export default function TaskColumn({
@@ -25,6 +30,11 @@ export default function TaskColumn({
   status,
   onTaskClick,
   onDrop,
+  onQuickAction,
+  onApprove,
+  onReject,
+  currentUserId,
+  pendingTaskIds = new Set<string>(),
 }: TaskColumnProps) {
   const [isDragOver, setIsDragOver] = useState(false);
 
@@ -86,6 +96,11 @@ export default function TaskColumn({
             key={task.id}
             task={task}
             onClick={() => onTaskClick?.(task)}
+            onQuickAction={onQuickAction}
+            onApprove={onApprove}
+            onReject={onReject}
+            currentUserId={currentUserId}
+            actionLoading={pendingTaskIds.has(task.id)}
           />
         ))}
         {tasks.length === 0 && !isDragOver && (

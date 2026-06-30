@@ -80,7 +80,7 @@ function normalizeProject(raw: Record<string, unknown>): Project {
   };
 }
 
-function normalizeTaskComment(c: Record<string, unknown>): TaskComment {
+export function normalizeTaskComment(c: Record<string, unknown>): TaskComment {
   const authorDoc = (c.author ?? c.authorId) as Record<string, unknown>;
   const author = normalizeUser(authorDoc ?? c);
   return {
@@ -95,6 +95,7 @@ function normalizeTaskComment(c: Record<string, unknown>): TaskComment {
 function normalizeTask(raw: Record<string, unknown>): Task {
   const assigneeDoc = (raw.assignee ?? raw.assigneeId) as Record<string, unknown> | null;
   const creatorDoc = (raw.creator ?? raw.creatorId) as Record<string, unknown>;
+  const reviewerDoc = (raw.reviewer ?? raw.reviewerId) as Record<string, unknown> | null;
   const commentsArr = (raw.comments ?? []) as Record<string, unknown>[];
   const statusStr = ((raw.status as string) ?? 'BACKLOG').toUpperCase().replace('-', '_');
   const priorityStr = ((raw.priority as string) ?? 'LOW').toUpperCase();
@@ -107,6 +108,9 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     priority: priorityStr as Task['priority'],
     assignee: assigneeDoc ? normalizeUser(assigneeDoc) : null,
     creator: normalizeUser(creatorDoc ?? raw),
+    reviewer: reviewerDoc ? normalizeUser(reviewerDoc) : null,
+    rejectionReason: (raw.rejectionReason as string | null) ?? null,
+    reviewedAt: (raw.reviewedAt as string | null) ?? null,
     deadline: (raw.deadline as string | null) ?? null,
     requestType: null,
     requestNote: null,

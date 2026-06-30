@@ -100,6 +100,9 @@ export interface Task {
   priority: TaskPriority;
   assignee: Pick<User, 'id' | 'fullName' | 'avatar'> | null;
   creator?: Pick<User, 'id' | 'fullName' | 'avatar'>;
+  reviewer?: Pick<User, 'id' | 'fullName' | 'avatar'> | null;
+  rejectionReason?: string | null;
+  reviewedAt?: string | null;
   deadline: string | null;
   requestType?: RequestType | null;
   requestNote?: string | null;

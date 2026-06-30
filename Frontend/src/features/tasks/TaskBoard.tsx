@@ -1,8 +1,17 @@
-import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
+﻿import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useParams } from 'react-router-dom';
 import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock } from 'lucide-react';
 import { projectService } from '@/services';
-import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
+import {
+  addTaskComment,
+  approveTask as apiApproveTask,
+  getTask,
+  getTasks,
+  rejectTask as apiRejectTask,
+  createTask as apiCreateTask,
+  updateTask as apiUpdateTask,
+  deleteTask as apiDeleteTask,
+} from '@/api/task.api';
 import type { Task, TaskStatus } from '@/types';
 import { Button, EmptyState, useToast, Skeleton } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
@@ -12,15 +21,12 @@ import TaskTimeline from './TaskTimeline';
 import TaskModal from './TaskModal';
 import AddTaskModal from './AddTaskModal';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
+import ReviewModal from '@/components/modals/ReviewModal';
+import RejectReasonModal from '@/components/modals/RejectReasonModal';
+import { STATUS_COLUMNS, groupTasksByColumn } from '@/utils/taskGrouping';
 
 type ViewMode = 'kanban' | 'timeline' | 'reminders';
-
-const COLUMNS: { status: TaskStatus; titleKey: 'status_backlog' | 'status_in_progress' | 'status_review' | 'status_done' }[] = [
-  { status: 'BACKLOG', titleKey: 'status_backlog' },
-  { status: 'IN_PROGRESS', titleKey: 'status_in_progress' },
-  { status: 'REVIEW', titleKey: 'status_review' },
-  { status: 'DONE', titleKey: 'status_done' },
-];
 
 interface Filters {
   assigneeId: string;
@@ -43,6 +49,7 @@ const emptyFilters: Filters = {
 export default function TaskBoard() {
   const { t } = useLanguage();
   const { toast } = useToast();
+  const { user } = useAuth();
   const { projectId } = useParams<{ projectId: string }>();
 
   const [tasks, setTasks] = useState<Task[]>([]);
@@ -51,6 +58,9 @@ export default function TaskBoard() {
   const [selectedTask, setSelectedTask] = useState<Task | null>(null);
   const [isDetailOpen, setIsDetailOpen] = useState(false);
   const [isAddOpen, setIsAddOpen] = useState(false);
+  const [reviewTask, setReviewTask] = useState<Task | null>(null);
+  const [rejectTask, setRejectTask] = useState<Task | null>(null);
+  const [pendingTaskIds, setPendingTaskIds] = useState<Set<string>>(() => new Set());
   const [showFilters, setShowFilters] = useState(false);
   const [filters, setFilters] = useState<Filters>(emptyFilters);
   const [viewMode, setViewMode] = useState<ViewMode>('kanban');
@@ -58,6 +68,16 @@ export default function TaskBoard() {
   const filterRef = useRef<HTMLDivElement>(null);
 
   const members = project?.members.map((pm) => pm.member) ?? [];
+  const currentMember = useMemo(() => {
+    if (!user) return undefined;
+    return members.find((member) => member.id === user.id) ?? {
+      id: user.id,
+      name: user.fullName,
+      fullName: user.fullName,
+      email: user.email ?? '',
+      avatar: user.avatar ?? null,
+    };
+  }, [members, user]);
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== '');
 
@@ -99,17 +119,7 @@ export default function TaskBoard() {
     }
     return result;
   }, [tasks, filters]);
-
-  const getTasksByStatus = (status: TaskStatus) =>
-    filteredTasks.filter((t) => {
-      if (status === 'DONE') {
-        return t.status === 'DONE' || t.status === 'CANCELLED';
-      }
-      if (status === 'BACKLOG') {
-        return t.status === 'BACKLOG' || t.status === 'ON_HOLD';
-      }
-      return t.status === status;
-    });
+  const groupedTasks = useMemo(() => groupTasksByColumn(filteredTasks), [filteredTasks]);
 
   // Reminders: overdue + due in 3 days
   const startOfToday = new Date();
@@ -142,10 +152,10 @@ export default function TaskBoard() {
         deadline: task.deadline ?? undefined,
       });
       setTasks((prev) => [...prev, created]);
-      toast(t('task_created') || 'Đã tạo công việc thành công', 'success');
+      toast(t('task_created') || 'ÄÃ£ táº¡o cÃ´ng viá»‡c thÃ nh cÃ´ng', 'success');
     } catch (err) {
       console.error('Failed to create task:', err);
-      toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
+      toast(t('error') || 'CÃ³ lá»—i xáº£y ra. Vui lÃ²ng thá»­ láº¡i', 'error');
     }
   }, [projectId, t, toast]);
 
@@ -163,17 +173,120 @@ export default function TaskBoard() {
     }
   }, [projectId, t, toast]);
 
+  const markTaskPending = useCallback((taskId: string, pending: boolean) => {
+    setPendingTaskIds((prev) => {
+      const next = new Set(prev);
+      if (pending) next.add(taskId);
+      else next.delete(taskId);
+      return next;
+    });
+  }, []);
+
+  const replaceTask = useCallback((updated: Task) => {
+    setTasks((prev) => prev.map((task) => (task.id === updated.id ? updated : task)));
+    setSelectedTask((prev) => (prev?.id === updated.id ? updated : prev));
+  }, []);
+
   const handleStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus) => {
     if (!projectId) return;
+    const originalTask = tasks.find((task) => task.id === taskId);
+    if (!originalTask) return;
+    if (newStatus === 'REVIEW') {
+      setReviewTask(originalTask);
+      return;
+    }
+
+    markTaskPending(taskId, true);
+    setTasks((prev) => prev.map((task) => (task.id === taskId ? { ...task, status: newStatus } : task)));
     try {
       const updated = await apiUpdateTask(projectId, taskId, { status: newStatus });
-      setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
+      replaceTask(updated);
       toast(t('task_updated') || 'Đã cập nhật công việc thành công', 'success');
     } catch (err) {
       console.error('Failed to update task status:', err);
+      setTasks((prev) => prev.map((task) => (task.id === taskId ? originalTask : task)));
+      setSelectedTask((prev) => (prev?.id === taskId ? originalTask : prev));
       toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
+    } finally {
+      markTaskPending(taskId, false);
     }
-  }, [projectId, t, toast]);
+  }, [markTaskPending, projectId, replaceTask, t, tasks, toast]);
+
+  const confirmReviewAssignment = useCallback(async (reviewerId: string) => {
+    if (!projectId || !reviewTask) return;
+    const originalTask = reviewTask;
+    const reviewer = members.find((member) => member.id === reviewerId) ?? null;
+
+    markTaskPending(reviewTask.id, true);
+    setTasks((prev) =>
+      prev.map((task) =>
+        task.id === reviewTask.id ? { ...task, status: 'REVIEW', reviewer } : task,
+      ),
+    );
+
+    try {
+      const updated = await apiUpdateTask(projectId, reviewTask.id, {
+        status: 'REVIEW',
+        reviewerId,
+      });
+      replaceTask(updated);
+      setReviewTask(null);
+      toast('Đã gửi công việc để đánh giá.', 'success');
+    } catch (err) {
+      console.error('Failed to assign reviewer:', err);
+      setTasks((prev) => prev.map((task) => (task.id === reviewTask.id ? originalTask : task)));
+      toast(t('error') || 'Không thể gửi đánh giá', 'error');
+      throw err;
+    } finally {
+      markTaskPending(reviewTask.id, false);
+    }
+  }, [markTaskPending, members, projectId, replaceTask, reviewTask, t, toast]);
+
+  const handleApproveTask = useCallback(async (task: Task) => {
+    if (!projectId) return;
+    const originalTask = task;
+    markTaskPending(task.id, true);
+    setTasks((prev) => prev.map((item) => (item.id === task.id ? { ...item, status: 'DONE' } : item)));
+
+    try {
+      const updated = await apiApproveTask(projectId, task.id);
+      replaceTask(updated);
+      toast('Đã phê duyệt công việc.', 'success');
+    } catch (err) {
+      console.error('Failed to approve task:', err);
+      setTasks((prev) => prev.map((item) => (item.id === task.id ? originalTask : item)));
+      toast(t('error') || 'Không thể phê duyệt công việc', 'error');
+    } finally {
+      markTaskPending(task.id, false);
+    }
+  }, [markTaskPending, projectId, replaceTask, t, toast]);
+
+  const confirmRejectTask = useCallback(async (reason: string) => {
+    if (!projectId || !rejectTask) return;
+    const originalTask = rejectTask;
+    markTaskPending(rejectTask.id, true);
+    setTasks((prev) =>
+      prev.map((item) =>
+        item.id === rejectTask.id
+          ? { ...item, status: 'IN_PROGRESS', rejectionReason: reason }
+          : item,
+      ),
+    );
+
+    try {
+      const updated = await apiRejectTask(projectId, rejectTask.id, reason);
+      replaceTask(updated);
+      setRejectTask(null);
+      toast('Đã từ chối và trả công việc về Đang làm.', 'success');
+    } catch (err) {
+      console.error('Failed to reject task:', err);
+      setTasks((prev) => prev.map((item) => (item.id === rejectTask.id ? originalTask : item)));
+      toast(t('error') || 'Không thể từ chối công việc', 'error');
+      throw err;
+    } finally {
+      markTaskPending(rejectTask.id, false);
+    }
+  }, [markTaskPending, projectId, rejectTask, replaceTask, t, toast]);
 
   const handleSaveTask = useCallback(async (updated: Task) => {
     if (!projectId) return;
@@ -188,10 +301,44 @@ export default function TaskBoard() {
       });
       setTasks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
       setSelectedTask(saved);
-      toast(t('task_updated') || 'Đã cập nhật công việc thành công', 'success');
+      toast(t('task_updated') || 'ÄÃ£ cáº­p nháº­t cÃ´ng viá»‡c thÃ nh cÃ´ng', 'success');
     } catch (err) {
       console.error('Failed to save task:', err);
-      toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
+      toast(t('error') || 'CÃ³ lá»—i xáº£y ra. Vui lÃ²ng thá»­ láº¡i', 'error');
+    }
+  }, [markTaskPending, projectId, replaceTask, t, tasks, toast]);
+
+  const openTaskDetail = useCallback(async (task: Task) => {
+    if (!projectId) {
+      setSelectedTask(task);
+      setIsDetailOpen(true);
+      return;
+    }
+
+    setSelectedTask(task);
+    setIsDetailOpen(true);
+    try {
+      const freshTask = await getTask(projectId, task.id);
+      setTasks((prev) => prev.map((item) => (item.id === freshTask.id ? freshTask : item)));
+      setSelectedTask(freshTask);
+    } catch (err) {
+      console.error('Failed to load task detail:', err);
+      toast(t('error') || 'KhÃ´ng thá»ƒ táº£i chi tiáº¿t cÃ´ng viá»‡c má»›i nháº¥t', 'error');
+    }
+  }, [projectId, t, toast]);
+
+  const handleAddTaskComment = useCallback(async (task: Task, content: string, mentions?: string[]) => {
+    if (!projectId) return task;
+    try {
+      await addTaskComment(projectId, task.id, { content, mentions });
+      const freshTask = await getTask(projectId, task.id);
+      setTasks((prev) => prev.map((item) => (item.id === freshTask.id ? freshTask : item)));
+      setSelectedTask(freshTask);
+      return freshTask;
+    } catch (err) {
+      console.error('Failed to add task comment:', err);
+      toast(t('error') || 'KhÃ´ng thá»ƒ gá»­i cáº­p nháº­t. Vui lÃ²ng thá»­ láº¡i', 'error');
+      throw err;
     }
   }, [projectId, t, toast]);
 
@@ -414,9 +561,9 @@ export default function TaskBoard() {
         {!isLoading && tasks.length === 0 ? (
           <div className="flex flex-1 items-center justify-center bg-surface rounded-xl border border-border p-8">
             <EmptyState
-              title={t('no_tasks_title') || 'Chưa có công việc nào'}
-              description={t('no_tasks_description') || 'Tạo công việc đầu tiên để bắt đầu quản lý dự án!'}
-              actionLabel={t('add_task') || 'Thêm công việc'}
+              title={t('no_tasks_title') || 'ChÆ°a cÃ³ cÃ´ng viá»‡c nÃ o'}
+              description={t('no_tasks_description') || 'Táº¡o cÃ´ng viá»‡c Ä‘áº§u tiÃªn Ä‘á»ƒ báº¯t Ä‘áº§u quáº£n lÃ½ dá»± Ã¡n!'}
+              actionLabel={t('add_task') || 'ThÃªm cÃ´ng viá»‡c'}
               onAction={() => setIsAddOpen(true)}
             />
           </div>
@@ -446,7 +593,7 @@ export default function TaskBoard() {
                             <tr
                               key={task.id}
                               className="border-b border-slate-100 last:border-0 hover:bg-rose-50/50 cursor-pointer"
-                              onClick={() => { setSelectedTask(task); setIsDetailOpen(true); }}
+                              onClick={() => { void openTaskDetail(task); }}
                             >
                               <td className="py-2.5 pr-3 font-medium text-slate-900">{task.title}</td>
                               <td className="py-2.5 pr-3">
@@ -491,7 +638,7 @@ export default function TaskBoard() {
                             <tr
                               key={task.id}
                               className="border-b border-slate-100 last:border-0 hover:bg-amber-50/50 cursor-pointer"
-                              onClick={() => { setSelectedTask(task); setIsDetailOpen(true); }}
+                              onClick={() => { void openTaskDetail(task); }}
                             >
                               <td className="py-2.5 pr-3 font-medium text-slate-900">{task.title}</td>
                               <td className="py-2.5 pr-3">
@@ -520,17 +667,19 @@ export default function TaskBoard() {
             {!isLoading && viewMode === 'kanban' && (
               <div className="kanban-scroll ez-task-scrollbar flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
                 <div className="grid w-full min-w-[1020px] grid-cols-4 gap-2.5">
-                  {COLUMNS.map(({ status, titleKey }) => (
+                  {STATUS_COLUMNS.map((column) => (
                     <TaskColumn
-                      key={status}
-                      status={status}
-                      title={t(titleKey)}
-                      tasks={getTasksByStatus(status)}
-                      onTaskClick={(task) => {
-                        setSelectedTask(task);
-                        setIsDetailOpen(true);
-                      }}
+                      key={column.id}
+                      status={column.targetStatus}
+                      title={column.title}
+                      tasks={groupedTasks[column.id]}
+                      onTaskClick={(task) => { void openTaskDetail(task); }}
                       onDrop={handleStatusChange}
+                      onQuickAction={handleStatusChange}
+                      onApprove={handleApproveTask}
+                      onReject={setRejectTask}
+                      currentUserId={user?.id}
+                      pendingTaskIds={pendingTaskIds}
                     />
                   ))}
                 </div>
@@ -544,10 +693,7 @@ export default function TaskBoard() {
                     tasks={filteredTasks}
                     projectStart={project.createdAt ?? ''}
                     projectDeadline={project.deadline ?? ''}
-                    onTaskClick={(task) => {
-                      setSelectedTask(task);
-                      setIsDetailOpen(true);
-                    }}
+                    onTaskClick={(task) => { void openTaskDetail(task); }}
                   />
                 )}
               </div>
@@ -565,10 +711,25 @@ export default function TaskBoard() {
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setSelectedTask(null); }}
         onSave={handleSaveTask}
+        onAddComment={handleAddTaskComment}
         onDelete={handleDeleteTask}
         members={members}
         projectMembers={project?.members ?? []}
-        currentUser={members[0]}
+        currentUser={currentMember}
+      />
+      <ReviewModal
+        isOpen={!!reviewTask}
+        task={reviewTask}
+        projectMembers={project?.members ?? []}
+        currentUserId={user?.id}
+        onConfirm={confirmReviewAssignment}
+        onCancel={() => setReviewTask(null)}
+      />
+      <RejectReasonModal
+        isOpen={!!rejectTask}
+        task={rejectTask}
+        onConfirm={confirmRejectTask}
+        onCancel={() => setRejectTask(null)}
       />
       {projectId && (
         <AddTaskModal

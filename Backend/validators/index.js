@@ -76,6 +76,16 @@ const validators = {
       .max(2000, 'Mo ta qua dai'),
   }),
 
+  generateTask: z.object({
+    idea: z
+      .string()
+      .trim()
+      .min(10, 'Mo ta cong viec phai co it nhat 10 ky tu')
+      .max(1000, 'Mo ta cong viec qua dai'),
+    projectName: z.string().trim().max(200).optional(),
+    projectSubject: z.string().trim().max(200).optional(),
+  }),
+
   // ── Tasks ──────────────────────────────────────────────
   createTask: z.object({
     title: z.string().min(1, 'Task title is required'),
@@ -91,7 +101,12 @@ const validators = {
     status: z.enum(['BACKLOG', 'IN_PROGRESS', 'REVIEW', 'DONE', 'ON_HOLD', 'CANCELLED']).optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
     assigneeId: z.string().optional(),
+    reviewerId: z.string().optional(),
     deadline: z.string().optional(),
+  }),
+
+  rejectTask: z.object({
+    reason: z.string().trim().min(10, 'Rejection reason must be at least 10 characters').max(500, 'Rejection reason must be at most 500 characters'),
   }),
 
   addComment: z.object({

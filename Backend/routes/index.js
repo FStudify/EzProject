@@ -40,6 +40,13 @@ router.post(
   validate(validators.generateProject),
   aiController.generateProjectFromIdea,
 );
+router.post(
+  '/ai/generate-task',
+  requireAuth,
+  generateProjectLimiter,
+  validate(validators.generateTask),
+  aiController.generateTaskFromIdea,
+);
 
 // ── Admin (Gap 1) ──────────────────────────────────────
 router.use('/admin', adminRouter);

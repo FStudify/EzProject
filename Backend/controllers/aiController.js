@@ -32,8 +32,57 @@ function parseTaskDeadlineDays(value) {
   return Math.max(1, Math.round(num));
 }
 
+function detectPromptLanguage(idea) {
+  const text = String(idea || '').toLowerCase();
+  if (/[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(text)) {
+    return { code: 'vi', name: 'Vietnamese' };
+  }
+  if (/\b(du an|du-an|cong viec|nhiem vu|quan ly|ung dung|phan mem|thiet ke|xay dung|nghien cuu|bao cao|mon hoc)\b/i.test(text)) {
+    return { code: 'vi', name: 'Vietnamese' };
+  }
+  return { code: 'same', name: 'the same language as the project idea' };
+}
+
+function hasVietnameseSignals(text) {
+  const value = String(text || '').toLowerCase();
+  return (
+    /[àáạảãâầấậẩẫăằắặẳẵèéẹẻẽêềếệểễìíịỉĩòóọỏõôồốộổỗơờớợởỡùúụủũưừứựửữỳýỵỷỹđ]/i.test(value) ||
+    /\b(du an|cong viec|nhiem vu|quan ly|ung dung|phan mem|thiet ke|xay dung|kiem thu|bao cao|nghien cuu|phan tich|chuan bi|trien khai)\b/i.test(value)
+  );
+}
+
+function hasStrongEnglishTaskMarkers(text) {
+  return /\b(implementation|implement|design|setup|create|build|develop|testing|test|deploy|deployment|research|analysis|feature|system|database|interface|management|documentation|integration|requirement|planning)\b/i.test(String(text || ''));
+}
+
+function validateLanguageConsistency(project, idea) {
+  const language = detectPromptLanguage(idea);
+  if (language.code !== 'vi') return;
+
+  const inconsistentTasks = project.tasks.filter((task) => {
+    const combined = `${task.title} ${task.description}`;
+    return hasStrongEnglishTaskMarkers(combined) && !hasVietnameseSignals(combined);
+  });
+
+  if (inconsistentTasks.length > 0) {
+    console.warn(
+      '[AI] Language validation failed:',
+      inconsistentTasks.map((task) => task.title).slice(0, 5),
+    );
+    throw new Error('Generated tasks do not match Vietnamese input language');
+  }
+}
+
 function buildGenerateProjectPrompt(idea) {
+  const language = detectPromptLanguage(idea);
   return `You are a professional project manager. Analyze this project idea and return a complete project preview.
+
+IMPORTANT LANGUAGE RULE:
+- The input language is: ${language.name} (${language.code}).
+- Every human-readable JSON string MUST use ${language.name}.
+- Task titles and task descriptions MUST NOT switch to English or another language.
+- If the idea is Vietnamese, write natural Vietnamese with Vietnamese accents for every project field and every task.
+- Keep proper nouns, acronyms, product names, and technical abbreviations only when they are part of the user's idea.
 
 Project idea: "${idea}"
 
@@ -59,7 +108,43 @@ Requirements:
 - priority must be one of LOW, MEDIUM, HIGH.
 - status must always be BACKLOG.
 - suggestedDeadlineDays must be a positive integer.
-- Reply in the same language as the input idea.`;
+- Final check before responding: all project fields and all tasks are in ${language.name}.`;
+}
+
+function buildGenerateTaskPrompt(idea, context = {}) {
+  const language = detectPromptLanguage(idea);
+  const projectContext = [
+    context.projectName ? `Project name: "${context.projectName}"` : '',
+    context.projectSubject ? `Project subject/domain: "${context.projectSubject}"` : '',
+  ].filter(Boolean).join('\n');
+
+  return `You are a professional project manager. Turn the user's task idea into one actionable task.
+
+IMPORTANT LANGUAGE RULE:
+- The input language is: ${language.name} (${language.code}).
+- Every human-readable JSON string MUST use ${language.name}.
+- If the idea is Vietnamese, write natural Vietnamese with Vietnamese accents.
+- Keep proper nouns, acronyms, product names, and technical abbreviations only when they are part of the user's idea.
+
+${projectContext || 'No project context provided.'}
+
+Task idea: "${idea}"
+
+Return valid JSON only. Do not include markdown, code fences, or explanations. Use this exact schema:
+{
+  "title": "Short task title, max 100 characters",
+  "description": "Task description, 50-250 characters",
+  "priority": "LOW | MEDIUM | HIGH",
+  "status": "BACKLOG",
+  "suggestedDeadlineDays": 7
+}
+
+Requirements:
+- Create exactly one useful task.
+- priority must be one of LOW, MEDIUM, HIGH.
+- status must always be BACKLOG.
+- suggestedDeadlineDays must be a positive integer.
+- Final check before responding: title and description are in ${language.name}.`;
 }
 
 function extractJson(raw) {
@@ -72,7 +157,7 @@ function extractJson(raw) {
   return text;
 }
 
-function parseGeminiResponse(raw) {
+function parseGeminiResponse(raw, idea = '') {
   const parsed = JSON.parse(extractJson(raw));
   const requiredFields = ['name', 'description', 'subject', 'suggestedDeadlineDays', 'tasks'];
 
@@ -104,7 +189,7 @@ function parseGeminiResponse(raw) {
     };
   });
 
-  return {
+  const project = {
     name: String(parsed.name).trim(),
     description: String(parsed.description).trim(),
     subject: String(parsed.subject).trim(),
@@ -112,6 +197,33 @@ function parseGeminiResponse(raw) {
     deadline: daysFromToday(projectDays),
     tasks,
   };
+
+  validateLanguageConsistency(project, idea);
+  return project;
+}
+
+function parseGeminiTaskResponse(raw, idea = '') {
+  const parsed = JSON.parse(extractJson(raw));
+  if (!parsed || typeof parsed !== 'object') {
+    throw new Error('Task response must be an object');
+  }
+  if (!String(parsed.title || '').trim()) {
+    throw new Error('Missing required field: title');
+  }
+
+  const taskDays = parseTaskDeadlineDays(parsed.suggestedDeadlineDays);
+  const priority = VALID_PRIORITIES.has(parsed.priority) ? parsed.priority : 'MEDIUM';
+  const task = {
+    title: String(parsed.title).trim(),
+    description: String(parsed.description || '').trim(),
+    priority,
+    status: 'BACKLOG',
+    suggestedDeadlineDays: taskDays,
+    deadline: daysFromToday(taskDays),
+  };
+
+  validateLanguageConsistency({ tasks: [task] }, idea);
+  return task;
 }
 
 function mapGeminiError(err) {
@@ -339,9 +451,65 @@ exports.generateProjectFromIdea = async (req, res, next) => {
     const raw = result?.response?.text?.() || '';
     let generated;
     try {
-      generated = parseGeminiResponse(raw);
+      generated = parseGeminiResponse(raw, idea);
     } catch (parseErr) {
       console.error('[AI] Parse error:', parseErr?.message, '| Raw:', raw.slice(0, 200));
+      return next(new AppError(502, 'AI_INVALID_RESPONSE', 'AI tra ve du lieu khong dung dinh dang'));
+    }
+
+    res.json({ success: true, data: generated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+exports.generateTaskFromIdea = async (req, res, next) => {
+  try {
+    let GoogleGenerativeAI;
+    try {
+      ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+    } catch {
+      return next(new AppError(503, 'AI_UNAVAILABLE', 'Tinh nang AI chua duoc cau hinh tren server nay'));
+    }
+
+    const apiKey = process.env.GEMINI_API_KEY;
+    if (!apiKey) {
+      console.warn('[AI] GEMINI_API_KEY is not configured');
+      return next(new AppError(503, 'AI_NOT_CONFIGURED', 'Tinh nang AI chua duoc cau hinh'));
+    }
+
+    const { idea, projectName, projectSubject } = req.body;
+    const genAI = new GoogleGenerativeAI(apiKey);
+
+    let result;
+    let lastGeminiErr;
+    try {
+      const prompt = buildGenerateTaskPrompt(idea, { projectName, projectSubject });
+      const modelNames = getGeminiModelNames();
+      for (const modelName of modelNames) {
+        try {
+          const model = genAI.getGenerativeModel({ model: modelName });
+          result = await model.generateContent(prompt);
+          break;
+        } catch (modelErr) {
+          lastGeminiErr = modelErr;
+          console.error('[AI] Gemini API error:', modelErr?.message);
+          if (!canTryFallbackModel(modelErr) || modelName === modelNames[modelNames.length - 1]) {
+            throw modelErr;
+          }
+          console.warn(`[AI] Gemini model ${modelName} failed, trying fallback model`);
+        }
+      }
+    } catch (geminiErr) {
+      return next(mapGeminiError(geminiErr || lastGeminiErr));
+    }
+
+    const raw = result?.response?.text?.() || '';
+    let generated;
+    try {
+      generated = parseGeminiTaskResponse(raw, idea);
+    } catch (parseErr) {
+      console.error('[AI] Parse task error:', parseErr?.message, '| Raw:', raw.slice(0, 200));
       return next(new AppError(502, 'AI_INVALID_RESPONSE', 'AI tra ve du lieu khong dung dinh dang'));
     }
 

@@ -19,10 +19,23 @@ export interface GeneratedProject {
   tasks: GeneratedTask[];
 }
 
+export type GeneratedSingleTask = GeneratedTask;
+
 export async function generateProject(idea: string): Promise<GeneratedProject> {
   return api.post<GeneratedProject>(
     Endpoints.AI_GENERATE_PROJECT,
     { idea },
+    { timeout: 30_000 },
+  );
+}
+
+export async function generateTask(
+  idea: string,
+  context?: { projectName?: string; projectSubject?: string },
+): Promise<GeneratedSingleTask> {
+  return api.post<GeneratedSingleTask>(
+    Endpoints.AI_GENERATE_TASK,
+    { idea, ...context },
     { timeout: 30_000 },
   );
 }
