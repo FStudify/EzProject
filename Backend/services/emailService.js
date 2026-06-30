@@ -247,11 +247,10 @@ async function _sendMail({ tag, to, subject, text, html, envelopeFrom }) {
       subject,
       text,
       html,
-      alternatives: [{ contentType: 'text/plain', content: text }],
       headers: {
-        'X-Priority': '1',
         'X-Mailer': 'EZProject',
         'List-Unsubscribe': `<mailto:${process.env.SMTP_REPLY_TO || process.env.SMTP_USER}>`,
+        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
       },
       // Envelope from phải khớp SPF (đặc biệt khi from là alias).
       envelope: {
@@ -260,11 +259,23 @@ async function _sendMail({ tag, to, subject, text, html, envelopeFrom }) {
       },
     });
 
+    // Log đầy đủ accepted / rejected / pending để dễ phát hiện silent-drop
+    // (Gmail trả 250 OK nhưng recipient server có thể chặn sau đó).
     console.log(
       `[${tag}] Email sent successfully to=${to} from="${fromAddress}" ` +
-        `messageId=${info && info.messageId}`,
+        `messageId=${info && info.messageId} accepted=${JSON.stringify(info && info.accepted)} ` +
+        `rejected=${JSON.stringify(info && info.rejected)} pending=${JSON.stringify(info && info.pending)} ` +
+        `response=${info && info.response}`,
     );
-    return { sent: true, messageId: info?.messageId || null, from: fromAddress };
+    return {
+      sent: true,
+      messageId: info?.messageId || null,
+      from: fromAddress,
+      accepted: info?.accepted || [],
+      rejected: info?.rejected || [],
+      pending: info?.pending || [],
+      response: info?.response || null,
+    };
   } catch (err) {
     // Log đầy đủ stack + code để dễ debug ENETUNREACH / EAUTH / ETIMEDOUT.
     console.error(
