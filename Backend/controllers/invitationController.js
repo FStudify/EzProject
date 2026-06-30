@@ -310,9 +310,39 @@ exports.createEmailInvite = async (req, res, next) => {
 
     const inviter = await User.findById(req.user.id, 'fullName').lean();
 
-    // Respond immediately so the frontend doesn't time out (Render cold-start
-    // can take 30s and SMTP may be slow). Email is sent in the background.
-    res.status(201).json({
+    // Real-time push to invited user if they already have an account
+    if (existingUser?._id) {
+      notifyInvitedUser(req, invitation, project, existingUser._id);
+    }
+
+    // Đợi email gửi xong trước khi trả response (theo yêu cầu).
+    // Nếu SMTP fail, response vẫn trả 201 nhưng với emailSent=false để client
+    // biết dùng URL copy tay.
+    let emailResult = { sent: false, reason: 'NOT_ATTEMPTED' };
+    try {
+      emailResult = await sendProjectInviteEmail({
+        to: email,
+        projectName: project.name,
+        inviterName: inviter?.fullName || req.user.username || 'A teammate',
+        token,
+      });
+      await Invitation.findByIdAndUpdate(invitation._id, {
+        emailSent: emailResult.sent,
+        emailStatus: emailResult.reason || (emailResult.sent ? 'SENT' : 'UNCONFIGURED'),
+      });
+      if (!emailResult.sent) {
+        console.warn(`[InviteEmail] Email not sent (${emailResult.reason}) for ${email}`);
+      }
+    } catch (err) {
+      console.error('[InviteEmail] Send failed:', err && err.message);
+      await Invitation.findByIdAndUpdate(invitation._id, {
+        emailSent: false,
+        emailStatus: 'SEND_FAILED',
+      }).catch(() => {});
+      emailResult = { sent: false, reason: 'SEND_FAILED', error: err && err.message };
+    }
+
+    return res.status(201).json({
       success: true,
       data: {
         id: invitation._id,
@@ -321,46 +351,14 @@ exports.createEmailInvite = async (req, res, next) => {
         token,
         inviteUrl: buildInviteUrl(token),
         expiresAt,
-        emailSent: false,
-        emailStatus: 'PENDING',
+        emailSent: emailResult.sent,
+        emailStatus: emailResult.reason || (emailResult.sent ? 'SENT' : 'UNCONFIGURED'),
       },
-      message: hasSmtpConfig()
-        ? 'Đã tạo lời mời. Email đang được gửi trong nền.'
-        : 'Đã tạo lời mời (SMTP chưa cấu hình — copy URL để gửi thủ công).',
+      message: emailResult.sent
+        ? 'Đã tạo lời mời và gửi email thành công.'
+        : 'Đã tạo lời mời nhưng email chưa gửi được. Bạn có thể copy URL để gửi tay.',
       inviteUrl: buildInviteUrl(token),
     });
-
-    // Real-time push to invited user if they already have an account
-    if (existingUser?._id) {
-      notifyInvitedUser(req, invitation, project, existingUser._id);
-    }
-
-    // Fire-and-forget email send — do NOT block the response.
-    setImmediate(async () => {
-      try {
-        const result = await sendProjectInviteEmail({
-          to: email,
-          projectName: project.name,
-          inviterName: inviter?.fullName || req.user.username || 'A teammate',
-          token,
-        });
-        await Invitation.findByIdAndUpdate(invitation._id, {
-          emailSent: result.sent,
-          emailStatus: result.reason || (result.sent ? 'SENT' : 'UNCONFIGURED'),
-        });
-        if (!result.sent) {
-          console.warn(`[InviteEmail] Email not sent (${result.reason}) for ${email}`);
-        }
-      } catch (err) {
-        console.error('[InviteEmail] Background send failed:', err.message);
-        await Invitation.findByIdAndUpdate(invitation._id, {
-          emailSent: false,
-          emailStatus: 'SEND_FAILED',
-        });
-      }
-    });
-
-    return;
   } catch (err) {
     next(err);
   }

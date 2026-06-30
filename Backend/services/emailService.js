@@ -161,35 +161,31 @@ function normalizeFromAddress(raw) {
 async function buildTransporterConfig() {
   const rawHost = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT) || 587;
-  const isSecure = port === 465;
+  // Cho phép ép secure qua env (mặc định: true nếu port 465, false nếu khác).
+  const isSecure =
+    String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
 
-  // Resolve to an IPv4 literal so we never depend on Nodemailer's internal
-  // DNS resolver picking IPv4 first.
   let host = rawHost;
   if (rawHost && !/^\d{1,3}(\.\d{1,3}){3}$/.test(rawHost)) {
     try {
       const ipv4 = await resolveIpv4(rawHost);
       if (ipv4) host = ipv4;
     } catch {
-      // Fall through; transporter `family: 4` will still force IPv4 on connect.
+      // Fall through; transporter `family: 4` vẫn ép IPv4 khi connect.
     }
   }
 
   return {
     host,
     port,
-    // Implicit TLS khi port 465
     secure: isSecure,
-    // Bắt buộc STARTTLS upgrade khi port 587
     requireTLS: !isSecure,
     tls: {
-      // Không reject self-signed (Gmail dùng CA hợp lệ nhưng đề phòng MITM)
       rejectUnauthorized: true,
       minVersion: 'TLSv1.2',
-      // SNI dùng hostname gốc (không phải IP) để TLS cert hợp lệ.
+      // SNI dùng hostname gốc để TLS cert (Gmail) match tên miền.
       servername: rawHost,
     },
-    // EHLO domain giúp Gmail reputation — để trống là nodemailer tự lấy hostname
     name: process.env.SMTP_EHLO_DOMAIN || undefined,
     auth: {
       user: process.env.SMTP_USER,
@@ -200,7 +196,7 @@ async function buildTransporterConfig() {
     socketTimeout: 15_000,
     debug: process.env.SMTP_DEBUG === 'true',
     logger: process.env.SMTP_DEBUG === 'true',
-    // Ép dùng IPv4 ngay cả khi Nodemailer tự resolve lại sau này.
+    // Ép IPv4 — Render free tier block egress IPv6 ra Gmail SMTP.
     family: 4,
   };
 }
@@ -224,25 +220,103 @@ async function verifySmtpConnection() {
   }
 }
 
-async function sendProjectInviteEmail({ to, projectName, inviterName, token }) {
-  const inviteUrl = buildInviteUrl(token);
+/**
+ * Helper gửi mail dùng chung cho mọi email service (invite, reset, ...).
+ *
+ *   - Tạo transporter từ buildTransporterConfig (IPv4, secure đúng env).
+ *   - Log rõ: bắt đầu gửi → thành công / thất bại với to/from + error đầy đủ.
+ *   - Return { sent, ... } để controller vẫn phân biệt được soft-fail
+ *     (SMTP_NOT_CONFIGURED, NODEMAILER_MISSING) với hard-fail (SEND_FAILED).
+ *
+ * Lưu ý: `await` được propagate ra caller → controller có thể đợi gửi xong
+ * trước khi trả response.
+ */
+async function _sendMail({ tag, to, subject, text, html, envelopeFrom }) {
+  const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
 
-  if (!nodemailer) {
-    console.warn(`[InviteEmail] nodemailer is not installed; cannot send email. Link: ${inviteUrl}`);
-    return { sent: false, inviteUrl, reason: 'NODEMAILER_MISSING' };
+  console.log(`[${tag}] Sending email to=${to} from="${fromAddress}" subject="${subject}"`);
+
+  const transporter = nodemailer.createTransport(await buildTransporterConfig());
+
+  try {
+    await transporter.verify();
+    const info = await transporter.sendMail({
+      from: fromAddress,
+      replyTo: process.env.SMTP_REPLY_TO || fromAddress,
+      to,
+      subject,
+      text,
+      html,
+      alternatives: [{ contentType: 'text/plain', content: text }],
+      headers: {
+        'X-Priority': '1',
+        'X-Mailer': 'EZProject',
+        'List-Unsubscribe': `<mailto:${process.env.SMTP_REPLY_TO || process.env.SMTP_USER}>`,
+      },
+      // Envelope from phải khớp SPF (đặc biệt khi from là alias).
+      envelope: {
+        from: envelopeFrom || process.env.SMTP_USER,
+        to,
+      },
+    });
+
+    console.log(
+      `[${tag}] Email sent successfully to=${to} from="${fromAddress}" ` +
+        `messageId=${info && info.messageId}`,
+    );
+    return { sent: true, messageId: info?.messageId || null, from: fromAddress };
+  } catch (err) {
+    // Log đầy đủ stack + code để dễ debug ENETUNREACH / EAUTH / ETIMEDOUT.
+    console.error(
+      `[${tag}] Failed to send to=${to} from="${fromAddress}":`,
+      err && err.message,
+      err && err.code,
+      err && err.command,
+    );
+    if (err && err.stack) console.error(`[${tag}] Stack:`, err.stack);
+    return {
+      sent: false,
+      reason: 'SEND_FAILED',
+      error: err && err.message,
+      code: err && err.code,
+      from: fromAddress,
+    };
+  } finally {
+    try { transporter.close(); } catch { /* noop */ }
   }
+}
 
+/**
+ * Pre-flight kiểm tra SMTP/Nodemailer trước khi gửi.
+ * Trả về null nếu OK, hoặc object kết quả để caller return sớm.
+ */
+function _preflightOrSkip(tag, to, fallbackUrl) {
+  if (!nodemailer) {
+    console.warn(`[${tag}] nodemailer is not installed; cannot send email to=${to}. Link: ${fallbackUrl}`);
+    return { sent: false, inviteUrl: fallbackUrl, resetUrl: fallbackUrl, reason: 'NODEMAILER_MISSING' };
+  }
   const status = getSmtpStatus();
   if (!status.configured) {
     console.warn(
-      `[InviteEmail] SMTP not configured. Missing env vars: ${status.missing.join(', ')}. ` +
-        `Add them to Backend/.env. Invite link for ${to}: ${inviteUrl}`,
+      `[${tag}] SMTP not configured. Missing env vars: ${status.missing.join(', ')}. ` +
+        `Add them to Backend/.env. Fallback link for ${to}: ${fallbackUrl}`,
     );
-    return { sent: false, inviteUrl, reason: 'SMTP_NOT_CONFIGURED', missing: status.missing };
+    return {
+      sent: false,
+      inviteUrl: fallbackUrl,
+      resetUrl: fallbackUrl,
+      reason: 'SMTP_NOT_CONFIGURED',
+      missing: status.missing,
+    };
   }
+  return null;
+}
 
-  const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
-  const transporter = nodemailer.createTransport(await buildTransporterConfig());
+async function sendProjectInviteEmail({ to, projectName, inviterName, token }) {
+  const inviteUrl = buildInviteUrl(token);
+
+  const skipped = _preflightOrSkip('InviteEmail', to, inviteUrl);
+  if (skipped) return skipped;
 
   const html = `
 <!DOCTYPE html>
@@ -324,58 +398,14 @@ async function sendProjectInviteEmail({ to, projectName, inviterName, token }) {
 
   const text = `${inviterName} đã mời bạn tham gia dự án "${projectName}" trên EZProject.\n\nChấp nhận lời mời tại:\n${inviteUrl}\n\nLời mời có hiệu lực trong 72 giờ.`;
 
-  // Reply-To để recipient reply về inviter thay vì bounce vào account gửi
-  const replyTo = process.env.SMTP_REPLY_TO || fromAddress;
-
-  try {
-    // Verify trước khi gửi để phát hiện lỗi EHLO / TLS / auth ngay (fail-fast)
-    await transporter.verify();
-
-    const info = await transporter.sendMail({
-      from: fromAddress,
-      replyTo,
-      to,
-      subject: `${inviterName} mời bạn tham gia dự án "${projectName}"`,
-      text,
-      html,
-      // Hỗ trợ user xem message gốc ở Gmail kể cả khi HTML bị đánh dấu spam
-      alternatives: [{ contentType: 'text/plain', content: text }],
-      // Tiêu đề giúp triết lý "đánh dấu là quan trọng" tránh rơi vào Promotions/Spam
-      headers: {
-        'X-Priority': '1',
-        'X-Mailer': 'EZProject',
-        'List-Unsubscribe': `<mailto:${process.env.SMTP_REPLY_TO || process.env.SMTP_USER}>`,
-      },
-      // Dùng envelope chính xác để khớp SPF (đặc biệt khi from là alias)
-      envelope: {
-        from: process.env.SMTP_USER,
-        to,
-      },
-    });
-
-    // messageId là bằng chứng Gmail SMTP đã chấp nhận message.
-    // (Không đảm bảo message tới inbox — Gmail có thể drop sau đó.)
-    console.log(
-      `[InviteEmail] sent to=${to} from="${fromAddress}" messageId=${info && info.messageId}`,
-    );
-    return { sent: true, inviteUrl, messageId: info?.messageId || null, from: fromAddress };
-  } catch (err) {
-    console.error(
-      `[InviteEmail] Failed to send to ${to} from "${fromAddress}":`,
-      err && err.message,
-      err && err.code,
-    );
-    return {
-      sent: false,
-      inviteUrl,
-      reason: 'SEND_FAILED',
-      error: err && err.message,
-      code: err && err.code,
-      from: fromAddress,
-    };
-  } finally {
-    try { transporter.close(); } catch { /* noop */ }
-  }
+  const result = await _sendMail({
+    tag: 'InviteEmail',
+    to,
+    subject: `${inviterName} mời bạn tham gia dự án "${projectName}"`,
+    text,
+    html,
+  });
+  return { ...result, inviteUrl };
 }
 
 /**
@@ -399,22 +429,9 @@ function buildPasswordResetUrl(rawToken) {
 async function sendPasswordResetEmail({ to, fullName, rawToken, expiresInMinutes = 30 }) {
   const resetUrl = buildPasswordResetUrl(rawToken);
 
-  if (!nodemailer) {
-    console.warn(`[ResetEmail] nodemailer is not installed; cannot send email. Link: ${resetUrl}`);
-    return { sent: false, resetUrl, reason: 'NODEMAILER_MISSING' };
-  }
+  const skipped = _preflightOrSkip('ResetEmail', to, resetUrl);
+  if (skipped) return skipped;
 
-  const status = getSmtpStatus();
-  if (!status.configured) {
-    console.warn(
-      `[ResetEmail] SMTP not configured. Missing env vars: ${status.missing.join(', ')}. ` +
-        `Add them to Backend/.env. Reset link for ${to}: ${resetUrl}`,
-    );
-    return { sent: false, resetUrl, reason: 'SMTP_NOT_CONFIGURED', missing: status.missing };
-  }
-
-  const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
-  const transporter = nodemailer.createTransport(await buildTransporterConfig());
   const greetingName = (fullName || '').trim() || 'bạn';
 
   const html = `
@@ -494,51 +511,14 @@ async function sendPasswordResetEmail({ to, fullName, rawToken, expiresInMinutes
 
   const text = `Xin chào ${greetingName},\n\nChúng tôi nhận được yêu cầu đặt lại mật khẩu cho tài khoản EZProject của bạn.\n\nMở liên kết sau để đặt lại mật khẩu (có hiệu lực trong ${expiresInMinutes} phút, chỉ dùng được một lần):\n${resetUrl}\n\nNếu bạn không yêu cầu đặt lại mật khẩu, hãy bỏ qua email này. Tài khoản của bạn vẫn an toàn.`;
 
-  const replyTo = process.env.SMTP_REPLY_TO || fromAddress;
-
-  try {
-    await transporter.verify();
-
-    const info = await transporter.sendMail({
-      from: fromAddress,
-      replyTo,
-      to,
-      subject: 'Đặt lại mật khẩu EZProject của bạn',
-      text,
-      html,
-      alternatives: [{ contentType: 'text/plain', content: text }],
-      headers: {
-        'X-Priority': '1',
-        'X-Mailer': 'EZProject',
-        'List-Unsubscribe': `<mailto:${process.env.SMTP_REPLY_TO || process.env.SMTP_USER}>`,
-      },
-      envelope: {
-        from: process.env.SMTP_USER,
-        to,
-      },
-    });
-
-    console.log(
-      `[ResetEmail] sent to=${to} from="${fromAddress}" messageId=${info && info.messageId}`,
-    );
-    return { sent: true, resetUrl, messageId: info?.messageId || null, from: fromAddress };
-  } catch (err) {
-    console.error(
-      `[ResetEmail] Failed to send to ${to} from "${fromAddress}":`,
-      err && err.message,
-      err && err.code,
-    );
-    return {
-      sent: false,
-      resetUrl,
-      reason: 'SEND_FAILED',
-      error: err && err.message,
-      code: err && err.code,
-      from: fromAddress,
-    };
-  } finally {
-    try { transporter.close(); } catch { /* noop */ }
-  }
+  const result = await _sendMail({
+    tag: 'ResetEmail',
+    to,
+    subject: 'Đặt lại mật khẩu EZProject của bạn',
+    text,
+    html,
+  });
+  return { ...result, resetUrl };
 }
 
 module.exports = {
