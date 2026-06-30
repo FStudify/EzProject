@@ -9,7 +9,7 @@ const User = require('../models/User');
 const { ChatRoom } = require('../models/Chat');
 const { Activity } = require('../models/Activity');
 const { errors } = require('../middlewares/errorHandler');
-const { sendProjectInviteEmail, buildInviteUrl, hasSmtpConfig } = require('../services/emailService');
+const { sendProjectInviteEmail, buildInviteUrl } = require('../services/emailService');
 
 const ObjectId = mongoose.Types.ObjectId;
 

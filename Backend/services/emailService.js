@@ -1,114 +1,45 @@
 'use strict';
 
-let nodemailer = null;
-try {
-  nodemailer = require('nodemailer');
-} catch {
-  nodemailer = null;
-}
-
-const dns = require('dns');
-
-// ── IPv4-first hardening ──────────────────────────────────────────────────
-// Render free tier (and several other hosted environments) block egress
-// IPv6 to external services. Gmail SMTP still publishes AAAA records,
-// so a vanilla `lookup()` may resolve to IPv6 and fail with ENETUNREACH.
+// ─── Resend-only driver ────────────────────────────────────────────────────
+// EZProject sends email exclusively through the Resend HTTPS API
+// (https://api.resend.com/emails). Outbound HTTPS/443 is never blocked by
+// Render, while raw SMTP (ports 25/465/587) is unreliable from hosted
+// containers — that is why the previous SMTP/transport path was
+// removed entirely.
 //
-// We force Node's resolver to IPv4-first, and additionally allow callers
-// to override the DNS servers (helpful when the host's resolver rewrites
-// names like `smtp.gmail.com` → `smtp.gmail.com.<local-suffix>`).
-try {
-  if (typeof dns.setDefaultResultOrder === 'function') {
-    dns.setDefaultResultOrder('ipv4first');
-  }
-  if (process.env.SMTP_DNS_SERVERS && typeof dns.setServers === 'function') {
-    const servers = process.env.SMTP_DNS_SERVERS
-      .split(',')
-      .map((s) => s.trim())
-      .filter(Boolean);
-    if (servers.length > 0) dns.setServers(servers);
-  }
-} catch {
-  // best-effort; transporter `family: 4` is the second line of defense.
-}
+// Required env:
+//   - RESEND_API_KEY     (re_xxx)
+//   - RESEND_FROM        ("EzProject <noreply@ezproject.me>")
+// Optional:
+//   - RESEND_REPLY_TO    (defaults to RESEND_FROM)
 
-// Log SMTP env tóm tắt ngay khi module load — giúp debug trên Render xem
-// env đã pick up đúng sau deploy chưa.
-if (process.env.SMTP_HOST) {
+// Log Resend env summary on module load so it is obvious from Render logs
+// whether the deploy picked up the new secrets.
+if (process.env.RESEND_API_KEY) {
   console.log(
-    `[SMTP] Loaded config host=${process.env.SMTP_HOST} port=${process.env.SMTP_PORT || '(default 587)'} ` +
-      `secure=${process.env.SMTP_SECURE || '(auto)'} user=${process.env.SMTP_USER || '(missing)'} ` +
-      `passLen=${(process.env.SMTP_PASS || '').length} debug=${process.env.SMTP_DEBUG === 'true'}`,
+    `[Email] Driver=resend from="${process.env.RESEND_FROM || '(unset)'}" ` +
+      `apiKeyLen=${process.env.RESEND_API_KEY.length}`,
+  );
+} else {
+  console.warn(
+    '[Email] RESEND_API_KEY is not set. Invite / reset-password emails ' +
+      'will be reported as RESEND_NOT_CONFIGURED.',
   );
 }
 
-// Cache resolved IPv4 hosts so we don't pay a DNS roundtrip per email.
-const _ipv4Cache = new Map();
-const _IPV4_TTL_MS = 5 * 60 * 1000;
+const REQUIRED_RESEND_KEYS = ['RESEND_API_KEY', 'RESEND_FROM'];
 
-/**
- * Resolve `hostname` to a single IPv4 address, with caching.
- * Uses `dns.lookup` with `family: 4`, which on Node ≥ 16.6 already respects
- * `setDefaultResultOrder('ipv4first')`. Falls back to scanning all returned
- * addresses if the first one isn't IPv4.
- *
- * Returns null when no IPv4 can be found.
- */
-async function resolveIpv4(hostname) {
-  const cached = _ipv4Cache.get(hostname);
-  if (cached && cached.expires > Date.now()) return cached.address;
-
-  const lookup = (family) =>
-    new Promise((resolve, reject) => {
-      dns.lookup(hostname, { family, all: true, hints: dns.ADDRCONFIG }, (err, addrs) => {
-        if (err) return reject(err);
-        resolve(addrs || []);
-      });
-    });
-
-  let ipv4 = null;
-  try {
-    const addrs = await lookup(4);
-    ipv4 = addrs.length > 0 ? addrs[0].address : null;
-  } catch {
-    ipv4 = null;
-  }
-
-  // Fallback: ask for "all" families and pick the first IPv4 in the list.
-  if (!ipv4) {
-    try {
-      const all = await new Promise((resolve, reject) => {
-        dns.lookup(hostname, { all: true, hints: dns.ADDRCONFIG }, (err, addrs) => {
-          if (err) return reject(err);
-          resolve(addrs || []);
-        });
-      });
-      const found = all.find((a) => a.family === 4);
-      ipv4 = found ? found.address : null;
-    } catch {
-      ipv4 = null;
-    }
-  }
-
-  if (ipv4) {
-    _ipv4Cache.set(hostname, { address: ipv4, expires: Date.now() + _IPV4_TTL_MS });
-  }
-  return ipv4;
-}
-
-const REQUIRED_SMTP_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
-
-function getSmtpStatus() {
-  const missing = REQUIRED_SMTP_KEYS.filter((k) => !process.env[k]);
+function getEmailStatus() {
+  const missing = REQUIRED_RESEND_KEYS.filter((k) => !process.env[k]);
   return {
     configured: missing.length === 0,
     missing,
-    hasNodemailer: Boolean(nodemailer),
+    driver: 'resend',
   };
 }
 
-function hasSmtpConfig() {
-  return getSmtpStatus().configured && Boolean(nodemailer);
+function hasResendConfig() {
+  return getEmailStatus().configured;
 }
 
 function getFrontendUrl() {
@@ -120,35 +51,31 @@ function buildInviteUrl(token) {
 }
 
 /**
- * Chuẩn hoá giá trị SMTP_FROM.
+ * Normalize a `From` / `Reply-To` value.
  *
- * Vấn đề hay gặp trên production (đặc biệt Gmail): người dùng paste
- *   "ezproject baokhanh652210@gmail.com"  (thiếu < > quanh email)
- * → server nhận là display-name thuần, không có address → Gmail SMTP
- *   từ chối với lỗi 501 hoặc gửi đi với From trống.
+ * Common production pitfall: copy-pasting "ezproject baokhanh652210@gmail.com"
+ * (missing the angle brackets) makes the server treat the whole string as the
+ * display-name with no address. Resend's API requires a parseable address and
+ * will reject the request otherwise.
  *
- * Quy tắc chấp nhận:
- *   - "addr@example.com"                                   → "addr@example.com"
- *   - "<addr@example.com>"                                  → "addr@example.com"
- *   - "Display Name <addr@example.com>"                    → giữ nguyên
- *   - "Display Name addr@example.com" (thiếu <>)           → chèn thành "Display Name <addr@example.com>"
+ * Accepted inputs:
+ *   "addr@example.com"                       → "addr@example.com"
+ *   "<addr@example.com>"                     → "addr@example.com"
+ *   "Display Name <addr@example.com>"        → kept as-is
+ *   "Display Name addr@example.com"          → wrapped as "Display Name <addr@example.com>"
  */
 function normalizeFromAddress(raw) {
-  const fallback = process.env.SMTP_USER || 'noreply@localhost';
+  const fallback = process.env.RESEND_FROM || 'noreply@localhost';
   const value = (raw || '').trim();
   if (!value) return fallback;
 
-  // Đã chuẩn: có cặp < > và display-name (hoặc không)
-  if (value.includes('<') && value.includes('>')) {
-    return value;
-  }
+  // Already standard: has a < > pair (with or without display-name).
+  if (value.includes('<') && value.includes('>')) return value;
 
-  // Đã chuẩn: chỉ có email thuần
-  if (/^[^\s<>()]+@[^\s<>()]+$/.test(value)) {
-    return value;
-  }
+  // Already standard: bare email.
+  if (/^[^\s<>()]+@[^\s<>()]+$/.test(value)) return value;
 
-  // Trường hợp phổ biến nhất: "<display> <email>" thiếu cặp < >
+  // Most common mistake: "Display Name addr@…" — wrap with angle brackets.
   const match = value.match(/^(.*?)\s*([^\s<>()]+@[^\s<>()]+)\s*$/);
   if (match) {
     const [, name, email] = match;
@@ -161,129 +88,135 @@ function normalizeFromAddress(raw) {
 }
 
 /**
- * Build cấu hình transporter với các biện pháp hardening cho Gmail SMTP
- * khi chạy trên Render / Vercel:
- *   - port 465 → secure=true (implicit TLS), ổn định nhất khi đi qua IP Render
- *   - port 587 → STARTTLS (requireTLS=true) với TLS minVersion bắt buộc
- *   - EHLO domain riêng (helps reverse-DNS reputation)
- *   - connectionTimeout ngắn để không treo request
+ * Verify Resend credentials without actually sending an email.
+ * Resend does not expose a noop endpoint, so we only validate config shape:
+ *   - RESEND_API_KEY present + starts with `re_`
+ *   - RESEND_FROM parseable by `normalizeFromAddress`
+ * Returns { ok, reason?, fromRaw?, fromNormalized? }.
  */
-async function buildTransporterConfig() {
-  const rawHost = process.env.SMTP_HOST;
-  const port = Number(process.env.SMTP_PORT) || 587;
-  // Cho phép ép secure qua env (mặc định: true nếu port 465, false nếu khác).
-  const isSecure =
-    String(process.env.SMTP_SECURE || '').toLowerCase() === 'true' || port === 465;
+async function verifyResendConnection() {
+  if (!hasResendConfig()) {
+    return { ok: false, reason: 'RESEND_NOT_CONFIGURED', missing: getEmailStatus().missing };
+  }
+  const fromRaw = process.env.RESEND_FROM;
+  const fromNormalized = normalizeFromAddress(fromRaw);
+  if (!fromNormalized || fromNormalized === 'noreply@localhost') {
+    return { ok: false, reason: 'FROM_INVALID', fromRaw };
+  }
+  if (!String(process.env.RESEND_API_KEY).startsWith('re_')) {
+    return {
+      ok: false,
+      reason: 'API_KEY_SHAPE_INVALID',
+      message: 'API key does not start with re_',
+    };
+  }
+  return { ok: true, fromRaw, fromNormalized };
+}
 
-  let host = rawHost;
-  if (rawHost && !/^\d{1,3}(\.\d{1,3}){3}$/.test(rawHost)) {
-    try {
-      const ipv4 = await resolveIpv4(rawHost);
-      if (ipv4) host = ipv4;
-    } catch {
-      // Fall through; transporter `family: 4` vẫn ép IPv4 khi connect.
-    }
+/**
+ * Send one email via Resend's HTTPS API.
+ *
+ * Env required (already enforced by `_preflightOrSkip`):
+ *   - RESEND_API_KEY   (re_xxx)
+ *   - RESEND_FROM      ("EzProject <noreply@ezproject.me>")
+ *
+ * Returns { id, messageId, accepted, rejected, pending, response } so the
+ * caller can shape the result consistently with the previous nodemailer path.
+ */
+async function _sendViaResend({ tag, to, fromAddress, subject, text, html, replyTo }) {
+  const apiKey = process.env.RESEND_API_KEY;
+  if (!apiKey) throw new Error('RESEND_API_KEY is missing');
+
+  const body = {
+    from: fromAddress,
+    to: Array.isArray(to) ? to : [to],
+    subject,
+    text,
+    html,
+    reply_to: replyTo ? [replyTo] : undefined,
+    headers: { 'X-Mailer': 'EZProject' },
+  };
+
+  const ctrl = new AbortController();
+  const timeout = setTimeout(() => ctrl.abort(), 20_000);
+
+  let res;
+  try {
+    res = await fetch('https://api.resend.com/emails', {
+      method: 'POST',
+      headers: {
+        Authorization: `Bearer ${apiKey}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(body),
+      signal: ctrl.signal,
+    });
+  } finally {
+    clearTimeout(timeout);
   }
 
+  const text_body = await res.text();
+  let parsed = null;
+  try { parsed = text_body ? JSON.parse(text_body) : null; } catch { parsed = null; }
+
+  if (!res.ok) {
+    const msg = parsed && parsed.message ? parsed.message : text_body || `HTTP ${res.status}`;
+    const err = new Error(`Resend API ${res.status}: ${msg}`);
+    err.code = `RESEND_${res.status}`;
+    err.responseBody = parsed || text_body;
+    throw err;
+  }
+
+  // Resend returns { id: "<uuid>" } on success.
+  const id = parsed && parsed.id ? parsed.id : null;
   return {
-    host,
-    port,
-    secure: isSecure,
-    requireTLS: !isSecure,
-    tls: {
-      rejectUnauthorized: true,
-      minVersion: 'TLSv1.2',
-      // SNI dùng hostname gốc để TLS cert (Gmail) match tên miền.
-      servername: rawHost,
-    },
-    name: process.env.SMTP_EHLO_DOMAIN || undefined,
-    auth: {
-      user: process.env.SMTP_USER,
-      pass: process.env.SMTP_PASS,
-    },
-    // Timeouts raised so Render free tier (cold-start outbound) doesn't ETIMEDOUT.
-    connectionTimeout: 20_000,
-    greetingTimeout: 15_000,
-    socketTimeout: 30_000,
-    debug: process.env.SMTP_DEBUG === 'true',
-    logger: process.env.SMTP_DEBUG === 'true',
-    // Ép IPv4 — Render free tier block egress IPv6 ra Gmail SMTP.
-    family: 4,
+    id,
+    messageId: id,
+    accepted: Array.isArray(to) ? to : [to],
+    rejected: [],
+    pending: [],
+    response: parsed || text_body,
   };
 }
 
 /**
- * Tự xác minh transporter trước khi gửi (bắt lỗi EHLO / TLS / auth ngay).
- * Nếu `onlyConfig` thì chỉ build config, không gửi.
- */
-async function verifySmtpConnection() {
-  if (!nodemailer) return { ok: false, reason: 'NODEMAILER_MISSING' };
-  if (!hasSmtpConfig()) return { ok: false, reason: 'SMTP_NOT_CONFIGURED' };
-
-  const transporter = nodemailer.createTransport(await buildTransporterConfig());
-  try {
-    await transporter.verify();
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, reason: 'VERIFY_FAILED', error: err.message, code: err.code };
-  } finally {
-    try { transporter.close(); } catch { /* noop */ }
-  }
-}
-
-/**
- * Helper gửi mail dùng chung cho mọi email service (invite, reset, ...).
+ * Common send helper for invite + reset (and future transactional mail).
  *
- *   - Tạo transporter từ buildTransporterConfig (IPv4, secure đúng env).
- *   - Log rõ: bắt đầu gửi → thành công / thất bại với to/from + error đầy đủ.
- *   - Return { sent, ... } để controller vẫn phân biệt được soft-fail
- *     (SMTP_NOT_CONFIGURED, NODEMAILER_MISSING) với hard-fail (SEND_FAILED).
- *
- * Lưu ý: `await` được propagate ra caller → controller có thể đợi gửi xong
- * trước khi trả response.
+ *   - Resolves from / reply-to from env, normalised.
+ *   - Logs driver, recipient, subject at send time.
+ *   - Logs Resend id + accepted/rejected on success.
+ *   - Returns { sent, driver, ... } so controllers can distinguish soft-fail
+ *     (RESEND_NOT_CONFIGURED) from hard-fail (SEND_FAILED).
  */
-async function _sendMail({ tag, to, subject, text, html, envelopeFrom }) {
-  const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
-
-  const config = await buildTransporterConfig();
-  console.log(
-    `[${tag}] Sending email to=${to} from="${fromAddress}" subject="${subject}" ` +
-      `host=${config.host}:${config.port} secure=${config.secure} requireTLS=${config.requireTLS}`,
+async function _sendMail({ tag, to, subject, text, html }) {
+  const fromAddress = normalizeFromAddress(
+    process.env.RESEND_FROM || process.env.RESEND_REPLY_TO,
+  );
+  const replyTo = normalizeFromAddress(
+    process.env.RESEND_REPLY_TO || process.env.RESEND_FROM,
   );
 
-  const transporter = nodemailer.createTransport(config);
+  console.log(
+    `[${tag}] Sending email via=resend to=${to} from="${fromAddress}" subject="${subject}"`,
+  );
 
   try {
-    await transporter.verify();
-    const info = await transporter.sendMail({
-      from: fromAddress,
-      replyTo: process.env.SMTP_REPLY_TO || fromAddress,
+    const info = await _sendViaResend({
+      tag,
       to,
+      fromAddress,
       subject,
       text,
       html,
-      headers: {
-        'X-Mailer': 'EZProject',
-        'List-Unsubscribe': `<mailto:${process.env.SMTP_REPLY_TO || process.env.SMTP_USER}>`,
-        'List-Unsubscribe-Post': 'List-Unsubscribe=One-Click',
-      },
-      // Envelope from phải khớp SPF (đặc biệt khi from là alias).
-      envelope: {
-        from: envelopeFrom || process.env.SMTP_USER,
-        to,
-      },
+      replyTo,
     });
-
-    // Log đầy đủ accepted / rejected / pending để dễ phát hiện silent-drop
-    // (Gmail trả 250 OK nhưng recipient server có thể chặn sau đó).
     console.log(
-      `[${tag}] Email sent successfully to=${to} from="${fromAddress}" ` +
-        `messageId=${info && info.messageId} accepted=${JSON.stringify(info && info.accepted)} ` +
-        `rejected=${JSON.stringify(info && info.rejected)} pending=${JSON.stringify(info && info.pending)} ` +
-        `response=${info && info.response}`,
+      `[${tag}] Email sent successfully via=resend to=${to} from="${fromAddress}" ` +
+        `id=${info && info.messageId} accepted=${JSON.stringify(info && info.accepted)}`,
     );
     return {
       sent: true,
+      driver: 'resend',
       messageId: info?.messageId || null,
       from: fromAddress,
       accepted: info?.accepted || [],
@@ -292,50 +225,50 @@ async function _sendMail({ tag, to, subject, text, html, envelopeFrom }) {
       response: info?.response || null,
     };
   } catch (err) {
-    // Log đầy đủ stack + code để dễ debug ENETUNREACH / EAUTH / ETIMEDOUT.
     console.error(
-      `[${tag}] Failed to send to=${to} from="${fromAddress}":`,
+      `[${tag}] Failed to send via=resend to=${to} from="${fromAddress}":`,
       err && err.message,
       err && err.code,
-      err && err.command,
     );
     if (err && err.stack) console.error(`[${tag}] Stack:`, err.stack);
     return {
       sent: false,
+      driver: 'resend',
       reason: 'SEND_FAILED',
       error: err && err.message,
       code: err && err.code,
       from: fromAddress,
     };
-  } finally {
-    try { transporter.close(); } catch { /* noop */ }
   }
 }
 
 /**
- * Pre-flight kiểm tra SMTP/Nodemailer trước khi gửi.
- * Trả về null nếu OK, hoặc object kết quả để caller return sớm.
+ * Pre-flight guard before invoking the send helper.
+ *
+ *   - When RESEND_API_KEY is present and RESEND_FROM is parseable, return null
+ *     (caller proceeds).
+ *   - Otherwise emit a single warning log and return a soft-fail shape that the
+ *     caller can hand back to the client (still 200 OK to avoid leaking which
+ *     emails are registered).
  */
 function _preflightOrSkip(tag, to, fallbackUrl) {
-  if (!nodemailer) {
-    console.warn(`[${tag}] nodemailer is not installed; cannot send email to=${to}. Link: ${fallbackUrl}`);
-    return { sent: false, inviteUrl: fallbackUrl, resetUrl: fallbackUrl, reason: 'NODEMAILER_MISSING' };
+  const status = getEmailStatus();
+  if (status.configured && normalizeFromAddress(process.env.RESEND_FROM) !== 'noreply@localhost') {
+    return null;
   }
-  const status = getSmtpStatus();
-  if (!status.configured) {
-    console.warn(
-      `[${tag}] SMTP not configured. Missing env vars: ${status.missing.join(', ')}. ` +
-        `Add them to Backend/.env. Fallback link for ${to}: ${fallbackUrl}`,
-    );
-    return {
-      sent: false,
-      inviteUrl: fallbackUrl,
-      resetUrl: fallbackUrl,
-      reason: 'SMTP_NOT_CONFIGURED',
-      missing: status.missing,
-    };
-  }
-  return null;
+
+  const reason = status.configured ? 'FROM_INVALID' : 'RESEND_NOT_CONFIGURED';
+  console.warn(
+    `[${tag}] Email skipped reason=${reason}. Missing keys: ${status.missing.join(', ') || '(none)'}. ` +
+      `Fallback link for ${to}: ${fallbackUrl}`,
+  );
+  return {
+    sent: false,
+    inviteUrl: fallbackUrl,
+    resetUrl: fallbackUrl,
+    reason,
+    missing: status.missing,
+  };
 }
 
 async function sendProjectInviteEmail({ to, projectName, inviterName, token }) {
@@ -552,8 +485,8 @@ module.exports = {
   buildPasswordResetUrl,
   sendProjectInviteEmail,
   sendPasswordResetEmail,
-  hasSmtpConfig,
-  getSmtpStatus,
+  hasResendConfig,
+  getEmailStatus,
   normalizeFromAddress,
-  verifySmtpConnection,
+  verifyResendConnection,
 };

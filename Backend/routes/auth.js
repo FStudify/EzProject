@@ -11,7 +11,7 @@ const config = require('../config');
 const RefreshToken = require('../models/RefreshToken');
 const User = require('../models/User');
 const { clearExpiredBlock, describeBlock } = require('../utils/blockStatus');
-const { getSmtpStatus, verifySmtpConnection, sendPasswordResetEmail } = require('../services/emailService');
+const { getEmailStatus, verifyResendConnection, sendPasswordResetEmail } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -190,21 +190,19 @@ router.get('/google/error', (_req, res) => {
 //
 // Khi deploy prod thật, nên đặt sau `requireAuth` hoặc xoá route này.
 router.get('/_debug/smtp', async (_req, res) => {
-  const status = getSmtpStatus();
-  // Không in ra SMTP_PASS — chỉ in độ dài để biết env đã load.
+  const status = getEmailStatus();
+  // Không in ra RESEND_API_KEY — chỉ in độ dài + 3 ký tự đầu để biết env đã load.
   res.json({
     success: true,
     data: {
+      driver: 'resend',
       configured: status.configured,
       missing: status.missing,
-      hasNodemailer: status.hasNodemailer,
       env: {
-        host: process.env.SMTP_HOST || null,
-        port: process.env.SMTP_PORT || null,
-        secure: process.env.SMTP_SECURE || null,
-        user: process.env.SMTP_USER || null,
-        passLength: (process.env.SMTP_PASS || '').length,
-        from: process.env.SMTP_FROM || null,
+        apiKeyLength: (process.env.RESEND_API_KEY || '').length,
+        apiKeyPrefix: String(process.env.RESEND_API_KEY || '').slice(0, 3),
+        from: process.env.RESEND_FROM || null,
+        replyTo: process.env.RESEND_REPLY_TO || null,
         frontendUrl: process.env.FRONTEND_URL || null,
       },
       nodeEnv: process.env.NODE_ENV || null,
@@ -215,9 +213,9 @@ router.get('/_debug/smtp', async (_req, res) => {
 });
 
 router.post('/_debug/smtp/verify', async (_req, res) => {
-  console.log('[DebugSMTP] verify requested');
-  const result = await verifySmtpConnection();
-  console.log('[DebugSMTP] verify result:', JSON.stringify(result));
+  console.log('[DebugEmail] verify requested');
+  const result = await verifyResendConnection();
+  console.log('[DebugEmail] verify result:', JSON.stringify(result));
   res.json({ success: result.ok, data: result });
 });
 

@@ -24,8 +24,8 @@ const bcrypt = require('bcrypt');
 const { errors } = require('../middlewares/errorHandler');
 const { clearExpiredBlock } = require('../utils/blockStatus');
 const {
-  verifySmtpConnection,
-  getSmtpStatus,
+  verifyResendConnection,
+  getEmailStatus,
   sendProjectInviteEmail,
   buildInviteUrl,
 } = require('../services/emailService');
@@ -794,30 +794,24 @@ exports.changePassword = async (req, res, next) => {
 
 /**
  * GET /admin/email/status
- * Trả về: env config + kết quả verify SMTP transport (HELO/EHLO + auth).
+ * Trả về: env config + kết quả verify Resend (key shape + from parseable).
  */
 exports.getEmailStatus = async (req, res, next) => {
   try {
-    const status = getSmtpStatus();
-    let verify = null;
-    if (status.configured && status.hasNodemailer) {
-      verify = await verifySmtpConnection();
-    }
-    const fromEnv = process.env.SMTP_FROM || process.env.SMTP_USER || null;
+    const status = getEmailStatus();
+    const verify = status.configured ? await verifyResendConnection() : null;
+    const fromEnv = process.env.RESEND_FROM || null;
     res.json({
       success: true,
       data: {
+        driver: 'resend',
         envPresent: status.configured,
         missing: status.missing,
-        nodemailerInstalled: status.hasNodemailer,
-        host: process.env.SMTP_HOST || null,
-        port: process.env.SMTP_PORT ? Number(process.env.SMTP_PORT) : null,
-        user: process.env.SMTP_USER || null,
         fromRaw: fromEnv,
-        secureByPort: Number(process.env.SMTP_PORT) === 465,
+        apiKeyLength: (process.env.RESEND_API_KEY || '').length,
+        apiKeyPrefix: String(process.env.RESEND_API_KEY || '').slice(0, 3),
         verify,
-        // Gợi ý nhanh cho admin
-        hints: buildEmailHints(status, verify),
+        hints: buildEmailHints(verify),
       },
     });
   } catch (err) {
@@ -825,31 +819,24 @@ exports.getEmailStatus = async (req, res, next) => {
   }
 };
 
-function buildEmailHints(status, verify) {
+function buildEmailHints(verify) {
   const out = [];
-  if (!status.hasNodemailer) {
-    out.push('Chưa cài đặt package nodemailer. Chạy `npm i nodemailer` trong Backend.');
-    return out;
-  }
-  if (!status.configured) {
-    out.push(`Thiếu biến môi trường: ${status.missing.join(', ')}.`);
-    return out;
-  }
-  if (verify && !verify.ok) {
-    if (verify.reason === 'VERIFY_FAILED') {
-      if (/auth/i.test(verify.error || '')) {
-        out.push('SMTP_USER/SMTP_PASS không hợp lệ. Với Gmail, cần dùng App Password (16 ký tự) — bật 2FA trước.');
-      } else if (/tls|certificate|ssl/i.test(verify.error || '')) {
-        out.push('Lỗi TLS khi nói chuyện với Gmail. Thử đổi SMTP_PORT giữa 465 và 587.');
-      } else if (/timeout|ETIMEDOUT|ECONNREFUSED/i.test(verify.error || '')) {
-        out.push('Không kết nối được tới Gmail SMTP từ Render. Kiểm tra firewall/IP whitelist.');
-      } else {
-        out.push(`SMTP verify thất bại: ${verify.error}`);
-      }
-    }
-  }
   if (!verify) {
-    out.push('Chưa chạy verify SMTP (cấu hình chưa đủ).');
+    out.push('Thiếu biến môi trường RESEND_API_KEY hoặc RESEND_FROM. Invite / reset sẽ bị skip.');
+    return out;
+  }
+  if (verify.ok) {
+    out.push('Resend đã sẵn sàng. Test gửi thật bằng POST /admin/email/test.');
+    return out;
+  }
+  if (verify.reason === 'RESEND_NOT_CONFIGURED') {
+    out.push(`Thiếu: ${(verify.missing || []).join(', ')}.`);
+  } else if (verify.reason === 'API_KEY_SHAPE_INVALID') {
+    out.push('RESEND_API_KEY có vẻ sai format (phải bắt đầu bằng "re_"). Kiểm tra lại key trên Resend dashboard.');
+  } else if (verify.reason === 'FROM_INVALID') {
+    out.push('RESEND_FROM không parse được. Đặt dạng "Display Name <noreply@yourdomain.com>" với domain đã verify trên Resend.');
+  } else {
+    out.push(`Resend verify thất bại: ${verify.reason}`);
   }
   return out;
 }
