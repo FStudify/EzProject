@@ -1,7 +1,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { MessageSquare, Send, Timer } from 'lucide-react';
 import type { Task, TaskStatus, TaskPriority, TaskComment, Member, ProjectMember } from '@/types';
-import { Drawer, Button, ProjectMemberAvatar } from '@/components/ui';
+import { Modal, Button, ProjectMemberAvatar } from '@/components/ui';
 import { DatePickerField, PolishedSelect } from './TaskFormControls';
 
 type ModalSelectOption = {
@@ -82,6 +82,25 @@ function TaskModalContent({
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<TaskComment[]>(task.comments ?? []);
   const [activeTab, setActiveTab] = useState<'details' | 'focus'>('details');
+  const [dateError, setDateError] = useState<string | null>(null);
+
+  const todayValue = useMemo(() => {
+    const now = new Date();
+    return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`;
+  }, []);
+
+  const handleStartDateChange = (value: string) => {
+    setStartDate(value);
+    setDateError(null);
+    if (deadline && value && deadline < value) {
+      setDeadline(value);
+    }
+  };
+
+  const handleDeadlineChange = (value: string) => {
+    setDeadline(value);
+    setDateError(null);
+  };
 
   const assigneeOptions = useMemo<ModalSelectOption[]>(
     () => members.map((member) => ({ value: member.id, label: member.name, tone: 'muted' })),
@@ -93,6 +112,15 @@ function TaskModalContent({
     const assignee = members.find((member) => member.id === assigneeId) ?? task.assignee;
     const safeStartDate = startDate || task.createdAt.slice(0, 10);
     const safeDeadline = deadline || (task.deadline ?? '').slice(0, 10);
+
+    if (safeStartDate < todayValue) {
+      setDateError('Ngày bắt đầu phải lớn hơn hoặc bằng ngày hiện tại.');
+      return;
+    }
+    if (safeDeadline && safeDeadline < safeStartDate) {
+      setDateError('Ngày kết thúc phải lớn hơn hoặc bằng ngày bắt đầu.');
+      return;
+    }
 
     const updated: Task = {
       ...task,
@@ -108,6 +136,7 @@ function TaskModalContent({
       comments,
     };
 
+    setDateError(null);
     onSave?.(updated);
     onClose();
   };
@@ -138,8 +167,8 @@ function TaskModalContent({
   const selectedAssignee = members.find(m => m.id === assigneeId);
 
   return (
-    <Drawer isOpen={isOpen} onClose={onClose} title="Chi tiết công việc" widthClass="w-full max-w-[min(40vw,560px)] min-w-[320px]">
-      <div className="mx-auto flex h-full w-full max-w-[700px] flex-col text-[#1F1F1F] pr-1">
+    <Modal isOpen={isOpen} onClose={onClose} title="Chi tiết công việc" size="xl" panelClassName="!max-h-[88vh]">
+      <div className="flex w-full flex-col text-[#1F1F1F]">
         <div className="mb-4 flex items-center justify-between shrink-0">
           <div className="inline-flex rounded-lg border border-border bg-surface-muted p-0.5">
             <button
@@ -228,17 +257,21 @@ function TaskModalContent({
                   <DatePickerField
                     label="Bắt đầu"
                     value={startDate}
-                    onChange={setStartDate}
+                    onChange={handleStartDateChange}
+                    min={todayValue}
                     size="compact"
                   />
                   <DatePickerField
                     label="Hạn chót"
                     value={deadline}
-                    onChange={setDeadline}
-                    min={startDate || undefined}
+                    onChange={handleDeadlineChange}
+                    min={startDate || todayValue}
                     size="compact"
                   />
                 </div>
+                {dateError && (
+                  <p className="text-xs font-bold text-rose-500">{dateError}</p>
+                )}
               </div>
 
               {/* Description */}
@@ -425,7 +458,7 @@ function TaskModalContent({
           </div>
         </div>
       </div>
-    </Drawer>
+    </Modal>
   );
 }
 

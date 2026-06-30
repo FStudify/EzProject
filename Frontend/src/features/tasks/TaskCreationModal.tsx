@@ -19,6 +19,8 @@ interface Props {
   onClose: () => void;
   projectId: string;
   projectDeadline: string | null | undefined;
+  projectName?: string;
+  projectDescription?: string;
   members: Member[];
   canGenerateAi: boolean;
   onManualAdd: (task: Omit<Task, 'id' | 'comments' | 'commentsCount' | 'createdAt' | 'updatedAt'>) => void;
@@ -31,8 +33,32 @@ const priorityOptions = [
   { value: 'LOW', label: 'Thấp', tone: 'positive' as const },
 ];
 
+function toIsoDateOnly(date: Date) {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
 function toDateInput(value: string | null | undefined) {
-  return value ? new Date(value).toISOString().slice(0, 10) : '';
+  if (!value) return '';
+  const date = new Date(value);
+  if (Number.isNaN(date.getTime())) return '';
+  return toIsoDateOnly(date);
+}
+
+function minDeadlineDateInput() {
+  return toIsoDateOnly(new Date());
+}
+
+function isDeadlineBeforeToday(value: string) {
+  if (!value) return false;
+  if (!/^\d{4}-\d{2}-\d{2}/.test(value)) {
+    const date = new Date(value);
+    if (Number.isNaN(date.valueOf())) return true;
+    return toIsoDateOnly(date) < toIsoDateOnly(new Date());
+  }
+  return value.slice(0, 10) < toIsoDateOnly(new Date());
 }
 
 const inputClass =
@@ -40,7 +66,7 @@ const inputClass =
 const labelClass = 'mb-1.5 block text-[12px] font-semibold uppercase tracking-[0.07em] text-ink-secondary';
 
 export default function TaskCreationModal({
-  isOpen, onClose, projectId, projectDeadline, members, canGenerateAi, onManualAdd, onAiCreated,
+  isOpen, onClose, projectId, projectDeadline, projectName, projectDescription, members, canGenerateAi, onManualAdd, onAiCreated,
 }: Props) {
   const [tab, setTab] = useState<'ai' | 'manual'>('ai');
   const [prompt, setPrompt] = useState('');
@@ -50,6 +76,7 @@ export default function TaskCreationModal({
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
   const [manual, setManual] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM' as TaskPriority, assigneeId: '' });
+  const minDeadline = minDeadlineDateInput();
 
   useEffect(() => {
     if (!isOpen) return;
@@ -64,11 +91,12 @@ export default function TaskCreationModal({
   const updateDraft = (id: string, patch: Partial<Draft>) => setDrafts((items) => items.map((item) => item.id === id ? { ...item, ...patch } : item));
 
   const generate = async () => {
-    if (!prompt.trim() || !deadline || !canGenerateAi) return;
+    if (!deadline || !canGenerateAi) return;
     setGenerating(true);
     setError('');
     try {
-      const generated = await generateAiTaskDrafts(projectId, { prompt: prompt.trim(), count });
+      const effectivePrompt = prompt.trim() || projectDescription?.trim() || projectName?.trim() || '';
+      const generated = await generateAiTaskDrafts(projectId, { prompt: effectivePrompt, count });
       setDrafts(generated.map((task, index) => ({
         id: `${Date.now()}-${index}`,
         selected: true,
@@ -101,6 +129,10 @@ export default function TaskCreationModal({
 
   const createManual = () => {
     if (!manual.title.trim() || !manual.deadline) return;
+    if (isDeadlineBeforeToday(manual.deadline)) {
+      setError('Deadline phải lớn hơn hoặc bằng ngày hiện tại.');
+      return;
+    }
     const assignee = members.find((member) => member.id === manual.assigneeId) ?? null;
     onManualAdd({
       projectId,
@@ -161,13 +193,13 @@ export default function TaskCreationModal({
             <section className="rounded-2xl border border-border bg-white/80 p-4 shadow-[0_18px_36px_-32px_rgba(53,31,20,0.45)]">
               <div className="grid gap-3 md:grid-cols-[1fr_128px]">
                 <div>
-                  <label className={labelClass}>Yêu cầu cho AI</label>
+                  <label className={labelClass}>Yêu cầu cho AI (không bắt buộc)</label>
                   <textarea
                     value={prompt}
                     onChange={(event) => setPrompt(event.target.value)}
                     disabled={!canGenerateAi || !deadline || generating}
                     rows={4}
-                    placeholder="Ví dụ: Chia nhỏ lộ trình học Flutter trong 2 tuần, có nghiên cứu, thực hành UI và mini project..."
+                    placeholder="Để trống nếu muốn AI dùng mô tả dự án. Ví dụ: Chia nhỏ lộ trình học Flutter trong 2 tuần..."
                     className={`${inputClass} min-h-[116px] resize-none`}
                   />
                 </div>
@@ -189,11 +221,11 @@ export default function TaskCreationModal({
               </div>
 
               <div className="mt-3 flex flex-wrap items-center justify-between gap-3">
-                <p className="text-xs text-ink-secondary">AI dùng tên, mô tả/chủ đề và deadline dự án để đề xuất task.</p>
+                <p className="text-xs text-ink-secondary">AI sẽ dùng tên, mô tả và deadline dự án để đề xuất task. Bạn có thể bổ sung yêu cầu riêng nếu cần.</p>
                 <Button
                   variant="primary"
                   onClick={generate}
-                  disabled={!prompt.trim() || !deadline || !canGenerateAi || generating}
+                  disabled={!deadline || !canGenerateAi || generating}
                   className="!rounded-xl !px-4"
                 >
                   <Wand2 className="mr-2 h-4 w-4" />
@@ -270,6 +302,7 @@ export default function TaskCreationModal({
                           label="Deadline"
                           value={task.deadline}
                           onChange={(value) => updateDraft(task.id, { deadline: value })}
+                          min={minDeadline}
                           max={deadline}
                           size="compact"
                         />
@@ -305,7 +338,7 @@ export default function TaskCreationModal({
               <textarea value={manual.description} onChange={(event) => setManual((value) => ({ ...value, description: event.target.value }))} rows={3} className={`${inputClass} resize-none`} placeholder="Mô tả ngắn gọn" />
             </div>
             <div className="grid gap-3 sm:grid-cols-3">
-              <DatePickerField label="Hạn chót" required value={manual.deadline} onChange={(value) => setManual((current) => ({ ...current, deadline: value }))} max={deadline || undefined} />
+              <DatePickerField label="Hạn chót" required value={manual.deadline} onChange={(value) => setManual((current) => ({ ...current, deadline: value }))} min={minDeadline} max={deadline || undefined} />
               <PolishedSelect label="Ưu tiên" value={manual.priority} onChange={(value) => setManual((current) => ({ ...current, priority: value as TaskPriority }))} options={priorityOptions} />
               <label className="text-sm font-semibold text-ink">
                 <span className={labelClass}>Người phụ trách</span>

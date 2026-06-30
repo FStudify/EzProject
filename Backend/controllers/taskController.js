@@ -9,6 +9,82 @@ const ObjectId = mongoose.Types.ObjectId;
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 
+function startOfTodayIso() {
+  const now = new Date();
+  return new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
+}
+
+function toIsoDate(value) {
+  const [y, m, d] = String(value).split('-').map(Number);
+  if (!y || !m || !d) return null;
+  return new Date(y, m - 1, d).toISOString();
+}
+
+/**
+ * Normalize a date string to an ISO timestamp at local 00:00.
+ * Returns null when input is invalid.
+ */
+function toLocalIso(value) {
+  if (!value) return null;
+  const d = new Date(value);
+  if (Number.isNaN(d.valueOf())) return null;
+  return new Date(d.getFullYear(), d.getMonth(), d.getDate()).toISOString();
+}
+
+/**
+ * Format a Date as YYYY-MM-DD in local time.
+ */
+function toDateStringLocal(date) {
+  const y = date.getFullYear();
+  const m = `${date.getMonth() + 1}`.padStart(2, '0');
+  const d = `${date.getDate()}`.padStart(2, '0');
+  return `${y}-${m}-${d}`;
+}
+
+/**
+ * Build a fallback due date for AI-generated task drafts.
+ * Spreads tasks evenly between tomorrow and the project deadline.
+ */
+function buildAiFallbackDeadline(index, total, projectDeadline) {
+  const projectEnd = toLocalIso(projectDeadline);
+  const projectEndDate = projectEnd ? new Date(projectEnd) : null;
+
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const baseEnd = projectEndDate && projectEndDate > tomorrow
+    ? projectEndDate
+    : new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
+
+  const span = Math.max(1, baseEnd.getTime() - tomorrow.getTime());
+  const step = Math.round((span * (index + 1)) / Math.max(1, total + 1));
+  const fallback = new Date(tomorrow.getTime() + step);
+  return fallback.toISOString();
+}
+
+/**
+ * Clamp a user-supplied deadline into the project's valid window.
+ * Never throws: missing/invalid input falls back to a safe distributed date.
+ */
+function normalizeBulkDeadline(value, projectDeadline, index, total) {
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const projectEnd = toLocalIso(projectDeadline);
+  const projectEndDate = projectEnd ? new Date(projectEnd) : null;
+
+  const fallback = buildAiFallbackDeadline(index || 0, total || 1, projectDeadline);
+  let date = value ? new Date(value) : null;
+  if (!date || Number.isNaN(date.valueOf())) return fallback;
+
+  if (date < tomorrow) date = tomorrow;
+  if (projectEndDate && date > projectEndDate) date = projectEndDate;
+
+  return new Date(date.getFullYear(), date.getMonth(), date.getDate()).toISOString();
+}
+
 async function checkMember(projectId, userId) {
   const project = await Project.findOne({
     _id: new ObjectId(projectId),
@@ -46,14 +122,47 @@ async function getProjectWithElevatedAccess(projectId, userId) {
   return project;
 }
 
-function toIsoDateWithinProject(value, projectDeadline) {
+/**
+ * Validate a task deadline:
+ *  - Phải là ISO date hợp lệ.
+ *  - Phải >= hôm nay (so sánh theo ngày, bỏ qua giờ).
+ *  - Nếu có startDate truyền vào, deadline phải >= startDate.
+ *  - Không được vượt quá deadline dự án (nếu truyền vào).
+ */
+function validateTaskDeadline(value, projectDeadline, startDate) {
   const date = new Date(value);
-  if (Number.isNaN(date.valueOf())) throw errors.BadRequest('Each task must have a valid deadline');
+  if (Number.isNaN(date.valueOf())) {
+    throw errors.BadRequest('Mỗi công việc phải có deadline hợp lệ');
+  }
 
-  const max = new Date(projectDeadline);
-  max.setHours(23, 59, 59, 999);
-  if (date > max) throw errors.BadRequest('Task deadline cannot be after the project deadline');
+  const minAllowed = new Date(startOfTodayIso());
+  if (date < minAllowed) {
+    throw errors.BadRequest('Deadline phải lớn hơn hoặc bằng ngày hiện tại');
+  }
+
+  if (startDate) {
+    const start = new Date(startDate);
+    if (Number.isNaN(start.valueOf())) {
+      throw errors.BadRequest('Ngày bắt đầu không hợp lệ');
+    }
+    if (date < new Date(start.getFullYear(), start.getMonth(), start.getDate())) {
+      throw errors.BadRequest('Deadline phải lớn hơn hoặc bằng ngày bắt đầu');
+    }
+  }
+
+  if (projectDeadline) {
+    const max = new Date(projectDeadline);
+    max.setHours(23, 59, 59, 999);
+    if (date > max) {
+      throw errors.BadRequest('Deadline công việc không được sau deadline dự án');
+    }
+  }
+
   return date.toISOString();
+}
+
+function toIsoDateWithinProject(value, projectDeadline, startDate) {
+  return validateTaskDeadline(value, projectDeadline, startDate);
 }
 
 function extractJson(text) {
@@ -89,15 +198,40 @@ function normalizeAiDrafts(rawTasks, projectDeadline, requestedCount) {
     throw errors.BadRequest('AI did not return the requested number of tasks');
   }
 
-  return rawTasks.slice(0, requestedCount).map((raw) => {
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const projectEnd = toLocalIso(projectDeadline);
+  const projectEndDate = projectEnd ? new Date(projectEnd) : null;
+
+  return rawTasks.slice(0, requestedCount).map((raw, index) => {
     const title = typeof raw?.title === 'string' ? raw.title.trim() : '';
     const description = typeof raw?.description === 'string' ? raw.description.trim() : '';
-    if (!title) throw errors.BadRequest('AI returned a task without a title');
     const priority = ['LOW', 'MEDIUM', 'HIGH'].includes(raw?.priority) ? raw.priority : 'MEDIUM';
+
+    const safeTitle = title || `Công việc ${index + 1}`;
+    const safeDescription = description.length > 5000 ? description.slice(0, 5000) : description;
+
+    let deadline = toLocalIso(raw?.deadline);
+    if (!deadline) {
+      deadline = buildAiFallbackDeadline(index, requestedCount, projectDeadline);
+    }
+
+    const dueDate = new Date(deadline);
+    if (Number.isNaN(dueDate.valueOf())) {
+      deadline = buildAiFallbackDeadline(index, requestedCount, projectDeadline);
+    } else if (dueDate < tomorrow) {
+      // AI returned a date that is today or earlier; bump to tomorrow.
+      deadline = tomorrow.toISOString();
+    } else if (projectEndDate && dueDate > projectEndDate) {
+      deadline = projectEndDate.toISOString();
+    }
+
     return {
-      title: title.slice(0, 300),
-      description: description.slice(0, 5000),
-      deadline: toIsoDateWithinProject(raw?.deadline, projectDeadline),
+      title: safeTitle.slice(0, 300),
+      description: safeDescription,
+      deadline,
       priority,
       // Keep this aligned with the existing first Kanban column; do not introduce a new status.
       status: 'BACKLOG',
@@ -199,7 +333,7 @@ exports.create = async (req, res, next) => {
     const task = await Task.create({
       projectId: new ObjectId(req.params.projectId),
       ...req.body,
-      deadline: req.body.deadline ? new Date(req.body.deadline) : undefined,
+      deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline)) : undefined,
       assigneeId: req.body.assigneeId ? new ObjectId(req.body.assigneeId) : undefined,
       creatorId: new ObjectId(req.user.id),
     });
@@ -247,11 +381,18 @@ exports.generateAiTasks = async (req, res, next) => {
       generationConfig: { responseMimeType: 'application/json' },
     });
     const projectDeadline = new Date(project.deadline).toISOString().slice(0, 10);
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const tomorrow = new Date(today);
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    const minDueDate = toDateStringLocal(tomorrow);
     const prompt = [
       'You generate actionable child tasks for a project. Return valid JSON only, without markdown or commentary.',
       `Return a JSON array of exactly ${req.body.count} objects; do not wrap it in an object.`,
       'Every object must have: title (string), description (string), deadline (YYYY-MM-DD), priority (LOW, MEDIUM, or HIGH).',
-      `Every deadline must be on or before ${projectDeadline}. Do not include assignees or status.`,
+      `HARD RULE: every "deadline" MUST be at least 1 day after today. Today is ${minDueDate}; the minimum allowed dueDate is ${minDueDate} (inclusive). A deadline equal to today or earlier is INVALID.`,
+      `Every deadline must be on or before the project deadline (${projectDeadline}). Do not include assignees or status.`,
+      `Spread the deadlines evenly across the project's timeline (from ${minDueDate} through ${projectDeadline}); earlier tasks get earlier due dates, later tasks get later due dates.`,
       `Project name: ${project.name}`,
       `Project subject: ${project.subject || 'Not provided'}`,
       `Project description: ${project.description || 'Not provided'}`,
@@ -283,13 +424,16 @@ exports.generateAiTasks = async (req, res, next) => {
 };
 
 // Validate every draft before inserting, so a failed request creates no tasks.
+// AI drafts have already been normalized on the server, but the client may have
+// edited them. Accept any non-empty deadline and clamp it to the project window
+// so this endpoint never rejects due to date validation.
 exports.bulkCreate = async (req, res, next) => {
   try {
     const project = await getProjectWithElevatedAccess(req.params.projectId, req.user.id);
-    const drafts = req.body.tasks.map((task) => ({
+    const drafts = req.body.tasks.map((task, index) => ({
       title: task.title,
       description: task.description || null,
-      deadline: toIsoDateWithinProject(task.deadline, project.deadline),
+      deadline: normalizeBulkDeadline(task.deadline, project.deadline, index, req.body.tasks.length),
       priority: task.priority,
     }));
     const projectId = new ObjectId(req.params.projectId);
@@ -330,7 +474,7 @@ exports.update = async (req, res, next) => {
     }
 
     const update = { ...req.body };
-    if (update.deadline) update.deadline = new Date(update.deadline);
+    if (update.deadline) update.deadline = new Date(validateTaskDeadline(update.deadline));
     if (update.assigneeId) update.assigneeId = new ObjectId(update.assigneeId);
 
     const updated = await Task.findByIdAndUpdate(

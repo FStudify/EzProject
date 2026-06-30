@@ -581,6 +581,8 @@ export default function TaskBoard() {
           projectId={projectId}
           members={members}
           projectDeadline={project?.deadline}
+          projectName={project?.name}
+          projectDescription={project?.description}
           canGenerateAi={canGenerateAi}
           onManualAdd={handleAddTask}
           onAiCreated={(created) => {

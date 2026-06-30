@@ -106,6 +106,9 @@ function buildTransporterConfig() {
     socketTimeout: 15_000,
     debug: process.env.SMTP_DEBUG === 'true',
     logger: process.env.SMTP_DEBUG === 'true',
+    // Ép dùng IPv4 — Render free tier block egress IPv6 ra ngoài (đặc biệt tới Gmail SMTP).
+    // Nếu để mặc định, DNS lookup có thể trả về AAAA record trước → ENETUNREACH.
+    family: 4,
   };
 }
 

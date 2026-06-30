@@ -190,7 +190,21 @@ const CATEGORIES = ['Tất cả', 'Môn học', 'Loại bài'];
 type StatusFilter = 'all' | ProjectStatus;
 
 type CreateTab = 'manual' | 'ai';
-type AIPreviewTask = GeneratedTask & { _id: string };
+type AIPreviewTask = GeneratedTask & { _id: string; selected: boolean };
+
+type AIStep = 'idea' | 'generating' | 'preview';
+
+const AI_STAGES = [
+  { key: 'analyzing', label: 'Phân tích ý tưởng' },
+  { key: 'naming', label: 'Đặt tên & mô tả' },
+  { key: 'tasks', label: 'Sinh danh sách công việc' },
+  { key: 'finalize', label: 'Hoàn tất' },
+] as const;
+
+const todayDateValue = () => {
+  const now = new Date();
+  return `${now.getFullYear()}-${`${now.getMonth() + 1}`.padStart(2, '0')}-${`${now.getDate()}`.padStart(2, '0')}`;
+};
 
 export default function ProjectListPage() {
   const [showTemplateModal, setShowTemplateModal] = useState(false);
@@ -209,6 +223,8 @@ export default function ProjectListPage() {
   const [aiIdea, setAiIdea] = useState('');
   const [aiIdeaError, setAiIdeaError] = useState<string | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
+  const [aiStep, setAiStep] = useState<AIStep>('idea');
+  const [aiActiveStage, setAiActiveStage] = useState<number>(0);
   const [aiPreview, setAiPreview] = useState<{
     name: string;
     description: string;
@@ -222,19 +238,31 @@ export default function ProjectListPage() {
 
   const [projects, setProjects] = useState<Project[]>([]);
 
+  const minDeadlineInput = () => todayDateValue();
+
+  const isTaskDeadlineTooSoon = (value: string) => {
+    if (!value) return false;
+    return value < todayDateValue();
+  };
+
   const resetAiCreateState = () => {
     setActiveCreateTab('manual');
     setAiIdea('');
     setAiIdeaError(null);
     setIsGenerating(false);
     setAiPreview(null);
+    setAiStep('idea');
+    setAiActiveStage(0);
   };
 
   const toDateInputValue = (value?: string) => {
     if (!value) return '';
     const date = new Date(value);
     if (Number.isNaN(date.getTime())) return '';
-    return date.toISOString().slice(0, 10);
+    const y = date.getFullYear();
+    const m = `${date.getMonth() + 1}`.padStart(2, '0');
+    const d = `${date.getDate()}`.padStart(2, '0');
+    return `${y}-${m}-${d}`;
   };
 
   const getGenerateProjectError = (err: any) => {
@@ -348,9 +376,19 @@ export default function ProjectListPage() {
       return;
     }
 
+    setIsGenerating(true);
+    setAiIdeaError(null);
+    setAiStep('generating');
+    setAiActiveStage(0);
+
+    const stageTimers: ReturnType<typeof setTimeout>[] = [];
+    for (let i = 1; i < AI_STAGES.length; i++) {
+      stageTimers.push(
+        setTimeout(() => setAiActiveStage(i), 1100 * i),
+      );
+    }
+
     try {
-      setIsGenerating(true);
-      setAiIdeaError(null);
       const generated = await generateProject(idea);
       setAiPreview({
         name: generated.name,
@@ -362,17 +400,22 @@ export default function ProjectListPage() {
         tasks: generated.tasks.map((task) => ({
           ...task,
           deadline: task.deadline || convertDeadlineDaysToDateString(task.suggestedDeadlineDays),
+          selected: true,
           _id: generateTaskId(),
         })),
       });
+      setAiActiveStage(AI_STAGES.length - 1);
+      setAiStep('preview');
       toast('Đã tạo bản xem trước bằng AI.', 'success');
     } catch (err: any) {
+      setAiStep('idea');
       const errorInfo = getGenerateProjectError(err);
       if (err?.status === 400) {
         setAiIdeaError(errorInfo.message);
       }
       toast(errorInfo.message, errorInfo.variant);
     } finally {
+      stageTimers.forEach((t) => clearTimeout(t));
       setIsGenerating(false);
     }
   };
@@ -381,6 +424,33 @@ export default function ProjectListPage() {
     if (!aiPreview) return;
     if (!aiPreview.name.trim()) {
       toast('Tên dự án là bắt buộc.', 'error');
+      return;
+    }
+    if (isTaskDeadlineTooSoon(aiPreview.deadline)) {
+      toast('Deadline dự án phải sau thời điểm hiện tại ít nhất 1 giờ.', 'error');
+      return;
+    }
+    const badTask = aiPreview.tasks.find((task) => task.selected && isTaskDeadlineTooSoon(task.deadline));
+    if (badTask) {
+      toast(`Công việc "${badTask.title}" có deadline quá gần. Hãy chỉnh lại thời hạn.`, 'error');
+      return;
+    }
+    const selectedCount = aiPreview.tasks.filter((task) => task.selected).length;
+    if (selectedCount === 0) {
+      toast('Vui lòng chọn ít nhất một công việc để tạo.', 'warning');
+      return;
+    }
+
+    if (aiPreview.deadline && aiPreview.deadline < minDeadlineInput()) {
+      toast('Ngày đến hạn dự án phải từ hôm nay trở đi.', 'error');
+      return;
+    }
+    const badTaskByDate = aiPreview.tasks.find((task) => task.selected && (
+      !task.deadline
+      || task.deadline < minDeadlineInput()
+    ));
+    if (badTaskByDate) {
+      toast(`Công việc "${badTaskByDate.title}" có deadline trước hôm nay.`, 'error');
       return;
     }
 
@@ -394,14 +464,16 @@ export default function ProjectListPage() {
       });
 
       const results = await Promise.allSettled(
-        aiPreview.tasks.map((task) =>
-          createTask(newProject.id, {
-            title: task.title.trim(),
-            description: task.description.trim(),
-            priority: task.priority,
-            deadline: task.deadline ? new Date(task.deadline).toISOString() : undefined,
-          }),
-        ),
+        aiPreview.tasks
+          .filter((task) => task.selected)
+          .map((task) =>
+            createTask(newProject.id, {
+              title: task.title.trim(),
+              description: task.description.trim(),
+              priority: task.priority,
+              deadline: task.deadline ? new Date(task.deadline).toISOString() : undefined,
+            }),
+          ),
       );
       const failedCount = results.filter((result) => result.status === 'rejected').length;
 
@@ -838,7 +910,7 @@ export default function ProjectListPage() {
         }}
         title="Khởi tạo dự án"
         size="lg"
-        panelClassName="!max-w-[800px] !rounded-[2.5rem] !p-8 border-0 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.3)] overflow-hidden"
+        panelClassName={`!max-w-[1200px] !max-h-[88vh] !rounded-[2.5rem] !p-8 border-0 shadow-[0_30px_80px_-15px_rgba(0,0,0,0.3)] overflow-hidden`}
         bodyClassName="[&::-webkit-scrollbar]:hidden !p-0 mt-6"
       >
         <div className="mb-6 grid grid-cols-2 rounded-2xl bg-slate-100 p-1">
@@ -866,35 +938,37 @@ export default function ProjectListPage() {
             Tạo bằng AI
           </button>
         </div>
-        <div className="flex flex-col md:flex-row gap-8 lg:gap-10">
-          {/* Decorative Left Side */}
-          <div className="hidden md:flex flex-col w-[280px] shrink-0 bg-gradient-to-br from-primary/10 via-primary/5 to-blue-500/10 rounded-[2rem] p-8 relative overflow-hidden border border-white/60 shadow-inner">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
-            <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-500/20 blur-3xl rounded-full translate-y-1/2 -translate-x-1/2" />
-            
-            <div className="relative z-10">
-              <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-8 border border-slate-100">
-                <Rocket className="w-7 h-7 text-primary" />
+        <div className={`flex flex-col md:flex-row gap-8 lg:gap-10 ${activeCreateTab === 'ai' ? 'md:gap-0' : ''}`}>
+          {/* Decorative Left Side - chỉ hiển thị ở tab manual */}
+          {activeCreateTab === 'manual' && (
+            <div className="hidden md:flex flex-col w-[280px] shrink-0 bg-gradient-to-br from-primary/10 via-primary/5 to-blue-500/10 rounded-[2rem] p-8 relative overflow-hidden border border-white/60 shadow-inner">
+              <div className="absolute top-0 right-0 w-40 h-40 bg-primary/20 blur-3xl rounded-full -translate-y-1/2 translate-x-1/2" />
+              <div className="absolute bottom-0 left-0 w-40 h-40 bg-blue-500/20 blur-3xl rounded-full translate-y-1/2 -translate-x-1/2" />
+
+              <div className="relative z-10">
+                <div className="w-14 h-14 rounded-2xl bg-white shadow-sm flex items-center justify-center mb-8 border border-slate-100">
+                  <Rocket className="w-7 h-7 text-primary" />
+                </div>
+                <h3 className="text-2xl font-black text-slate-800 mb-3 leading-tight">Bắt đầu <br/>hành trình mới</h3>
+                <p className="text-sm font-medium text-slate-500 leading-relaxed">
+                  Thiết lập thông tin cơ bản để không gian làm việc của bạn trở nên chuyên nghiệp và rõ ràng nhất.
+                </p>
               </div>
-              <h3 className="text-2xl font-black text-slate-800 mb-3 leading-tight">Bắt đầu <br/>hành trình mới</h3>
-              <p className="text-sm font-medium text-slate-500 leading-relaxed">
-                Thiết lập thông tin cơ bản để không gian làm việc của bạn trở nên chuyên nghiệp và rõ ràng nhất.
-              </p>
-            </div>
-            
-            {/* Minimal mockup illustration */}
-            <div className="relative z-10 mt-auto pt-10">
-              <div className="w-full h-32 bg-white/70 rounded-2xl border border-white shadow-sm p-4 backdrop-blur-md flex flex-col gap-3">
-                <div className="w-1/2 h-2.5 bg-slate-200/80 rounded-full" />
-                <div className="w-3/4 h-2 bg-slate-200/80 rounded-full" />
-                <div className="w-full h-2 bg-slate-200/80 rounded-full" />
-                <div className="mt-auto flex gap-2">
-                  <div className="w-6 h-6 rounded-full bg-primary/20" />
-                  <div className="w-6 h-6 rounded-full bg-blue-400/20" />
+
+              {/* Minimal mockup illustration */}
+              <div className="relative z-10 mt-auto pt-10">
+                <div className="w-full h-32 bg-white/70 rounded-2xl border border-white shadow-sm p-4 backdrop-blur-md flex flex-col gap-3">
+                  <div className="w-1/2 h-2.5 bg-slate-200/80 rounded-full" />
+                  <div className="w-3/4 h-2 bg-slate-200/80 rounded-full" />
+                  <div className="w-full h-2 bg-slate-200/80 rounded-full" />
+                  <div className="mt-auto flex gap-2">
+                    <div className="w-6 h-6 rounded-full bg-primary/20" />
+                    <div className="w-6 h-6 rounded-full bg-blue-400/20" />
+                  </div>
                 </div>
               </div>
             </div>
-          </div>
+          )}
 
           {/* Form Right Side */}
           {activeCreateTab === 'manual' ? (
@@ -973,40 +1047,126 @@ export default function ProjectListPage() {
           </form>
           ) : (
           <div className="flex-1 flex flex-col space-y-5 min-w-0 py-2">
-            <div className="space-y-2.5">
-              <label className="text-sm font-black text-slate-900 ml-1">Ý tưởng dự án</label>
-              <textarea
-                className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all resize-none outline-none leading-relaxed disabled:opacity-60"
-                placeholder="VD: Ứng dụng quản lý thư viện cho trường học..."
-                rows={4}
-                value={aiIdea}
-                disabled={isGenerating || isSubmitting}
-                onChange={(e) => {
-                  setAiIdea(e.target.value);
-                  if (aiIdeaError) setAiIdeaError(null);
-                }}
-              />
-              {aiIdeaError && <p className="ml-1 text-xs font-bold text-rose-500">{aiIdeaError}</p>}
+            {/* Stepper - horizontal 3 bước, canh giữa */}
+            <div className="flex items-center justify-center gap-0 px-4">
+              {([
+                { key: 'idea', label: 'Ý tưởng' },
+                { key: 'generating', label: 'AI phân tích' },
+                { key: 'preview', label: 'Chỉnh sửa' },
+              ] as const).map((step, idx, arr) => {
+                const stepIndex = arr.findIndex((s) => s.key === aiStep);
+                const isActive = step.key === aiStep;
+                const isDone = idx < stepIndex;
+                return (
+                  <div key={step.key} className="flex items-center gap-2">
+                    <div className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-black transition-all ${
+                      isDone ? 'bg-primary text-white'
+                        : isActive ? 'bg-primary text-white shadow-lg shadow-primary/30'
+                        : 'bg-slate-100 text-slate-400'
+                    }`}>
+                      {isDone ? <Check className="h-4 w-4" /> : idx + 1}
+                    </div>
+                    <span className={`text-sm font-black tracking-wide whitespace-nowrap ${
+                      isActive ? 'text-slate-900' : isDone ? 'text-primary' : 'text-slate-400'
+                    }`}>
+                      {step.label}
+                    </span>
+                    {idx < arr.length - 1 && (
+                      <div className={`mx-3 h-px w-16 ${isDone ? 'bg-primary' : 'bg-slate-200'}`} />
+                    )}
+                  </div>
+                );
+              })}
             </div>
 
-            <Button
-              type="button"
-              variant="primary"
-              size="lg"
-              disabled={isGenerating || isSubmitting || aiIdea.trim().length < 10}
-              onClick={handleGenerateProject}
-              className="w-full rounded-2xl font-black shadow-xl shadow-primary/20"
-            >
-              <Sparkles className="mr-2 h-5 w-5" />
-              {isGenerating ? 'Đang tạo dự án...' : 'Tạo dự án'}
-            </Button>
+            {aiStep === 'idea' && (
+              <div className="space-y-3">
+                <div className="space-y-1">
+                  <label className="text-sm font-black text-slate-900 ml-1">Mô tả ý tưởng dự án của bạn</label>
+                  <p className="ml-1 text-xs text-slate-500">Mô tả càng chi tiết, kết quả AI càng chính xác.</p>
+                </div>
+                <textarea
+                  className="w-full rounded-2xl border-2 border-slate-100 bg-slate-50/50 px-5 py-4 text-base font-medium text-slate-800 placeholder:text-slate-400 focus:bg-white focus:border-primary/40 focus:ring-4 focus:ring-primary/10 transition-all resize-none outline-none leading-relaxed disabled:opacity-60"
+                  placeholder="VD: Ứng dụng quản lý thư viện cho trường học, cho phép học sinh mượn sách trực tuyến..."
+                  rows={4}
+                  value={aiIdea}
+                  disabled={isGenerating || isSubmitting}
+                  onChange={(e) => {
+                    setAiIdea(e.target.value);
+                    if (aiIdeaError) setAiIdeaError(null);
+                  }}
+                />
+                {aiIdeaError && <p className="ml-1 text-xs font-bold text-rose-500">{aiIdeaError}</p>}
+                <Button
+                  type="button"
+                  variant="primary"
+                  size="lg"
+                  disabled={isGenerating || isSubmitting || aiIdea.trim().length < 10}
+                  onClick={handleGenerateProject}
+                  className="w-full rounded-2xl font-black shadow-xl shadow-primary/20"
+                >
+                  <Sparkles className="mr-2 h-5 w-5" />
+                  Tạo dự án với AI
+                </Button>
+              </div>
+            )}
 
-            {aiPreview && (
+            {aiStep === 'generating' && (
+              <div className="space-y-4 rounded-2xl border border-slate-200 bg-gradient-to-br from-primary/5 via-white to-blue-50/40 p-6">
+                <div className="space-y-2.5">
+                  {AI_STAGES.map((stage, idx) => {
+                    const isDone = idx < aiActiveStage;
+                    const isActive = idx === aiActiveStage;
+                    return (
+                      <div
+                        key={stage.key}
+                        className={`flex items-center gap-3 rounded-xl border px-4 py-2.5 transition-all ${
+                          isDone
+                            ? 'border-emerald-200 bg-emerald-50/60'
+                            : isActive
+                              ? 'border-primary/30 bg-white shadow-sm'
+                              : 'border-slate-100 bg-white/60'
+                        }`}
+                      >
+                        <div className={`flex h-6 w-6 shrink-0 items-center justify-center rounded-full text-[11px] font-black ${
+                          isDone
+                            ? 'bg-emerald-500 text-white'
+                            : isActive
+                              ? 'border-2 border-primary bg-primary/10 text-primary'
+                              : 'bg-slate-100 text-slate-400'
+                        }`}>
+                          {isDone ? <Check className="h-3 w-3" /> : idx + 1}
+                        </div>
+                        <span className={`text-sm font-bold ${
+                          isDone ? 'text-emerald-900' : isActive ? 'text-slate-900' : 'text-slate-400'
+                        }`}>
+                          {stage.label}
+                        </span>
+                        {isActive && (
+                          <span className="ml-auto flex gap-1">
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" style={{ animationDelay: '0ms' }} />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" style={{ animationDelay: '150ms' }} />
+                            <span className="h-1.5 w-1.5 animate-bounce rounded-full bg-primary" style={{ animationDelay: '300ms' }} />
+                          </span>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {aiStep === 'preview' && aiPreview && (
               <div className="space-y-5 rounded-2xl border border-slate-200 bg-white p-5 shadow-sm">
                 <div className="flex items-center justify-between gap-3">
-                  <p className="text-base font-black text-slate-900">Xem trước</p>
+                  <div>
+                    <p className="text-base font-black text-slate-900">Xem trước & chỉnh sửa</p>
+                    <p className="text-xs font-medium text-slate-500">
+                      Bỏ chọn những công việc bạn không muốn, hoặc chỉnh lại nội dung trước khi tạo.
+                    </p>
+                  </div>
                   <span className="rounded-full bg-primary/10 px-3 py-1 text-xs font-black text-primary">
-                    {aiPreview.tasks.length} công việc
+                    {aiPreview.tasks.filter((t) => t.selected).length}/{aiPreview.tasks.length} công việc
                   </span>
                 </div>
 
@@ -1040,53 +1200,141 @@ export default function ProjectListPage() {
                 </div>
 
                 <div className="space-y-2">
-                  <label className="text-xs font-black uppercase text-slate-900">Ngày đến hạn</label>
+                  <label className="text-xs font-black uppercase text-slate-900">Ngày đến hạn dự án</label>
+                  <p className="text-[11px] text-slate-500">Ngày bắt đầu dự án mặc định là hôm nay. Ngày đến hạn phải từ hôm nay trở đi.</p>
                   <input
                     type="date"
-                    className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-800 outline-none focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
+                    min={minDeadlineInput()}
+                    className="w-full rounded-xl border-2 border-slate-100 bg-slate-50 px-4 py-3 text-sm font-bold text-slate-700 outline-none focus:border-primary/40 focus:bg-white focus:ring-4 focus:ring-primary/10"
                     value={aiPreview.deadline}
-                    onChange={(e) => setAiPreview((prev) => prev ? { ...prev, deadline: e.target.value } : prev)}
+                    onChange={(e) => {
+                      const next = e.target.value;
+                      setAiPreview((prev) => {
+                        if (!prev) return prev;
+                        const updated = { ...prev, deadline: next };
+                        if (prev.tasks.some((t) => t.deadline && t.deadline < next)) {
+                          updated.tasks = prev.tasks.map((t) => (
+                            t.deadline && t.deadline < next
+                              ? { ...t, deadline: next }
+                              : t
+                          ));
+                        }
+                        return updated;
+                      });
+                    }}
                   />
                 </div>
 
                 <div className="space-y-3">
-                  <div className="sticky top-0 z-10 flex items-center justify-between bg-white">
+                  <div className="sticky top-0 z-10 flex items-center justify-between bg-white pb-1">
                     <p className="text-sm font-black text-slate-900">Công việc gợi ý</p>
-                    <span className="text-xs font-bold text-slate-600">{aiPreview.tasks.length} công việc</span>
+                    <button
+                      type="button"
+                      onClick={() => {
+                        const allSelected = aiPreview.tasks.every((t) => t.selected);
+                        setAiPreview((prev) => prev ? {
+                          ...prev,
+                          tasks: prev.tasks.map((t) => ({ ...t, selected: !allSelected })),
+                        } : prev);
+                      }}
+                      className="rounded-lg px-2.5 py-1 text-xs font-bold text-primary hover:bg-primary/10"
+                    >
+                      {aiPreview.tasks.every((t) => t.selected) ? 'Bỏ chọn tất cả' : 'Chọn tất cả'}
+                    </button>
                   </div>
-                  <div className="max-h-72 space-y-3 overflow-y-auto pr-1">
-                    {aiPreview.tasks.map((task) => (
-                      <div key={task._id} className="flex max-h-32 items-start gap-3 overflow-hidden rounded-xl border border-slate-100 bg-slate-50 p-3">
-                        <div className="min-w-0 flex-1">
-                          <p className="truncate text-sm font-black text-slate-800">{task.title}</p>
-                          {task.description && (
-                            <p className="mt-1 line-clamp-2 text-xs font-medium leading-relaxed text-slate-600">{task.description}</p>
-                          )}
-                          <div className="mt-2 flex flex-wrap gap-2">
-                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600">
-                              Ưu tiên: {task.priority === 'HIGH' ? 'Cao' : task.priority === 'LOW' ? 'Thấp' : 'Trung bình'}
+                <div className="max-h-80 space-y-3 overflow-y-auto pr-1">
+                  {aiPreview.tasks.map((task) => {
+                    const priorityLabel = task.priority === 'HIGH' ? 'Cao' : task.priority === 'LOW' ? 'Thấp' : 'Trung bình';
+                    const priorityColor = task.priority === 'HIGH'
+                      ? 'bg-rose-50 text-rose-700 border-rose-200'
+                      : task.priority === 'LOW'
+                        ? 'bg-emerald-50 text-emerald-700 border-emerald-200'
+                        : 'bg-amber-50 text-amber-700 border-amber-200';
+                    const tooSoon = !task.deadline
+                      || task.deadline < minDeadlineInput();
+                      return (
+                        <div
+                          key={task._id}
+                          className={`space-y-2 rounded-xl border bg-white p-3 shadow-sm transition ${
+                            task.selected
+                              ? tooSoon
+                                ? 'border-rose-300 ring-1 ring-rose-200'
+                                : 'border-primary/30 ring-1 ring-primary/10'
+                              : 'border-slate-100 opacity-65'
+                          }`}
+                        >
+                          <div className="flex items-start gap-2">
+                            <input
+                              type="checkbox"
+                              checked={task.selected}
+                              onChange={(e) => setAiPreview((prev) => prev ? {
+                                ...prev,
+                                tasks: prev.tasks.map((t) => t._id === task._id ? { ...t, selected: e.target.checked } : t),
+                              } : prev)}
+                              className="mt-1 h-4 w-4 rounded border-slate-300 text-primary focus:ring-primary/30"
+                              aria-label={`Chọn công việc ${task.title}`}
+                            />
+                            <input
+                              className="min-w-0 flex-1 rounded-lg border border-transparent bg-transparent px-2 py-1 text-sm font-black text-slate-800 transition hover:border-slate-200 hover:bg-slate-50 focus:border-primary focus:bg-white focus:outline-none focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+                              value={task.title}
+                              onChange={(e) => setAiPreview((prev) => prev ? {
+                                ...prev,
+                                tasks: prev.tasks.map((t) => t._id === task._id ? { ...t, title: e.target.value } : t),
+                              } : prev)}
+                              disabled={!task.selected}
+                            />
+                            <button
+                              type="button"
+                              onClick={() =>
+                                setAiPreview((prev) =>
+                                  prev
+                                    ? { ...prev, tasks: prev.tasks.filter((item) => item._id !== task._id) }
+                                    : prev,
+                                )
+                              }
+                              className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
+                              aria-label="Xóa công việc"
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </button>
+                          </div>
+
+                          <textarea
+                            value={task.description}
+                            onChange={(e) => setAiPreview((prev) => prev ? {
+                              ...prev,
+                              tasks: prev.tasks.map((t) => t._id === task._id ? { ...t, description: e.target.value } : t),
+                            } : prev)}
+                            rows={2}
+                            disabled={!task.selected}
+                            placeholder="Mô tả công việc"
+                            className="w-full resize-none rounded-lg border border-slate-200 bg-slate-50 px-3 py-2 text-xs font-medium text-slate-700 outline-none focus:border-primary/40 focus:bg-white focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+                          />
+
+                          <div className="flex flex-wrap items-center gap-2">
+                            <span className={`rounded-full border px-2.5 py-1 text-[11px] font-black ${priorityColor}`}>
+                              Ưu tiên: {priorityLabel}
                             </span>
-                            <span className="rounded-full bg-white px-2.5 py-1 text-[11px] font-black text-slate-600">
-                              Ngày đến hạn: {toDateInputValue(task.deadline) || `${task.suggestedDeadlineDays} ngày`}
-                            </span>
+                            <input
+                              type="date"
+                              min={minDeadlineInput()}
+                              value={toDateInputValue(task.deadline)}
+                              onChange={(e) => setAiPreview((prev) => prev ? {
+                                ...prev,
+                                tasks: prev.tasks.map((t) => t._id === task._id ? { ...t, deadline: e.target.value } : t),
+                              } : prev)}
+                              disabled={!task.selected}
+                              className="rounded-lg border border-slate-200 bg-white px-2 py-1 text-[11px] font-bold text-slate-700 outline-none focus:border-primary/40 focus:ring-2 focus:ring-primary/15 disabled:opacity-50"
+                            />
+                            {tooSoon && task.selected && (
+                              <span className="rounded-full bg-rose-50 px-2.5 py-1 text-[11px] font-black text-rose-700 border border-rose-200">
+                                Deadline trước hôm nay
+                              </span>
+                            )}
                           </div>
                         </div>
-                        <button
-                          type="button"
-                          onClick={() =>
-                            setAiPreview((prev) =>
-                              prev
-                                ? { ...prev, tasks: prev.tasks.filter((item) => item._id !== task._id) }
-                                : prev,
-                            )
-                          }
-                          className="rounded-lg p-2 text-slate-400 hover:bg-rose-50 hover:text-rose-600"
-                          aria-label="Xóa công việc"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </button>
-                      </div>
-                    ))}
+                      );
+                    })}
                   </div>
                 </div>
 
@@ -1111,7 +1359,10 @@ export default function ProjectListPage() {
                     onClick={handleCreateFromAiPreview}
                     className="rounded-2xl font-black px-10 shadow-xl shadow-primary/20"
                   >
-                    {isSubmitting ? 'Đang tạo...' : 'Tạo dự án'}
+                    <Sparkles className="mr-2 h-4 w-4" />
+                    {isSubmitting
+                      ? 'Đang tạo...'
+                      : `Tạo dự án (${aiPreview.tasks.filter((t) => t.selected).length} task)`}
                   </Button>
                 </div>
               </div>

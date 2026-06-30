@@ -72,7 +72,7 @@ export async function createTask(
 
 export async function generateAiTaskDrafts(
   projectId: string,
-  data: { prompt: string; count: number },
+  data: { prompt?: string; count: number },
 ): Promise<AiTaskDraft[]> {
   return api.post<AiTaskDraft[]>(Endpoints.TASK_AI_GENERATE(projectId), data, { timeout: 45_000 });
 }

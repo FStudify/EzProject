@@ -1,41 +1,52 @@
-import { useState, useRef, useEffect, useCallback } from 'react';
+import { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { Sparkles, X, Send, Bot } from 'lucide-react';
 import type { ChatMessage } from '@/types';
 import ChatMessageBubble from './ChatMessage';
 import Button from '@/components/ui/Button';
 import { useAuth } from '@/contexts/AuthContext';
 import { chatAI } from '@/api/chat.api';
+import { useAILang } from '@/hooks/useAILang';
 
 interface AIChatDialogProps {
   projectId: string;
 }
 
-const WELCOME_MESSAGE: ChatMessage = {
-  id: 'welcome',
-  roomId: 'ai',
-  sender: 'ai',
-  content:
-    'Chao! Toi la tro ly AI cua du an. Ban co the hoi toi ve: nhien vu, thanh vien, deadline, tien do, kenh chat. Hay dat cau hoi ngay!',
-  timestamp: new Date().toISOString(),
-  channel: 'ai',
-};
-
-const ERROR_MESSAGE: ChatMessage = {
-  id: 'error',
-  roomId: 'ai',
-  sender: 'ai',
-  content: 'Da xay ra loi. Vui long thu lai.',
-  timestamp: new Date().toISOString(),
-  channel: 'ai',
-};
-
 export default function AIChatDialog({ projectId }: AIChatDialogProps) {
   const { user } = useAuth();
+  const { lang, pick, trySetOverrideFromText } = useAILang();
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<ChatMessage[]>([WELCOME_MESSAGE]);
+  const [messages, setMessages] = useState<ChatMessage[]>([]);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const listRef = useRef<HTMLDivElement>(null);
+
+  const welcomeMessage: ChatMessage = useMemo(() => ({
+    id: 'welcome',
+    roomId: 'ai',
+    sender: 'ai',
+    content: pick(
+      'Chào bạn! Tôi là trợ lý AI của dự án. Bạn có thể hỏi tôi về: nhiệm vụ, thành viên, deadline, tiến độ, kênh chat. Hãy đặt câu hỏi ngay nhé!',
+      'Hi there! I am your project AI assistant. You can ask me about tasks, members, deadlines, progress, and chat channels. Feel free to ask anything!',
+    ),
+    timestamp: new Date().toISOString(),
+    channel: 'ai',
+  }), [lang]);
+
+  const errorMessage: ChatMessage = useMemo(() => ({
+    id: 'error',
+    roomId: 'ai',
+    sender: 'ai',
+    content: pick(
+      'Đã xảy ra lỗi. Vui lòng thử lại sau.',
+      'Something went wrong. Please try again later.',
+    ),
+    timestamp: new Date().toISOString(),
+    channel: 'ai',
+  }), [lang]);
+
+  useEffect(() => {
+    setMessages((prev) => (prev.length === 0 ? [welcomeMessage] : prev));
+  }, [welcomeMessage]);
 
   const [pos, setPos] = useState({ x: 0, y: 0 });
   const dragRef = useRef<{
@@ -98,6 +109,8 @@ export default function AIChatDialog({ projectId }: AIChatDialogProps) {
     const trimmed = input.trim();
     if (!trimmed || !projectId) return;
 
+    trySetOverrideFromText(trimmed);
+
     const userMessage: ChatMessage = {
       id: `ai-user-${Date.now()}`,
       roomId: 'ai',
@@ -122,11 +135,11 @@ export default function AIChatDialog({ projectId }: AIChatDialogProps) {
       };
       setMessages((prev) => [...prev, aiMessage]);
     } catch {
-      setMessages((prev) => [...prev, ERROR_MESSAGE]);
+      setMessages((prev) => [...prev, errorMessage]);
     } finally {
       setIsLoading(false);
     }
-  }, [input, projectId]);
+  }, [input, projectId, trySetOverrideFromText, errorMessage]);
 
   const btnStyle: React.CSSProperties = {
     position: 'fixed',
@@ -225,7 +238,7 @@ export default function AIChatDialog({ projectId }: AIChatDialogProps) {
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && handleSend()}
-                placeholder="Hoi toi bat cu dieu gi..."
+                placeholder={pick('Hỏi tôi bất cứ điều gì...', 'Ask me anything...')}
                 disabled={isLoading}
                 className="flex-1 rounded-xl border border-[#D6DFEC] px-4 py-2.5 text-sm placeholder:text-slate-400 focus:border-[#274C7D] focus:outline-none focus:ring-2 focus:ring-[#274C7D]/20 disabled:opacity-50"
               />

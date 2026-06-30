@@ -1,3 +1,4 @@
+import { useRef } from 'react';
 import type { Task, TaskPriority } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 import { Calendar } from 'lucide-react';
@@ -28,6 +29,7 @@ function assigneeToMember(assignee: Task['assignee']) {
 
 export default function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
   const assignee = assigneeToMember(task.assignee);
+  const dragStartPos = useRef<{ x: number; y: number } | null>(null);
 
   const handleDragStart = (e: React.DragEvent) => {
     e.dataTransfer.setData('application/json', JSON.stringify({ taskId: task.id }));
@@ -35,13 +37,32 @@ export default function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
     e.dataTransfer.setData('text/plain', task.id);
   };
 
+  const handleMouseDown = (e: React.MouseEvent) => {
+    dragStartPos.current = { x: e.clientX, y: e.clientY };
+  };
+
+  const handleClick = (e: React.MouseEvent) => {
+    if (!dragStartPos.current) {
+      onClick?.();
+      return;
+    }
+    const dx = Math.abs(e.clientX - dragStartPos.current.x);
+    const dy = Math.abs(e.clientY - dragStartPos.current.y);
+    if (dx < 4 && dy < 4) {
+      onClick?.();
+    }
+    dragStartPos.current = null;
+  };
+
   return (
     <div
       draggable
       onDragStart={handleDragStart}
+      onDragEnd={() => { dragStartPos.current = null; }}
       role="button"
       tabIndex={0}
-      onClick={onClick}
+      onMouseDown={handleMouseDown}
+      onClick={handleClick}
       onKeyDown={(e) => {
         if (e.key === 'Enter' || e.key === ' ') {
           e.preventDefault();

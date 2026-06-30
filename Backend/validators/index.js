@@ -116,10 +116,20 @@ const validators = {
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
     assigneeId: z.string().optional(),
     deadline: z.string().optional(),
+    startDate: z.string().optional(),
+  }).refine((d) => {
+    if (!d.deadline) return true;
+    const date = new Date(d.deadline);
+    if (Number.isNaN(date.valueOf())) return false;
+    const start = d.startDate ? new Date(d.startDate) : new Date(new Date().toISOString().slice(0, 10));
+    return date >= start;
+  }, {
+    message: 'Deadline phải lớn hơn hoặc bằng ngày bắt đầu',
+    path: ['deadline'],
   }),
 
   generateAiTasks: z.object({
-    prompt: z.string().trim().min(1, 'Prompt is required').max(4000),
+    prompt: z.string().trim().min(1).max(4000).optional(),
     count: z.number().int().min(1).max(20).default(10),
   }),
 
@@ -139,6 +149,16 @@ const validators = {
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
     assigneeId: z.string().optional(),
     deadline: z.string().optional(),
+    startDate: z.string().optional(),
+  }).refine((d) => {
+    if (!d.deadline) return true;
+    const date = new Date(d.deadline);
+    if (Number.isNaN(date.valueOf())) return false;
+    const start = d.startDate ? new Date(d.startDate) : new Date(new Date().toISOString().slice(0, 10));
+    return date >= start;
+  }, {
+    message: 'Deadline phải lớn hơn hoặc bằng ngày bắt đầu',
+    path: ['deadline'],
   }),
 
   addComment: z.object({

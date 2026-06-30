@@ -32,10 +32,20 @@ function parseTaskDeadlineDays(value) {
   return Math.max(1, Math.round(num));
 }
 
+function clampToProjectWindow(taskDays, projectDays) {
+  const t = Math.max(1, Number.isFinite(taskDays) && taskDays > 0 ? Math.round(taskDays) : 1);
+  const p = Math.max(1, Number.isFinite(projectDays) && projectDays > 0 ? Math.round(projectDays) : 30);
+  return Math.min(t, p);
+}
+
 function buildGenerateProjectPrompt(idea) {
+  const today = new Date();
+  const todayStr = today.toISOString().slice(0, 10);
   return `You are a professional project manager. Analyze this project idea and return a complete project preview.
 
 Project idea: "${idea}"
+
+Today (UTC) is ${todayStr}.
 
 Return valid JSON only. Do not include markdown, code fences, or explanations. Use this exact schema:
 {
@@ -54,11 +64,16 @@ Return valid JSON only. Do not include markdown, code fences, or explanations. U
   ]
 }
 
-Requirements:
+Hard validation rules (these are enforced on the server; violating them will be rejected):
+- "suggestedDeadlineDays" of the project MUST be a positive integer >= 5 and <= 180.
+- Each task's "suggestedDeadlineDays" MUST be a positive integer >= 1.
+- Every task's "suggestedDeadlineDays" MUST be <= the project's "suggestedDeadlineDays" (a task cannot end after the project ends).
+- Spread tasks across the project timeline: early tasks should have smaller deadlines, later tasks larger ones, but never exceed the project deadline.
+
+Other requirements:
 - Generate 5 to 15 useful tasks.
 - priority must be one of LOW, MEDIUM, HIGH.
 - status must always be BACKLOG.
-- suggestedDeadlineDays must be a positive integer.
 - Reply in the same language as the input idea.`;
 }
 
@@ -86,21 +101,30 @@ function parseGeminiResponse(raw) {
     throw new Error('Danh sách công việc không được để trống');
   }
 
-  const projectDays = parsePositiveInteger(parsed.suggestedDeadlineDays, 'suggestedDeadlineDays');
+  const projectDays = Math.min(180, Math.max(5, parsePositiveInteger(parsed.suggestedDeadlineDays, 'suggestedDeadlineDays')));
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+
   const tasks = parsed.tasks.map((task) => {
     if (!task || typeof task !== 'object' || !String(task.title || '').trim()) {
       throw new Error('Mỗi công việc phải có tiêu đề');
     }
-    const taskDays = parseTaskDeadlineDays(task.suggestedDeadlineDays);
+    const rawTaskDays = parseTaskDeadlineDays(task.suggestedDeadlineDays);
     const priority = VALID_PRIORITIES.has(task.priority) ? task.priority : 'MEDIUM';
+    const safeTaskDays = clampToProjectWindow(rawTaskDays, projectDays);
+    const deadline = daysFromToday(safeTaskDays);
+
+    if (new Date(deadline) < today) {
+      throw new Error('Deadline công việc do AI gợi ý phải lớn hơn hoặc bằng ngày hiện tại');
+    }
 
     return {
       title: String(task.title).trim(),
       description: String(task.description || '').trim(),
       priority,
       status: 'BACKLOG',
-      suggestedDeadlineDays: taskDays,
-      deadline: daysFromToday(taskDays),
+      suggestedDeadlineDays: safeTaskDays,
+      deadline,
     };
   });
 
