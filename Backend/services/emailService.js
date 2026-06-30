@@ -32,6 +32,16 @@ try {
   // best-effort; transporter `family: 4` is the second line of defense.
 }
 
+// Log SMTP env tóm tắt ngay khi module load — giúp debug trên Render xem
+// env đã pick up đúng sau deploy chưa.
+if (process.env.SMTP_HOST) {
+  console.log(
+    `[SMTP] Loaded config host=${process.env.SMTP_HOST} port=${process.env.SMTP_PORT || '(default 587)'} ` +
+      `secure=${process.env.SMTP_SECURE || '(auto)'} user=${process.env.SMTP_USER || '(missing)'} ` +
+      `passLen=${(process.env.SMTP_PASS || '').length} debug=${process.env.SMTP_DEBUG === 'true'}`,
+  );
+}
+
 // Cache resolved IPv4 hosts so we don't pay a DNS roundtrip per email.
 const _ipv4Cache = new Map();
 const _IPV4_TTL_MS = 5 * 60 * 1000;
@@ -234,9 +244,13 @@ async function verifySmtpConnection() {
 async function _sendMail({ tag, to, subject, text, html, envelopeFrom }) {
   const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
 
-  console.log(`[${tag}] Sending email to=${to} from="${fromAddress}" subject="${subject}"`);
+  const config = await buildTransporterConfig();
+  console.log(
+    `[${tag}] Sending email to=${to} from="${fromAddress}" subject="${subject}" ` +
+      `host=${config.host}:${config.port} secure=${config.secure} requireTLS=${config.requireTLS}`,
+  );
 
-  const transporter = nodemailer.createTransport(await buildTransporterConfig());
+  const transporter = nodemailer.createTransport(config);
 
   try {
     await transporter.verify();

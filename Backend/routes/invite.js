@@ -11,6 +11,10 @@ const router = express.Router({ mergeParams: true });
 router.post(
   '/projects/:projectId/invite',
   requireAuth,
+  (req, res, next) => {
+    console.log(`[InviteRoute] POST /projects/${req.params.projectId}/invite body=${JSON.stringify(req.body)}`);
+    next();
+  },
   validate(validators.createEmailInvite),
   invitationController.createEmailInvite,
 );

@@ -252,6 +252,8 @@ exports.createEmailInvite = async (req, res, next) => {
     const email = normalizeEmail(req.body.email);
     const role = normalizeRole(req.body.role);
 
+    console.log(`[InviteCtrl] createEmailInvite projectId=${projectId} email=${email} role=${role}`);
+
     if (!email || !isValidEmail(email)) {
       throw errors.BadRequest('A valid email is required');
     }
