@@ -7,25 +7,83 @@ try {
   nodemailer = null;
 }
 
-// Force Node's DNS resolver to prefer IPv4. Render free tier (and many
-// CI/hosted environments) block egress IPv6 → Gmail SMTP. Without this,
-// `lookup()` may return the AAAA record first and the SMTP socket
-// connect fails with ENETUNREACH.
+const dns = require('dns');
+
+// ── IPv4-first hardening ──────────────────────────────────────────────────
+// Render free tier (and several other hosted environments) block egress
+// IPv6 to external services. Gmail SMTP still publishes AAAA records,
+// so a vanilla `lookup()` may resolve to IPv6 and fail with ENETUNREACH.
+//
+// We force Node's resolver to IPv4-first, and additionally allow callers
+// to override the DNS servers (helpful when the host's resolver rewrites
+// names like `smtp.gmail.com` → `smtp.gmail.com.<local-suffix>`).
 try {
-  const dns = require('dns');
-  // `setDefaultResultOrder` is available on Node 16.6+; safe to call.
   if (typeof dns.setDefaultResultOrder === 'function') {
     dns.setDefaultResultOrder('ipv4first');
-  } else {
-    // Older Node: equivalent behavior for `dns.lookup`.
-    dns.setDefaultResultOrder?.('ipv4first');
   }
-  if (typeof dns.setServers === 'function' && process.env.SMTP_DNS_SERVERS) {
-    dns.setServers(process.env.SMTP_DNS_SERVERS.split(',').map((s) => s.trim()).filter(Boolean));
+  if (process.env.SMTP_DNS_SERVERS && typeof dns.setServers === 'function') {
+    const servers = process.env.SMTP_DNS_SERVERS
+      .split(',')
+      .map((s) => s.trim())
+      .filter(Boolean);
+    if (servers.length > 0) dns.setServers(servers);
   }
 } catch {
-  // If dns cannot be configured we still try — Nodemailer `family: 4`
-  // is the second line of defense below.
+  // best-effort; transporter `family: 4` is the second line of defense.
+}
+
+// Cache resolved IPv4 hosts so we don't pay a DNS roundtrip per email.
+const _ipv4Cache = new Map();
+const _IPV4_TTL_MS = 5 * 60 * 1000;
+
+/**
+ * Resolve `hostname` to a single IPv4 address, with caching.
+ * Uses `dns.lookup` with `family: 4`, which on Node ≥ 16.6 already respects
+ * `setDefaultResultOrder('ipv4first')`. Falls back to scanning all returned
+ * addresses if the first one isn't IPv4.
+ *
+ * Returns null when no IPv4 can be found.
+ */
+async function resolveIpv4(hostname) {
+  const cached = _ipv4Cache.get(hostname);
+  if (cached && cached.expires > Date.now()) return cached.address;
+
+  const lookup = (family) =>
+    new Promise((resolve, reject) => {
+      dns.lookup(hostname, { family, all: true, hints: dns.ADDRCONFIG }, (err, addrs) => {
+        if (err) return reject(err);
+        resolve(addrs || []);
+      });
+    });
+
+  let ipv4 = null;
+  try {
+    const addrs = await lookup(4);
+    ipv4 = addrs.length > 0 ? addrs[0].address : null;
+  } catch {
+    ipv4 = null;
+  }
+
+  // Fallback: ask for "all" families and pick the first IPv4 in the list.
+  if (!ipv4) {
+    try {
+      const all = await new Promise((resolve, reject) => {
+        dns.lookup(hostname, { all: true, hints: dns.ADDRCONFIG }, (err, addrs) => {
+          if (err) return reject(err);
+          resolve(addrs || []);
+        });
+      });
+      const found = all.find((a) => a.family === 4);
+      ipv4 = found ? found.address : null;
+    } catch {
+      ipv4 = null;
+    }
+  }
+
+  if (ipv4) {
+    _ipv4Cache.set(hostname, { address: ipv4, expires: Date.now() + _IPV4_TTL_MS });
+  }
+  return ipv4;
 }
 
 const REQUIRED_SMTP_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
@@ -100,12 +158,25 @@ function normalizeFromAddress(raw) {
  *   - EHLO domain riêng (helps reverse-DNS reputation)
  *   - connectionTimeout ngắn để không treo request
  */
-function buildTransporterConfig() {
+async function buildTransporterConfig() {
+  const rawHost = process.env.SMTP_HOST;
   const port = Number(process.env.SMTP_PORT) || 587;
   const isSecure = port === 465;
 
+  // Resolve to an IPv4 literal so we never depend on Nodemailer's internal
+  // DNS resolver picking IPv4 first.
+  let host = rawHost;
+  if (rawHost && !/^\d{1,3}(\.\d{1,3}){3}$/.test(rawHost)) {
+    try {
+      const ipv4 = await resolveIpv4(rawHost);
+      if (ipv4) host = ipv4;
+    } catch {
+      // Fall through; transporter `family: 4` will still force IPv4 on connect.
+    }
+  }
+
   return {
-    host: process.env.SMTP_HOST,
+    host,
     port,
     // Implicit TLS khi port 465
     secure: isSecure,
@@ -115,6 +186,8 @@ function buildTransporterConfig() {
       // Không reject self-signed (Gmail dùng CA hợp lệ nhưng đề phòng MITM)
       rejectUnauthorized: true,
       minVersion: 'TLSv1.2',
+      // SNI dùng hostname gốc (không phải IP) để TLS cert hợp lệ.
+      servername: rawHost,
     },
     // EHLO domain giúp Gmail reputation — để trống là nodemailer tự lấy hostname
     name: process.env.SMTP_EHLO_DOMAIN || undefined,
@@ -127,10 +200,7 @@ function buildTransporterConfig() {
     socketTimeout: 15_000,
     debug: process.env.SMTP_DEBUG === 'true',
     logger: process.env.SMTP_DEBUG === 'true',
-    // Ép dùng IPv4 — Render free tier / một số host block egress IPv6 ra ngoài
-    // (đặc biệt tới Gmail SMTP). Nodemailer vẫn có thể tự AAAA nếu host lookup
-    // chưa được đảm bảo, nên ta đã ép dns.setDefaultResultOrder('ipv4first')
-    // ở top-of-file. `family: 4` ở đây là second line of defense.
+    // Ép dùng IPv4 ngay cả khi Nodemailer tự resolve lại sau này.
     family: 4,
   };
 }
@@ -143,7 +213,7 @@ async function verifySmtpConnection() {
   if (!nodemailer) return { ok: false, reason: 'NODEMAILER_MISSING' };
   if (!hasSmtpConfig()) return { ok: false, reason: 'SMTP_NOT_CONFIGURED' };
 
-  const transporter = nodemailer.createTransport(buildTransporterConfig());
+  const transporter = nodemailer.createTransport(await buildTransporterConfig());
   try {
     await transporter.verify();
     return { ok: true };
@@ -172,7 +242,7 @@ async function sendProjectInviteEmail({ to, projectName, inviterName, token }) {
   }
 
   const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
-  const transporter = nodemailer.createTransport(buildTransporterConfig());
+  const transporter = nodemailer.createTransport(await buildTransporterConfig());
 
   const html = `
 <!DOCTYPE html>
@@ -344,7 +414,7 @@ async function sendPasswordResetEmail({ to, fullName, rawToken, expiresInMinutes
   }
 
   const fromAddress = normalizeFromAddress(process.env.SMTP_FROM || process.env.SMTP_USER);
-  const transporter = nodemailer.createTransport(buildTransporterConfig());
+  const transporter = nodemailer.createTransport(await buildTransporterConfig());
   const greetingName = (fullName || '').trim() || 'bạn';
 
   const html = `
