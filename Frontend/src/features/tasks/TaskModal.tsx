@@ -3,21 +3,13 @@ import { MessageSquare, Send, Timer } from 'lucide-react';
 import type { Task, TaskStatus, TaskPriority, TaskComment, Member, ProjectMember } from '@/types';
 import { Modal, Button, ProjectMemberAvatar } from '@/components/ui';
 import { DatePickerField, PolishedSelect } from './TaskFormControls';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 type ModalSelectOption = {
   value: string;
   label: string;
   tone?: 'accent' | 'positive' | 'muted';
 };
-
-const STATUS_OPTIONS: ModalSelectOption[] = [
-  { value: 'BACKLOG', label: 'Backlog', tone: 'muted' },
-  { value: 'IN_PROGRESS', label: 'Đang làm', tone: 'accent' },
-  { value: 'REVIEW', label: 'Chờ review', tone: 'muted' },
-  { value: 'DONE', label: 'Hoàn thành', tone: 'positive' },
-  { value: 'ON_HOLD', label: 'Tạm dừng', tone: 'muted' },
-  { value: 'CANCELLED', label: 'Đã hủy', tone: 'muted' },
-];
 
 const PRIORITY_OPTIONS: ModalSelectOption[] = [
   { value: 'HIGH', label: 'Cao', tone: 'accent' },
@@ -70,6 +62,7 @@ function TaskModalContent({
   projectMembers = [],
   currentUser,
 }: TaskModalContentProps) {
+  const { t } = useLanguage();
   const [title, setTitle] = useState(task.title);
   const [description, setDescription] = useState(task.description ?? '');
   const [status, setStatus] = useState<TaskStatus>(task.status);
@@ -105,6 +98,15 @@ function TaskModalContent({
   const assigneeOptions = useMemo<ModalSelectOption[]>(
     () => members.map((member) => ({ value: member.id, label: member.name, tone: 'muted' })),
     [members],
+  );
+  const statusOptions = useMemo<ModalSelectOption[]>(
+    () => [
+      { value: 'BACKLOG', label: t('status_backlog'), tone: 'muted' },
+      { value: 'IN_PROGRESS', label: t('status_in_progress'), tone: 'accent' },
+      { value: 'REVIEW', label: t('status_review'), tone: 'muted' },
+      { value: 'DONE', label: t('status_done'), tone: 'positive' },
+    ],
+    [t],
   );
   const commenter = currentUser ?? members[0] ?? task.assignee;
 
@@ -217,7 +219,7 @@ function TaskModalContent({
                   label="Trạng thái"
                   value={status}
                   onChange={(nextStatus) => setStatus(nextStatus as TaskStatus)}
-                  options={STATUS_OPTIONS}
+                  options={statusOptions}
                   size="compact"
                 />
                 <PolishedSelect

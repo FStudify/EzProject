@@ -1,0 +1,12 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="300" height="80" viewBox="0 0 300 80" role="img" aria-labelledby="title desc">
+  <title id="title">EZProject</title>
+  <desc id="desc">EZProject logo with graduation cap icon on orange background</desc>
+  <rect width="300" height="80" rx="0" fill="#C9774D"/>
+  <rect x="24" y="16" width="52" height="52" rx="16" fill="#A95D3B"/>
+  <g fill="none" stroke="#FFFFFF" stroke-linecap="round" stroke-linejoin="round" stroke-width="4">
+    <path d="M50 29 29 38.5 50 48 71 38.5 50 29Z"/>
+    <path d="M36 42.2v9.2c0 2.1 6.3 6.1 14 6.1s14-4 14-6.1v-9.2"/>
+    <path d="M71 38.5v12.2"/>
+  </g>
+  <text x="96" y="51" fill="#FFFFFF" font-family="Inter, Arial, sans-serif" font-size="34" font-weight="800" letter-spacing="-1">EZProject</text>
+</svg>

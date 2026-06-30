@@ -1,6 +1,7 @@
 import { useMemo } from 'react';
 import type { Task, TaskStatus } from '@/types';
 import Avatar from '@/components/ui/Avatar';
+import { useLanguage } from '@/contexts/LanguageContext';
 
 interface TaskTimelineProps {
   tasks: Task[];
@@ -43,6 +44,7 @@ export default function TaskTimeline({
   projectStart,
   onTaskClick,
 }: TaskTimelineProps) {
+  const { t } = useLanguage();
   const startDate = useMemo(() => new Date(projectStart), [projectStart]);
   const endDate = useMemo(() => new Date(projectDeadline), [projectDeadline]);
 
@@ -144,12 +146,12 @@ export default function TaskTimeline({
                     )}
                     {isUpcoming && (
                       <span className="ml-1 rounded-full bg-amber-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-amber-700">
-                        Backlog
+                        {t('status_backlog')}
                       </span>
                     )}
                     {isReview && (
                       <span className="ml-1 rounded-full bg-orange-50 px-1.5 py-0.5 text-[10px] font-semibold uppercase tracking-[0.06em] text-orange-700">
-                        Chờ review
+                        {t('status_review')}
                       </span>
                     )}
                   </p>

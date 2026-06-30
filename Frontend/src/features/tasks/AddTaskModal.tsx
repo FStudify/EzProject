@@ -26,12 +26,10 @@ interface AddTaskModalProps {
 }
 
 const STATUS_OPTIONS: ModalSelectOption[] = [
-  { value: 'BACKLOG', label: 'Backlog', tone: 'muted' },
+  { value: 'BACKLOG', label: 'Cần làm', tone: 'muted' },
   { value: 'IN_PROGRESS', label: 'Đang làm', tone: 'accent' },
-  { value: 'REVIEW', label: 'Chờ review', tone: 'muted' },
+  { value: 'REVIEW', label: 'Tạm hoãn/Chờ xử lý', tone: 'muted' },
   { value: 'DONE', label: 'Hoàn thành', tone: 'positive' },
-  { value: 'ON_HOLD', label: 'Tạm dừng', tone: 'muted' },
-  { value: 'CANCELLED', label: 'Đã hủy', tone: 'muted' },
 ];
 
 const PRIORITY_OPTIONS: ModalSelectOption[] = [

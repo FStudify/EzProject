@@ -14,6 +14,17 @@ const { clearExpiredBlock, describeBlock } = require('../utils/blockStatus');
 
 const router = express.Router();
 
+function requireGoogleOAuth(_req, res, next) {
+  if (passport.googleOAuthEnabled) return next();
+  return res.status(503).json({
+    success: false,
+    error: {
+      message: 'Google OAuth is not configured',
+      code: 'GOOGLE_OAUTH_DISABLED',
+    },
+  });
+}
+
 router.post(
   '/login',
   authLimiter,
@@ -87,6 +98,7 @@ function buildFrontendUrl(pathname = '/auth/google/callback', params = {}) {
  */
 router.get(
   '/google',
+  requireGoogleOAuth,
   passport.authenticate('google', {
     session: false,
     scope: ['profile', 'email'],
@@ -99,6 +111,7 @@ router.get(
  */
 router.get(
   '/google/callback',
+  requireGoogleOAuth,
   passport.authenticate('google', { session: false, failureRedirect: null }),
   async (req, res) => {
     try {

@@ -1,7 +1,7 @@
 import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProjects } from '@/api/project.api';
-import { updateProfile, getUserActivities, uploadAvatar } from '@/api/user.api';
+import { updateProfile, getUserActivities, getUserStats, uploadAvatar } from '@/api/user.api';
 import type { Project } from '@/types';
 import { useToast } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -44,6 +44,7 @@ export default function ProfilePage() {
 
   const [projects, setProjects] = useState<Project[]>([]);
   const [tasksCompleted, setTasksCompleted] = useState(0);
+  const [onTimeRate, setOnTimeRate] = useState(0);
   const [activities, setActivities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarError, setAvatarError] = useState(false);
@@ -62,12 +63,13 @@ export default function ProfilePage() {
     Promise.all([
       getProjects({ limit: 50 }),
       getUserActivities().catch(() => []),
+      getUserStats().catch(() => null),
     ])
-      .then(([res, acts]) => {
+      .then(([res, acts, stats]) => {
         const myProjects = res.data.filter((p) => p.members.some((m) => m.member.id === user.id));
         setProjects(myProjects);
-        const total = myProjects.reduce((acc, p) => acc + p.completedTasks, 0);
-        setTasksCompleted(total);
+        setTasksCompleted(stats?.completedTasks ?? myProjects.reduce((acc, p) => acc + p.completedTasks, 0));
+        setOnTimeRate(stats?.onTimeRate ?? 0);
         setActivities(acts);
       })
       .catch((err) => {
@@ -95,8 +97,6 @@ export default function ProfilePage() {
       toast(t('profile_update_error'), 'error');
     }
   };
-
-  const onTimeRate = 85;
 
   if (isLoading) {
     return (

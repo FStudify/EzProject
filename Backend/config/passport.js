@@ -17,6 +17,9 @@ const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const User = require('../models/User');
 const config = require('./index');
 
+const googleOAuthEnabled = Boolean(config.google.clientId && config.google.clientSecret);
+
+if (googleOAuthEnabled) {
 passport.use(
   new GoogleStrategy(
     {
@@ -72,6 +75,9 @@ passport.use(
     },
   ),
 );
+}
+
+passport.googleOAuthEnabled = googleOAuthEnabled;
 
 /**
  * Tạo username duy nhất từ email hoặc tên:

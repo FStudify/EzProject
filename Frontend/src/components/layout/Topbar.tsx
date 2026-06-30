@@ -129,15 +129,9 @@ export default function Topbar({ title }: TopbarProps) {
           </button>
         )}
 
-        <h1
-          className="hidden min-w-0 shrink-0 truncate text-lg font-bold sm:block md:max-w-[200px] lg:max-w-[280px]"
-          style={{
-            color: theme === 'dark' ? '#f0ebe3' : '#1F1F1F',
-            letterSpacing: '-0.02em',
-          }}
-        >
-          {title}
-        </h1>
+        <Link to="/app" className="hidden shrink-0 sm:block" aria-label={title}>
+          <img src="/logo-ezproject.svg" alt={title} className="h-10 w-auto" />
+        </Link>
 
         <div className="relative mx-auto hidden min-w-0 max-w-md flex-1 md:block">
           <Search

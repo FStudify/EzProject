@@ -5,6 +5,8 @@
  */
 import { api } from './config';
 import { Endpoints } from './endpoints';
+import { normalizeActivityList } from './normalize';
+import type { Activity } from '@/types';
 import type { User, NotificationResponse } from './types';
 
 /** Lấy profile cua user hien tai */
@@ -74,13 +76,31 @@ export async function deleteAvatar(): Promise<User> {
 }
 
 /** Lay danh sach hoat dong cua user hien tai */
-export async function getUserActivities(): Promise<any[]> {
-  const res = await api.get<any>(Endpoints.USER_ACTIVITIES);
-  return Array.isArray(res) ? res : res?.data || [];
+export async function getUserActivities(limit = 20): Promise<Activity[]> {
+  const res = await api.get<unknown>(`${Endpoints.USER_ACTIVITIES}?limit=${limit}`);
+  return normalizeActivityList(res);
 }
 
 /** Lay thong ke nguoi dung hien tai */
-export async function getUserStats(): Promise<{ onTimeRate: number; badges: any[] }> {
-  const res = await api.get<any>(Endpoints.USER_STATS);
-  return res.data || { onTimeRate: 85, badges: [] };
+export async function getUserStats(): Promise<{
+  onTimeRate: number;
+  badges: any[];
+  activeProjects: number;
+  assignedTasks: number;
+  completedTasks: number;
+}> {
+  const res = await api.get<{
+    onTimeRate?: number;
+    badges?: any[];
+    activeProjects?: number;
+    assignedTasks?: number;
+    completedTasks?: number;
+  }>(Endpoints.USER_STATS);
+  return {
+    onTimeRate: res.onTimeRate ?? 0,
+    badges: res.badges ?? [],
+    activeProjects: res.activeProjects ?? 0,
+    assignedTasks: res.assignedTasks ?? 0,
+    completedTasks: res.completedTasks ?? 0,
+  };
 }
