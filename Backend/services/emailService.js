@@ -201,9 +201,10 @@ async function buildTransporterConfig() {
       user: process.env.SMTP_USER,
       pass: process.env.SMTP_PASS,
     },
-    connectionTimeout: 10_000,
-    greetingTimeout: 10_000,
-    socketTimeout: 15_000,
+    // Timeouts raised so Render free tier (cold-start outbound) doesn't ETIMEDOUT.
+    connectionTimeout: 20_000,
+    greetingTimeout: 15_000,
+    socketTimeout: 30_000,
     debug: process.env.SMTP_DEBUG === 'true',
     logger: process.env.SMTP_DEBUG === 'true',
     // Ép IPv4 — Render free tier block egress IPv6 ra Gmail SMTP.
