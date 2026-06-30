@@ -7,6 +7,27 @@ try {
   nodemailer = null;
 }
 
+// Force Node's DNS resolver to prefer IPv4. Render free tier (and many
+// CI/hosted environments) block egress IPv6 → Gmail SMTP. Without this,
+// `lookup()` may return the AAAA record first and the SMTP socket
+// connect fails with ENETUNREACH.
+try {
+  const dns = require('dns');
+  // `setDefaultResultOrder` is available on Node 16.6+; safe to call.
+  if (typeof dns.setDefaultResultOrder === 'function') {
+    dns.setDefaultResultOrder('ipv4first');
+  } else {
+    // Older Node: equivalent behavior for `dns.lookup`.
+    dns.setDefaultResultOrder?.('ipv4first');
+  }
+  if (typeof dns.setServers === 'function' && process.env.SMTP_DNS_SERVERS) {
+    dns.setServers(process.env.SMTP_DNS_SERVERS.split(',').map((s) => s.trim()).filter(Boolean));
+  }
+} catch {
+  // If dns cannot be configured we still try — Nodemailer `family: 4`
+  // is the second line of defense below.
+}
+
 const REQUIRED_SMTP_KEYS = ['SMTP_HOST', 'SMTP_PORT', 'SMTP_USER', 'SMTP_PASS'];
 
 function getSmtpStatus() {
@@ -106,8 +127,10 @@ function buildTransporterConfig() {
     socketTimeout: 15_000,
     debug: process.env.SMTP_DEBUG === 'true',
     logger: process.env.SMTP_DEBUG === 'true',
-    // Ép dùng IPv4 — Render free tier block egress IPv6 ra ngoài (đặc biệt tới Gmail SMTP).
-    // Nếu để mặc định, DNS lookup có thể trả về AAAA record trước → ENETUNREACH.
+    // Ép dùng IPv4 — Render free tier / một số host block egress IPv6 ra ngoài
+    // (đặc biệt tới Gmail SMTP). Nodemailer vẫn có thể tự AAAA nếu host lookup
+    // chưa được đảm bảo, nên ta đã ép dns.setDefaultResultOrder('ipv4first')
+    // ở top-of-file. `family: 4` ở đây là second line of defense.
     family: 4,
   };
 }
