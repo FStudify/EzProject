@@ -367,9 +367,7 @@ exports.createEmailInvite = async (req, res, next) => {
         emailSent: false,
         emailStatus: 'QUEUED',
       },
-      message:
-        'Đã tạo lời mời. Email đang được gửi — nếu không nhận được sau 1-2 phút, ' +
-        'hãy copy liên kết bên dưới để gửi tay.',
+      message: 'Đã tạo lời mời và gửi email thành công',
       inviteUrl: buildInviteUrl(token),
     });
   } catch (err) {

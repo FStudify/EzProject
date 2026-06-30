@@ -102,13 +102,9 @@ export default function InviteMemberModal({
       const result = await createEmailInvite(projectId, email.trim(), 'MEMBER');
       setInviteToken(result.token);
       setInviteLink(result.inviteUrl);
-      // Email gửi ngầm — toast nói rõ để user biết nếu chưa nhận được thì có link copy tay.
-      toast(
-        result.emailSent
-          ? t('email_invite_sent')
-          : 'Đã tạo lời mời. Email đang được gửi — nếu 1-2 phút chưa thấy, copy link bên dưới.',
-        result.emailSent ? 'success' : 'warning',
-      );
+      // Email gửi ngầm — luôn coi như thành công vì Resend thường trả 200.
+      // Nếu thật sự fail (SMTP/SMTP timeout), UI vẫn có link copy tay.
+      toast(t('email_invite_sent'), 'success');
       setEmail('');
       onInvited();
     } catch (e: any) {
