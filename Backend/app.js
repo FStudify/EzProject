@@ -16,6 +16,13 @@ const passport = require('./config/passport');
 
 const app = express();
 
+// ── Proxy trust ────────────────────────────────────────────
+// Render sits behind a single reverse-proxy hop. Without this, `req.ip`
+// always resolves to ::1 and express-rate-limit logs
+// ERR_ERL_UNEXPECTED_X_FORWARDED_FOR (warning) and cannot rate-limit
+// real users correctly.
+app.set('trust proxy', 1);
+
 // ── Security ───────────────────────────────────────────────
 app.use(helmet());
 
