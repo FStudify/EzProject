@@ -317,32 +317,43 @@ exports.createEmailInvite = async (req, res, next) => {
       notifyInvitedUser(req, invitation, project, existingUser._id);
     }
 
-    // Đợi email gửi xong trước khi trả response (theo yêu cầu).
-    // Nếu SMTP fail, response vẫn trả 201 nhưng với emailSent=false để client
-    // biết dùng URL copy tay.
-    let emailResult = { sent: false, reason: 'NOT_ATTEMPTED' };
-    try {
-      emailResult = await sendProjectInviteEmail({
+    // Gửi email NGẦM (fire-and-forget) — giống Forgot Password flow đã hoạt động
+    // ổn định trên Render. Lý do: SMTP round-trip tốn ~5-15s; nếu await sẽ block
+    // response, dễ vượt timeout axios/browser (30s), hoặc bị Render instance
+    // suspend khi SMTP chậm. Trả response ngay sau khi DB write xong.
+    //
+    // Lỗi SMTP không leak ra FE (chỉ log + cập nhật Invitation.emailStatus) — FE
+    // luôn coi như PENDING và dùng URL để copy tay nếu cần.
+    setImmediate(() => {
+      sendProjectInviteEmail({
         to: email,
         projectName: project.name,
         inviterName: inviter?.fullName || req.user.username || 'A teammate',
         token,
-      });
-      await Invitation.findByIdAndUpdate(invitation._id, {
-        emailSent: emailResult.sent,
-        emailStatus: emailResult.reason || (emailResult.sent ? 'SENT' : 'UNCONFIGURED'),
-      });
-      if (!emailResult.sent) {
-        console.warn(`[InviteEmail] Email not sent (${emailResult.reason}) for ${email}`);
-      }
-    } catch (err) {
-      console.error('[InviteEmail] Send failed:', err && err.message);
-      await Invitation.findByIdAndUpdate(invitation._id, {
-        emailSent: false,
-        emailStatus: 'SEND_FAILED',
-      }).catch(() => {});
-      emailResult = { sent: false, reason: 'SEND_FAILED', error: err && err.message };
-    }
+      })
+        .then((emailResult) => {
+          return Invitation.findByIdAndUpdate(invitation._id, {
+            emailSent: emailResult.sent,
+            emailStatus: emailResult.reason || (emailResult.sent ? 'SENT' : 'UNCONFIGURED'),
+          }).then(() => {
+            if (emailResult.sent) {
+              console.log(`[InviteEmail] Async sent OK to=${email}`);
+            } else {
+              console.warn(
+                `[InviteEmail] Async NOT sent to=${email} reason=${emailResult.reason}` +
+                  (emailResult.error ? ` error=${emailResult.error}` : ''),
+              );
+            }
+          });
+        })
+        .catch(async (err) => {
+          console.error('[InviteEmail] Async send failed:', err && err.message);
+          await Invitation.findByIdAndUpdate(invitation._id, {
+            emailSent: false,
+            emailStatus: 'SEND_FAILED',
+          }).catch(() => {});
+        });
+    });
 
     return res.status(201).json({
       success: true,
@@ -353,12 +364,12 @@ exports.createEmailInvite = async (req, res, next) => {
         token,
         inviteUrl: buildInviteUrl(token),
         expiresAt,
-        emailSent: emailResult.sent,
-        emailStatus: emailResult.reason || (emailResult.sent ? 'SENT' : 'UNCONFIGURED'),
+        emailSent: false,
+        emailStatus: 'QUEUED',
       },
-      message: emailResult.sent
-        ? 'Đã tạo lời mời và gửi email thành công.'
-        : 'Đã tạo lời mời nhưng email chưa gửi được. Bạn có thể copy URL để gửi tay.',
+      message:
+        'Đã tạo lời mời. Email đang được gửi — nếu không nhận được sau 1-2 phút, ' +
+        'hãy copy liên kết bên dưới để gửi tay.',
       inviteUrl: buildInviteUrl(token),
     });
   } catch (err) {

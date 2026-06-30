@@ -11,6 +11,7 @@ const config = require('../config');
 const RefreshToken = require('../models/RefreshToken');
 const User = require('../models/User');
 const { clearExpiredBlock, describeBlock } = require('../utils/blockStatus');
+const { getSmtpStatus, verifySmtpConnection, sendPasswordResetEmail } = require('../services/emailService');
 
 const router = express.Router();
 
@@ -178,6 +179,63 @@ router.get(
  */
 router.get('/google/error', (_req, res) => {
   res.redirect(buildFrontendUrl('/login', { error: 'google_auth_failed' }));
+});
+
+// ── DEBUG: SMTP health & on-demand test send ──────────────────────
+//
+// Tạm thời public + không auth (chỉ env dev). Mount ở public route để verify
+// nhanh trên Render:
+//   GET  /api/v1/auth/_debug/smtp          → trả env status (host/user/port)
+//   POST /api/v1/auth/_debug/smtp/send     body: { email } → gửi thử 1 mail test
+//
+// Khi deploy prod thật, nên đặt sau `requireAuth` hoặc xoá route này.
+router.get('/_debug/smtp', async (_req, res) => {
+  const status = getSmtpStatus();
+  // Không in ra SMTP_PASS — chỉ in độ dài để biết env đã load.
+  res.json({
+    success: true,
+    data: {
+      configured: status.configured,
+      missing: status.missing,
+      hasNodemailer: status.hasNodemailer,
+      env: {
+        host: process.env.SMTP_HOST || null,
+        port: process.env.SMTP_PORT || null,
+        secure: process.env.SMTP_SECURE || null,
+        user: process.env.SMTP_USER || null,
+        passLength: (process.env.SMTP_PASS || '').length,
+        from: process.env.SMTP_FROM || null,
+        frontendUrl: process.env.FRONTEND_URL || null,
+      },
+      nodeEnv: process.env.NODE_ENV || null,
+      platform: process.platform,
+      nodeVersion: process.version,
+    },
+  });
+});
+
+router.post('/_debug/smtp/verify', async (_req, res) => {
+  console.log('[DebugSMTP] verify requested');
+  const result = await verifySmtpConnection();
+  console.log('[DebugSMTP] verify result:', JSON.stringify(result));
+  res.json({ success: result.ok, data: result });
+});
+
+router.post('/_debug/smtp/send', async (req, res) => {
+  const to = String(req.body?.email || '').trim().toLowerCase();
+  if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(to)) {
+    return res.status(400).json({ success: false, error: { message: 'valid email required' } });
+  }
+  console.log(`[DebugSMTP] test-send requested to=${to}`);
+  // Gửi 1 mail thật — dùng template reset password (đơn giản, không phụ thuộc project).
+  const result = await sendPasswordResetEmail({
+    to,
+    fullName: 'Debug Tester',
+    rawToken: 'debug-' + Date.now(),
+    expiresInMinutes: 30,
+  });
+  console.log(`[DebugSMTP] test-send result sent=${result.sent} reason=${result.reason}`);
+  res.json({ success: result.sent, data: result });
 });
 
 module.exports = router;
