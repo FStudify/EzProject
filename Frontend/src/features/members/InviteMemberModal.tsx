@@ -102,7 +102,13 @@ export default function InviteMemberModal({
       const result = await createEmailInvite(projectId, email.trim(), 'MEMBER');
       setInviteToken(result.token);
       setInviteLink(result.inviteUrl);
-      toast(t('email_invite_sent'), 'success');
+      // Email gửi ngầm — toast nói rõ để user biết nếu chưa nhận được thì có link copy tay.
+      toast(
+        result.emailSent
+          ? t('email_invite_sent')
+          : 'Đã tạo lời mời. Email đang được gửi — nếu 1-2 phút chưa thấy, copy link bên dưới.',
+        result.emailSent ? 'success' : 'warning',
+      );
       setEmail('');
       onInvited();
     } catch (e: any) {
