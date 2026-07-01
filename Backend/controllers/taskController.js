@@ -45,6 +45,24 @@ function toDateStringLocal(date) {
  * Build a fallback due date for AI-generated task drafts.
  * Spreads tasks evenly between tomorrow and the project deadline.
  */
+function buildFallbackDueDate(projectDeadline, index, total) {
+  const projectEnd = toLocalIso(projectDeadline);
+  const projectEndDate = projectEnd ? new Date(projectEnd) : null;
+
+  const tomorrow = new Date();
+  tomorrow.setHours(0, 0, 0, 0);
+  tomorrow.setDate(tomorrow.getDate() + 1);
+
+  const baseEnd = projectEndDate && projectEndDate > tomorrow
+    ? projectEndDate
+    : new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
+
+  const span = Math.max(1, baseEnd.getTime() - tomorrow.getTime());
+  const step = Math.round((span * (index + 1)) / Math.max(1, total + 1));
+  const fallback = new Date(tomorrow.getTime() + step);
+  return fallback.toISOString();
+}
+
 function detectLanguage(text) {
   // Vietnamese Unicode range: U+00C0–U+1EF9 (Latin extended with diacritics)
   const viPattern = /[\u00C0-\u00D5\u00D8-\u00F6\u00F8-\u1EF9]/i;
@@ -81,22 +99,6 @@ function buildAiSystemPrompt(project, minDueDate, requestedCount, userPrompt) {
     `Spread the deadlines evenly across the project's timeline (from ${minDueDate} through ${new Date(project.deadline).toISOString().slice(0, 10)}); earlier tasks get earlier due dates, later tasks get later due dates.`,
     langInstruction,
   ].join('\n');
-}
-  const projectEnd = toLocalIso(projectDeadline);
-  const projectEndDate = projectEnd ? new Date(projectEnd) : null;
-
-  const tomorrow = new Date();
-  tomorrow.setHours(0, 0, 0, 0);
-  tomorrow.setDate(tomorrow.getDate() + 1);
-
-  const baseEnd = projectEndDate && projectEndDate > tomorrow
-    ? projectEndDate
-    : new Date(tomorrow.getTime() + 24 * 60 * 60 * 1000);
-
-  const span = Math.max(1, baseEnd.getTime() - tomorrow.getTime());
-  const step = Math.round((span * (index + 1)) / Math.max(1, total + 1));
-  const fallback = new Date(tomorrow.getTime() + step);
-  return fallback.toISOString();
 }
 
 /**
