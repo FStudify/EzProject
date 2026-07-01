@@ -259,8 +259,8 @@ export default function ForgotPasswordPage() {
 
         <p className="mt-6 text-center text-xs text-white/60">
           Cần trợ giúp? Liên hệ{' '}
-          <a href="mailto:support@ezproject.local" className="underline hover:text-white">
-            support@ezproject.local
+          <a href="mailto:ezprojectadmin@gmail.com" className="underline hover:text-white">
+            ezprojectadmin@gmail.com
           </a>
         </p>
       </div>

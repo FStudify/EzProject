@@ -45,7 +45,43 @@ function toDateStringLocal(date) {
  * Build a fallback due date for AI-generated task drafts.
  * Spreads tasks evenly between tomorrow and the project deadline.
  */
-function buildAiFallbackDeadline(index, total, projectDeadline) {
+function detectLanguage(text) {
+  // Vietnamese Unicode range: U+00C0–U+1EF9 (Latin extended with diacritics)
+  const viPattern = /[\u00C0-\u00D5\u00D8-\u00F6\u00F8-\u1EF9]/i;
+  if (viPattern.test(text)) return 'vi';
+  return 'en';
+}
+
+function buildAiPrompt(project, minDueDate, requestedCount, userPrompt) {
+  const lang = detectLanguage(userPrompt || project.description || project.name || '');
+  const langInstruction = lang === 'vi'
+    ? 'Respond entirely in Vietnamese. All task titles and descriptions must be in Vietnamese. Use Vietnamese punctuation.'
+    : 'Respond entirely in English. All task titles and descriptions must be in English.';
+
+  const overrideMatch = userPrompt.match(/in\s+(english|vietnamese|tiếng\s*anh|tiếng\s*việt)/i);
+  if (overrideMatch) {
+    const override = overrideMatch[1].toLowerCase();
+    if (/tiếng\s*việt|vietnamese/.test(override)) {
+      return 'Respond entirely in Vietnamese. All task titles and descriptions must be in Vietnamese. Use Vietnamese punctuation.';
+    }
+    return 'Respond entirely in English. All task titles and descriptions must be in English.';
+  }
+
+  return langInstruction;
+}
+
+function buildAiSystemPrompt(project, minDueDate, requestedCount, userPrompt) {
+  const langInstruction = buildAiPrompt(project, minDueDate, requestedCount, userPrompt);
+  return [
+    'You generate actionable child tasks for a project. Return valid JSON only, without markdown or commentary.',
+    `Return a JSON array of exactly ${requestedCount} objects; do not wrap it in an object.`,
+    'Every object must have: title (string), description (string), deadline (YYYY-MM-DD), priority (LOW, MEDIUM, or HIGH).',
+    `HARD RULE: every "deadline" MUST be at least 1 day after today. Today is ${minDueDate}; the minimum allowed dueDate is ${minDueDate} (inclusive). A deadline equal to today or earlier is INVALID.`,
+    `Every deadline must be on or before the project deadline (${new Date(project.deadline).toISOString().slice(0, 10)}). Do not include assignees or status.`,
+    `Spread the deadlines evenly across the project's timeline (from ${minDueDate} through ${new Date(project.deadline).toISOString().slice(0, 10)}); earlier tasks get earlier due dates, later tasks get later due dates.`,
+    langInstruction,
+  ].join('\n');
+}
   const projectEnd = toLocalIso(projectDeadline);
   const projectEndDate = projectEnd ? new Date(projectEnd) : null;
 
@@ -225,7 +261,7 @@ function normalizeAiDrafts(rawTasks, projectDeadline, requestedCount) {
     const description = typeof raw?.description === 'string' ? raw.description.trim() : '';
     const priority = ['LOW', 'MEDIUM', 'HIGH'].includes(raw?.priority) ? raw.priority : 'MEDIUM';
 
-    const safeTitle = title || `Công việc ${index + 1}`;
+    const safeTitle = title || `Task ${index + 1}`;
     const safeDescription = description.length > 5000 ? description.slice(0, 5000) : description;
 
     let deadline = toLocalIso(raw?.deadline);
@@ -429,23 +465,21 @@ exports.generateAiTasks = async (req, res, next) => {
     const tomorrow = new Date(today);
     tomorrow.setDate(tomorrow.getDate() + 1);
     const minDueDate = toDateStringLocal(tomorrow);
-    const prompt = [
-      'You generate actionable child tasks for a project. Return valid JSON only, without markdown or commentary.',
-      `Return a JSON array of exactly ${req.body.count} objects; do not wrap it in an object.`,
-      'Every object must have: title (string), description (string), deadline (YYYY-MM-DD), priority (LOW, MEDIUM, or HIGH).',
-      `HARD RULE: every "deadline" MUST be at least 1 day after today. Today is ${minDueDate}; the minimum allowed dueDate is ${minDueDate} (inclusive). A deadline equal to today or earlier is INVALID.`,
-      `Every deadline must be on or before the project deadline (${projectDeadline}). Do not include assignees or status.`,
-      `Spread the deadlines evenly across the project's timeline (from ${minDueDate} through ${projectDeadline}); earlier tasks get earlier due dates, later tasks get later due dates.`,
+    const systemPrompt = buildAiSystemPrompt(project, minDueDate, req.body.count, req.body.prompt);
+    const projectPrompt = [
       `Project name: ${project.name}`,
       `Project subject: ${project.subject || 'Not provided'}`,
       `Project description: ${project.description || 'Not provided'}`,
       `Project deadline: ${projectDeadline}`,
-      `User requirements: ${req.body.prompt}`,
+      `User requirements: ${req.body.prompt || 'None'}`,
     ].join('\n');
 
     let result;
     try {
-      result = await model.generateContent(prompt);
+      result = await model.generateContent({
+        contents: [{ role: 'user', parts: [{ text: projectPrompt }] }],
+        systemInstruction: { parts: [{ text: systemPrompt }] },
+      });
     } catch (err) {
       logGeminiError(err);
       throw errors.BadRequest('AI could not generate tasks. Please try again later');

@@ -10,13 +10,13 @@ export type DictKey =
   | 'kanban_view' | 'timeline_view' | 'reminders' | 'filters' | 'clear_all' | 'search' | 'task_name' | 'member' | 'all_members' | 'priority_label' | 'deadline_from' | 'deadline_to' | 'within_n_days' | 'days_example' | 'overdue' | 'no_overdue' | 'task' | 'assigned_to' | 'due' | 'due_soon_3_days' | 'no_due_soon'
   | 'documents' | 'upload' | 'create_folder' | 'folder_name' | 'rename' | 'rename_folder' | 'delete_folder' | 'delete_file' | 'rename_file' | 'folder_root' | 'folder_up' | 'folders' | 'files' | 'no_documents' | 'select_document' | 'file_info' | 'file_comments' | 'file_type' | 'file_size' | 'uploaded_by' | 'upload_date' | 'download' | 'history' | 'send_comment' | 'write_comment' | 'no_comments' | 'no_results' | 'folder_empty'
   | 'search_placeholder_doc' | 'folder_options' | 'file_options' | 'search_results' | 'just_now' | 'minutes_ago' | 'hours_ago' | 'days_ago'
-  | 'team_members' | 'add_member' | 'role_leader' | 'role_vice_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members' | 'vice_cannot_promote' | 'only_one_leader'
+  | 'team_members' | 'add_member' | 'role_leader' | 'role_vice_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members' | 'owner_is_always_leader' | 'vice_cannot_promote' | 'only_one_leader'
   | 'owner_manage_members' | 'failed_to_load_members' | 'failed_to_update_role' | 'failed_to_remove_member' | 'kick_member_confirm' | 'owner_transferred' | 'transfer_ownership' | 'leave_project' | 'failed_to_generate_link' | 'failed_to_invite' | 'invitation_sent' | 'failed_to_revoke' | 'invitation_revoked' | 'copied'
   | 'invite_members' | 'invite_by_account' | 'invite_by_email' | 'invite_by_link' | 'invite_list' | 'send_invitation' | 'generate_link' | 'no_invitations' | 'revoke' | 'link_expires_note' | 'enter_username' | 'enter_email' | 'generating_link' | 'copy'
   | 'you_are_owner' | 'select_new_owner_before_leave' | 'warning_delete_project' | 'last_member_warning' | 'last_member_delete_warning' | 'select_new_owner' | 'will_lose_access' | 'delete_and_leave' | 'confirm_leave' | 'admin'
   | 'meetings' | 'schedule_meeting' | 'meeting_topic' | 'meeting_date' | 'meeting_time' | 'meeting_duration' | 'meeting_location' | 'meeting_link' | 'meeting_notes' | 'attendees' | 'join' | 'will_attend' | 'decline' | 'pending' | 'no_meetings' | 'scheduled' | 'in_progress' | 'completed' | 'cancelled' | 'online' | 'offline'
   | 'calendar' | 'list' | 'month' | 'week' | 'day'
-  | 'start_end_required' | 'invalid_date' | 'start_must_be_future' | 'end_after_start' | 'start_time_cannot_change' | 'task_created' | 'task_updated' | 'task_deleted' | 'required'
+  | 'start_end_required' | 'invalid_date' | 'start_must_be_future' | 'end_after_start' | 'start_time_cannot_change' | 'task_created' | 'task_updated' | 'task_deleted' | 'restricted_column' | 'paused_task_restricted' | 'required'
   | 'invite_selected_members' | 'select_attendees' | 'all_members_invited' | 'meeting_created' | 'meeting_deleted' | 'attendees_label' | 'pending_label' | 'declined_label' | 'no_attendees' | 'no_pending' | 'no_declined' | 'location_label' | 'meeting_link_label' | 'duration' | 'time' | 'status' | 'create_meeting' | 'edit_meeting' | 'delete_meeting' | 'decline_meeting' | 'decline_modal_text' | 'reason' | 'reason_placeholder' | 'confirm_decline' | 'decline_reason' | 'meeting_summary' | 'create_task_from_meeting' | 'summary_placeholder' | 'follow_up_task' | 'follow_up_task_created' | 'start' | 'end' | 'title' | 'address' | 'cant_change_owner_role_meeting' | 'description' | 'attendees_count' | 'will_attend_label' | 'decline_label' | 'meeting_delete_confirm' | 'meeting_deleted' | 'online_label' | 'offline_label'
   | 'chat' | 'channels' | 'direct_messages' | 'create_channel' | 'channel_name' | 'add_members' | 'selected' | 'search_conversation' | 'no_messages' | 'start_conversation' | 'select_conversation' | 'rename_channel' | 'leave_channel' | 'delete_channel' | 'new_channel_name' | 'channel_general_cant_edit' | 'direct_message' | 'create_channel_btn'
   | 'no_channels' | 'default_channel' | 'default_channel_subtitle'
@@ -210,6 +210,7 @@ export const vi = {
   delete_member: 'Xóa thành viên',
   cant_delete_owner: 'Xóa thành viên này khỏi dự án? Người này sẽ mất quyền truy cập toàn bộ nội dung dự án.',
   cant_change_owner_role: 'Không thể hạ vai trò chủ dự án — hãy chuyển nhóm trưởng trước',
+  owner_is_always_leader: 'Chủ dự án luôn giữ vai trò trưởng nhóm và không thể chỉ định người khác làm trưởng nhóm',
   vice_cannot_promote: 'Phó nhóm không có quyền thăng cấp thành trưởng nhóm hoặc phó nhóm',
   only_one_leader: 'Dự án chỉ có một trưởng nhóm — hãy chuyển nhóm trưởng trước',
   role_updated: 'Đã cập nhật vai trò',
@@ -346,6 +347,8 @@ export const vi = {
   task_created: 'Đã tạo công việc',
   task_updated: 'Đã cập nhật công việc',
   task_deleted: 'Đã xóa công việc',
+  restricted_column: 'Chỉ Leader hoặc Vice Leader mới có thể di chuyển công việc vào cột này',
+  paused_task_restricted: 'Chỉ Leader hoặc Vice Leader mới có thể di chuyển công việc đang tạm hoãn',
   required: 'bắt buộc',
   organizer: 'Người tổ chức',
   attendees_count: 'tham gia',
@@ -735,6 +738,7 @@ export const en = {
   delete_member: 'Remove Member',
   cant_delete_owner: 'Remove this member from the project? They will lose access to all project content.',
   cant_change_owner_role: "Cannot change owner's role — transfer leader position first",
+  owner_is_always_leader: 'The owner always holds the leader role and cannot assign leader to others',
   vice_cannot_promote: 'Vice leader cannot promote members to leader or vice leader',
   only_one_leader: 'Only one leader is allowed — transfer leader position first',
   role_updated: 'Role updated',
@@ -871,6 +875,8 @@ export const en = {
   task_created: 'Đã tạo công việc',
   task_updated: 'Đã cập nhật công việc',
   task_deleted: 'Đã xóa công việc',
+  restricted_column: 'Only Leader or Vice Leader can move tasks to this column',
+  paused_task_restricted: 'Only Leader or Vice Leader can move tasks that are paused',
   required: 'required',
   organizer: 'Organizer',
   attendees_count: 'attendees',

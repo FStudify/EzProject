@@ -84,6 +84,8 @@ export default function TaskCreationModal({
     setTab(canGenerateAi ? 'ai' : 'manual');
     setError('');
     setDrafts([]);
+    setPrompt('');
+    setManual({ title: '', description: '', deadline: '', priority: 'MEDIUM', assigneeId: '', hashtags: '' });
   }, [isOpen, canGenerateAi]);
 
   const selected = drafts.filter((task) => task.selected);

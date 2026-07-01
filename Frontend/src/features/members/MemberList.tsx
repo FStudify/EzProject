@@ -94,7 +94,7 @@ export default function MemberList() {
     const target = members.find((pm) => pm.user.id === userId);
     if (!target || target.role === newRole) return;
 
-    if (target.isOwner && newRole !== 'LEADER') {
+    if (target.isOwner) {
       toast(t('cant_change_owner_role'), 'warning');
       return;
     }
@@ -102,6 +102,12 @@ export default function MemberList() {
     // VICE_LEADER cannot promote anyone to LEADER or VICE_LEADER
     if (isViceLeader && (newRole === 'LEADER' || newRole === 'VICE_LEADER')) {
       toast(t('vice_cannot_promote'), 'warning');
+      return;
+    }
+
+    // Owner is always LEADER — cannot assign LEADER role to others
+    if (isOwner && newRole === 'LEADER') {
+      toast(t('owner_is_always_leader'), 'warning');
       return;
     }
 

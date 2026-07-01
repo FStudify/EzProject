@@ -8,6 +8,18 @@ const { AppError, errors } = require('../middlewares/errorHandler');
 
 const ObjectId = mongoose.Types.ObjectId;
 
+const SUPPORT_EMAIL = process.env.SUPPORT_EMAIL || 'ezprojectadmin@gmail.com';
+
+function sanitizeAIResponse(text) {
+  if (typeof text !== 'string') return '';
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/ {3,}/g, ' ')
+    .replace(/\n{5,}/g, '\n\n\n\n')
+    .trim();
+}
+
 const VALID_PRIORITIES = new Set(['LOW', 'MEDIUM', 'HIGH']);
 
 function daysFromToday(days) {
@@ -244,6 +256,45 @@ function buildProgressSummary(project, tasks) {
   return lines.join('\n');
 }
 
+async function callGeminiChat(userMessage, projectContext, userId) {
+  let GoogleGenerativeAI;
+  try {
+    ({ GoogleGenerativeAI } = require('@google/generative-ai'));
+  } catch {
+    return null;
+  }
+
+  const apiKey2 = process.env.GEMINI_API_KEY2;
+  const apiKey = apiKey2 || process.env.GEMINI_API_KEY;
+  if (!apiKey) return null;
+
+  try {
+    const genAI = new GoogleGenerativeAI(apiKey);
+    const modelName = process.env.GEMINI_MODEL || 'gemini-2.5-flash';
+    const model = genAI.getGenerativeModel({ model: modelName });
+
+    const prompt = `Bạn là trợ lý AI của ứng dụng EZProject. Bạn chỉ trả lời các câu hỏi liên quan đến dự án EZProject. Không trả lời các câu hỏi không liên quan đến dự án.
+
+Ngữ cảnh dự án hiện tại:
+${projectContext}
+
+Câu hỏi của người dùng: "${userMessage}"
+
+Yêu cầu:
+- Trả lời ngắn gọn, dễ hiểu, bằng tiếng Việt
+- Nếu câu hỏi không liên quan đến dự án, hãy nói: "Tôi chỉ có thể hỗ trợ các câu hỏi liên quan đến dự án EZProject. Vui lòng hỏi về nhiệm vụ, thành viên, deadline, tiến độ, kênh chat trong dự án."
+- Không sử dụng ký hiệu đặc biệt lạ, chỉ dùng markdown cơ bản (*in đậm*, _in nghiêng_, danh sách)
+- Không bịa đặt thông tin
+- Nếu cần liên hệ hỗ trợ, dùng email: ${SUPPORT_EMAIL}`;
+
+    const result = await model.generateContent(prompt);
+    const raw = result?.response?.text?.() || '';
+    return sanitizeAIResponse(raw);
+  } catch {
+    return null;
+  }
+}
+
 async function generateAIResponse(text, projectId, userId) {
   const intent = classifyIntent(text);
 
@@ -285,16 +336,38 @@ async function generateAIResponse(text, projectId, userId) {
       return 'Dự án có các kênh chat nhóm và tin nhắn trực tiếp. Bạn có thể tạo kênh mới từ giao diện Trò chuyện.';
     case 'general':
     default: {
+      const projectContext = buildProjectContext(project, tasks);
+      const geminiResponse = await callGeminiChat(text, projectContext, userId);
+      if (geminiResponse) {
+        return geminiResponse;
+      }
       const lines = [
         `Xin chào! Tôi đang hỗ trợ dự án **${project.name}**.`,
         buildTasksSummary(tasks),
         buildProgressSummary(project, tasks),
         '',
         'Bạn có thể hỏi tôi về: nhiệm vụ, thành viên, deadline, tiến độ, kênh chat.',
+        '',
+        `Nếu cần hỗ trợ, liên hệ: ${SUPPORT_EMAIL}`,
       ];
       return lines.join('\n\n');
     }
   }
+}
+
+function buildProjectContext(project, tasks) {
+  const done = tasks.filter((t) => t.status === 'DONE').length;
+  const inProgress = tasks.filter((t) => t.status === 'IN_PROGRESS').length;
+  const overdue = tasks.filter((t) => t.status !== 'DONE' && t.deadline && new Date(t.deadline) < new Date()).length;
+  const memberCount = project.members ? project.members.length : 0;
+  return `Tên dự án: ${project.name}
+Mô tả: ${project.description || 'Không có'}
+Số thành viên: ${memberCount}
+Tổng nhiệm vụ: ${tasks.length}
+Đã hoàn thành: ${done}
+Đang làm: ${inProgress}
+Quá hạn: ${overdue}
+Tiến độ: ${tasks.length > 0 ? Math.round((done / tasks.length) * 100) : 0}%`;
 }
 
 exports.chat = async (req, res, next) => {
@@ -310,7 +383,7 @@ exports.chat = async (req, res, next) => {
     res.json({
       success: true,
       data: {
-        content: response,
+        content: sanitizeAIResponse(response),
         timestamp: new Date().toISOString(),
       },
     });

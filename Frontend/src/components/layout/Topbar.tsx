@@ -10,11 +10,7 @@ import { getMyInvitations } from '@/api/invitations.api';
 import NotificationDrawer, { NOTIFICATIONS_UPDATED_EVENT } from './NotificationDrawer';
 import { useSidebar } from './SidebarContext';
 
-interface TopbarProps {
-  title: string;
-}
-
-export default function Topbar({ title }: TopbarProps) {
+export default function Topbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLanguage();
@@ -128,10 +124,6 @@ export default function Topbar({ title }: TopbarProps) {
             <Menu className="h-5 w-5" />
           </button>
         )}
-
-        <Link to="/app" className="hidden shrink-0 sm:block" aria-label={title}>
-          <img src="/logo-ezproject.svg" alt={title} className="h-10 w-auto" />
-        </Link>
 
         <div className="relative mx-auto hidden min-w-0 max-w-md flex-1 md:block">
           <Search

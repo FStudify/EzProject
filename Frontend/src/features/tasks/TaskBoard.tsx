@@ -187,9 +187,16 @@ export default function TaskBoard() {
   const handleStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus) => {
     if (!projectId) return;
 
-    // Frontend guard: only leader/vice-leader can drag to DONE or PAUSED
+    const currentTask = tasks.find((t) => t.id === taskId);
+    const isPaused = currentTask?.status === 'PAUSED';
+
+    if (isPaused && !canDragToRestricted) {
+      toast(t('paused_task_restricted') || 'Chỉ Leader hoặc Vice Leader mới có thể di chuyển công việc đang tạm hoãn', 'warning');
+      return;
+    }
+
     if ((newStatus === 'DONE' || newStatus === 'PAUSED') && !canDragToRestricted) {
-      toast('Chỉ Leader hoặc Vice Leader mới có thể di chuyển công việc vào cột này', 'warning');
+      toast(t('restricted_column') || 'Chỉ Leader hoặc Vice Leader mới có thể di chuyển công việc vào cột này', 'warning');
       return;
     }
 
@@ -201,7 +208,7 @@ export default function TaskBoard() {
       console.error('Failed to update task status:', err);
       toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
     }
-  }, [projectId, t, toast, canDragToRestricted]);
+  }, [projectId, t, toast, canDragToRestricted, tasks]);
 
   const handleSaveTask = useCallback(async (updated: Task) => {
     if (!projectId) return;
@@ -645,6 +652,7 @@ export default function TaskBoard() {
         currentUser={members[0]}
         canEditTask={canEditTask}
         canDeleteTask={canEditTask}
+        projectId={projectId ?? ''}
       />
       {projectId && (
         <TaskCreationModal

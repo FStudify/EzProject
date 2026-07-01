@@ -1,6 +1,19 @@
 import { Sparkles } from 'lucide-react';
+import ReactMarkdown from 'react-markdown';
+import remarkGfm from 'remark-gfm';
 import type { ChatMessage as ChatMessageType, Member } from '@/types';
 import Avatar from '@/components/ui/Avatar';
+
+function sanitizeMessage(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/g, '')
+    .replace(/[\u200B-\u200D\uFEFF]/g, '')
+    .replace(/\u00A0/g, ' ')
+    .replace(/ {3,}/g, ' ')
+    .replace(/\n{4,}/g, '\n\n\n')
+    .trim();
+}
 
 function formatRelativeTime(timestamp: string): string {
   const date = new Date(timestamp);
@@ -55,7 +68,15 @@ export default function ChatMessage({ message, isOwn }: ChatMessageProps) {
                 : 'bg-slate-100 text-slate-900'
           }`}
         >
-          <p className="break-words text-sm leading-relaxed">{message.content}</p>
+          {isAI ? (
+            <ReactMarkdown
+              remarkPlugins={[remarkGfm]}
+            >
+              {sanitizeMessage(message.content)}
+            </ReactMarkdown>
+          ) : (
+            <p className="break-words text-sm leading-relaxed">{sanitizeMessage(message.content)}</p>
+          )}
         </div>
         <span className="mt-0.5 text-xs text-slate-500">{formatRelativeTime(message.timestamp)}</span>
       </div>

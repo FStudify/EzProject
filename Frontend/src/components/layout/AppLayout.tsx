@@ -39,7 +39,7 @@ function AppMain() {
         isMobile ? 'ml-0' : collapsed ? 'ml-[72px]' : 'ml-[224px]'
       }`}
     >
-      <Topbar title="EZProject" />
+      <Topbar />
       <AnnouncementBanner />
       <div className="flex-1 min-w-0 overflow-y-auto bg-canvas p-6">
         <div className="mx-auto w-full max-w-[1200px]">

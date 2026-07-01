@@ -3,6 +3,7 @@ import { MessageSquare, Send, Timer } from 'lucide-react';
 import type { Task, TaskStatus, TaskPriority, TaskComment, Member, ProjectMember } from '@/types';
 import { Modal, Button, ProjectMemberAvatar } from '@/components/ui';
 import { DatePickerField, PolishedSelect } from './TaskFormControls';
+import { addTaskComment } from '@/api/task.api';
 import { useLanguage } from '@/contexts/LanguageContext';
 
 type ModalSelectOption = {
@@ -34,6 +35,7 @@ interface TaskModalProps {
   members?: Member[];
   projectMembers?: ProjectMember[];
   currentUser?: Member;
+  projectId: string;
   /** Chỉ leader / vice-leader mới được sửa task fields */
   canEditTask?: boolean;
   /** Chỉ leader / vice-leader mới được xóa task */
@@ -60,6 +62,7 @@ function TaskModalContent({
   currentUser,
   canEditTask = false,
   canDeleteTask = false,
+  projectId,
 }: TaskModalContentProps) {
   const { t } = useLanguage();
   const [title, setTitle] = useState(task.title);
@@ -151,20 +154,16 @@ function TaskModalContent({
     onClose();
   };
 
-  const handleAddComment = () => {
+  const handleAddComment = async () => {
     if (!newComment.trim()) return;
-
-    const comment: TaskComment = {
-      id: `comment-${Date.now()}`,
-      content: newComment.trim(),
-      author: commenter,
-      createdAt: new Date().toISOString(),
-    };
-
-    setComments((prev) => [...prev, comment]);
-    setNewComment('');
-    const taskForSave: Task = { ...task, comments: [...comments, comment] };
-    onSave?.(taskForSave);
+    try {
+      const savedComment = await addTaskComment(projectId, task.id, { content: newComment.trim() });
+      setComments((prev) => [...prev, savedComment]);
+      setNewComment('');
+      onSave?.({ ...task, comments: [...comments, savedComment] });
+    } catch (err) {
+      console.error('Failed to add comment:', err);
+    }
   };
 
   const handleQuickUpdate = (text: string) => {

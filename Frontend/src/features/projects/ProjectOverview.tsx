@@ -54,6 +54,7 @@ export default function ProjectOverview() {
   const [isEditingProject, setIsEditingProject] = useState(false);
   const [editName, setEditName] = useState('');
   const [editDeadline, setEditDeadline] = useState('');
+  const [editDescription, setEditDescription] = useState('');
   const [savingProject, setSavingProject] = useState(false);
   const { joinProject, leaveProject } = useChatSocket();
   const { toast } = useToast();
@@ -119,6 +120,7 @@ export default function ProjectOverview() {
     if (!project) return;
     setEditName(project.name);
     setEditDeadline(toDateInputValue(project.deadline));
+    setEditDescription(project.description ?? '');
     setIsEditingProject(true);
   };
 
@@ -126,6 +128,7 @@ export default function ProjectOverview() {
     setIsEditingProject(false);
     setEditName('');
     setEditDeadline('');
+    setEditDescription('');
   };
 
   const saveProjectInfo = async () => {
@@ -144,8 +147,8 @@ export default function ProjectOverview() {
     setSavingProject(true);
     try {
       const deadline = new Date(editDeadline).toISOString();
-      await updateProject(projectId, { name, deadline });
-      setProject((current) => current ? { ...current, name, deadline } : current);
+      await updateProject(projectId, { name, deadline, description: editDescription.trim() });
+      setProject((current) => current ? { ...current, name, deadline, description: editDescription.trim() } : current);
       setIsEditingProject(false);
       toast('Đã cập nhật thông tin dự án', 'success');
     } catch (err) {
@@ -229,6 +232,16 @@ export default function ProjectOverview() {
                   />
                 </label>
               </div>
+              <label className="mt-3 block">
+                <span className="mb-1 block text-xs font-semibold uppercase tracking-wide text-ink-muted">Mô tả</span>
+                <textarea
+                  value={editDescription}
+                  onChange={(event) => setEditDescription(event.target.value)}
+                  className="ez-input w-full resize-none"
+                  rows={3}
+                  placeholder="Nhập mô tả dự án..."
+                />
+              </label>
               <div className="mt-3 flex flex-wrap gap-2">
                 <button
                   type="button"
