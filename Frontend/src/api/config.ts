@@ -379,9 +379,6 @@ const viErrorMessages: Record<string, string> = {
   'Only leaders can move tasks to Hoàn thành or Tạm hoãn': 'Chỉ trưởng nhóm hoặc phó nhóm mới có thể di chuyển công việc sang Hoàn thành hoặc Tạm hoãn',
 
   // General
-  'Missing authorization header': 'Thiếu thông tin xác thực',
-  'User no longer exists': 'Người dùng không còn tồn tại',
-  'Too many requests, please try again later': 'Bạn thao tác quá nhiều lần, vui lòng thử lại sau',
 };
 
 function translateApiErrorMessage(message: string): string {
