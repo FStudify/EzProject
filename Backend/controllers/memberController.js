@@ -90,8 +90,7 @@ exports.list = async (req, res, next) => {
 };
 
 // ── PUT /projects/:projectId/members/:userId/role ─────────────────────────────
-// LEADER / isOwner only — đổi project-role của thành viên (trừ supervisor)
-// VICE_LEADER không có quyền gán role
+// LEADER / VICE_LEADER / isOwner only — đổi project-role của thành viên
 exports.updateRole = async (req, res, next) => {
   try {
     const project = await Project.findOne({
@@ -102,8 +101,9 @@ exports.updateRole = async (req, res, next) => {
 
     const currentMember = project.members.find((m) => m.userId.toString() === req.user.id);
     const isLeader = currentMember?.isOwner || currentMember?.role === 'LEADER';
-    if (!isLeader) {
-      throw errors.Forbidden('Only leaders can change member roles');
+    const isViceLeader = currentMember?.role === 'VICE_LEADER';
+    if (!isLeader && !isViceLeader) {
+      throw errors.Forbidden('Only leaders or vice leaders can change member roles');
     }
 
     // Owner không thể đổi role của chính mình
@@ -115,6 +115,11 @@ exports.updateRole = async (req, res, next) => {
     const target = project.members.find((m) => m.userId.toString() === req.params.userId);
     if (target && target.role === 'SUPERVISOR') {
       throw errors.Forbidden('Cannot change the role of supervisors');
+    }
+
+    // VICE_LEADER chỉ được hạ cấp — không được thăng cấp thành LEADER hoặc VICE_LEADER
+    if (isViceLeader && !isLeader && (req.body.role === 'LEADER' || req.body.role === 'VICE_LEADER')) {
+      throw errors.Forbidden('Vice leaders cannot promote members to leader or vice leader');
     }
 
     const result = await Project.findOneAndUpdate(

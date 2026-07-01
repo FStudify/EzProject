@@ -99,6 +99,18 @@ export default function MemberList() {
       return;
     }
 
+    // VICE_LEADER cannot promote anyone to LEADER or VICE_LEADER
+    if (isViceLeader && (newRole === 'LEADER' || newRole === 'VICE_LEADER')) {
+      toast(t('vice_cannot_promote'), 'warning');
+      return;
+    }
+
+    // Only one LEADER allowed — leader cannot promote someone to LEADER
+    if (isLeader && !isOwner && newRole === 'LEADER') {
+      toast(t('only_one_leader'), 'warning');
+      return;
+    }
+
     try {
       if (projectId) {
         await updateMemberRole(projectId, userId, newRole);
@@ -106,7 +118,10 @@ export default function MemberList() {
       setMembers((prev) => {
         let next: ProjectMemberDetail[] = prev.map((pm) => {
           if (pm.user.id === userId) return { ...pm, role: newRole };
+          // Demote existing LEADER when assigning new LEADER
           if (newRole === 'LEADER' && pm.role === 'LEADER') return { ...pm, role: 'MEMBER', isOwner: false };
+          // Demote existing VICE_LEADER when assigning new VICE_LEADER
+          if (newRole === 'VICE_LEADER' && pm.role === 'VICE_LEADER') return { ...pm, role: 'MEMBER' };
           return pm;
         });
         if (newRole === 'LEADER') {

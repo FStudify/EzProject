@@ -107,11 +107,13 @@ export default function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
         <div className="flex min-w-0 items-center gap-2">
           {assignee ? (
             <>
-              <Avatar
-                name={assignee.name}
-                src={assignee.avatar ?? undefined}
-                size="sm"
-              />
+              <span className="flex shrink-0">
+                <Avatar
+                  name={assignee.name}
+                  src={assignee.avatar ?? undefined}
+                  size="sm"
+                />
+              </span>
               <span className="truncate text-[13px] text-[#635648]">{assignee.name}</span>
             </>
           ) : (

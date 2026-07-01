@@ -10,7 +10,7 @@ export type DictKey =
   | 'kanban_view' | 'timeline_view' | 'reminders' | 'filters' | 'clear_all' | 'search' | 'task_name' | 'member' | 'all_members' | 'priority_label' | 'deadline_from' | 'deadline_to' | 'within_n_days' | 'days_example' | 'overdue' | 'no_overdue' | 'task' | 'assigned_to' | 'due' | 'due_soon_3_days' | 'no_due_soon'
   | 'documents' | 'upload' | 'create_folder' | 'folder_name' | 'rename' | 'rename_folder' | 'delete_folder' | 'delete_file' | 'rename_file' | 'folder_root' | 'folder_up' | 'folders' | 'files' | 'no_documents' | 'select_document' | 'file_info' | 'file_comments' | 'file_type' | 'file_size' | 'uploaded_by' | 'upload_date' | 'download' | 'history' | 'send_comment' | 'write_comment' | 'no_comments' | 'no_results' | 'folder_empty'
   | 'search_placeholder_doc' | 'folder_options' | 'file_options' | 'search_results' | 'just_now' | 'minutes_ago' | 'hours_ago' | 'days_ago'
-  | 'team_members' | 'add_member' | 'role_leader' | 'role_vice_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members'
+  | 'team_members' | 'add_member' | 'role_leader' | 'role_vice_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members' | 'vice_cannot_promote' | 'only_one_leader'
   | 'owner_manage_members' | 'failed_to_load_members' | 'failed_to_update_role' | 'failed_to_remove_member' | 'kick_member_confirm' | 'owner_transferred' | 'transfer_ownership' | 'leave_project' | 'failed_to_generate_link' | 'failed_to_invite' | 'invitation_sent' | 'failed_to_revoke' | 'invitation_revoked' | 'copied'
   | 'invite_members' | 'invite_by_account' | 'invite_by_email' | 'invite_by_link' | 'invite_list' | 'send_invitation' | 'generate_link' | 'no_invitations' | 'revoke' | 'link_expires_note' | 'enter_username' | 'enter_email' | 'generating_link' | 'copy'
   | 'you_are_owner' | 'select_new_owner_before_leave' | 'warning_delete_project' | 'last_member_warning' | 'last_member_delete_warning' | 'select_new_owner' | 'will_lose_access' | 'delete_and_leave' | 'confirm_leave' | 'admin'
@@ -210,6 +210,8 @@ export const vi = {
   delete_member: 'Xóa thành viên',
   cant_delete_owner: 'Xóa thành viên này khỏi dự án? Người này sẽ mất quyền truy cập toàn bộ nội dung dự án.',
   cant_change_owner_role: 'Không thể hạ vai trò chủ dự án — hãy chuyển nhóm trưởng trước',
+  vice_cannot_promote: 'Phó nhóm không có quyền thăng cấp thành trưởng nhóm hoặc phó nhóm',
+  only_one_leader: 'Dự án chỉ có một trưởng nhóm — hãy chuyển nhóm trưởng trước',
   role_updated: 'Đã cập nhật vai trò',
   member_saved: 'Đã lưu thông tin thành viên',
   member_removed: 'Đã xóa thành viên khỏi dự án',
@@ -733,6 +735,8 @@ export const en = {
   delete_member: 'Remove Member',
   cant_delete_owner: 'Remove this member from the project? They will lose access to all project content.',
   cant_change_owner_role: "Cannot change owner's role — transfer leader position first",
+  vice_cannot_promote: 'Vice leader cannot promote members to leader or vice leader',
+  only_one_leader: 'Only one leader is allowed — transfer leader position first',
   role_updated: 'Role updated',
   member_saved: 'Member info saved',
   member_removed: 'Member removed from project',
