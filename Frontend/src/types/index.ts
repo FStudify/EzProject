@@ -63,7 +63,7 @@ export interface Task {
   requestNote: string | null;
   comments: TaskComment[];
   commentsCount?: number;
-  hashtags: string[];
+  hashtags?: string[];
   createdAt: string;
   updatedAt?: string;
 }
