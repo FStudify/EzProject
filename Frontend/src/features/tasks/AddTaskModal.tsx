@@ -49,7 +49,6 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
   const [requestType, setRequestType] = useState<'none' | 'review' | 'pause'>('none');
   const [requestNote, setRequestNote] = useState('');
   const [hashtags, setHashtags] = useState('');
-  const [hashtagInput, setHashtagInput] = useState('');
 
   const parsedHashtags = useMemo(() => {
     return hashtags
@@ -79,6 +78,8 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
       requestNote: requestNote.trim() || null,
       comments: [],
       hashtags: parsedHashtags,
+      commentsCount: 0,
+      createdAt: new Date().toISOString(),
     };
     onAdd(newTask);
     setTitle('');
