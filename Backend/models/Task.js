@@ -23,7 +23,7 @@ const taskSchema = new mongoose.Schema({
   description: { type: String, default: null },
   status: {
     type: String,
-    enum: ['BACKLOG', 'IN_PROGRESS', 'REVIEW', 'DONE', 'ON_HOLD', 'CANCELLED'],
+    enum: ['BACKLOG', 'IN_PROGRESS', 'REVIEW', 'DONE', 'PAUSED', 'CANCELLED'],
     default: 'BACKLOG',
   },
   priority: {

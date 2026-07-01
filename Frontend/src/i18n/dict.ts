@@ -10,7 +10,7 @@ export type DictKey =
   | 'kanban_view' | 'timeline_view' | 'reminders' | 'filters' | 'clear_all' | 'search' | 'task_name' | 'member' | 'all_members' | 'priority_label' | 'deadline_from' | 'deadline_to' | 'within_n_days' | 'days_example' | 'overdue' | 'no_overdue' | 'task' | 'assigned_to' | 'due' | 'due_soon_3_days' | 'no_due_soon'
   | 'documents' | 'upload' | 'create_folder' | 'folder_name' | 'rename' | 'rename_folder' | 'delete_folder' | 'delete_file' | 'rename_file' | 'folder_root' | 'folder_up' | 'folders' | 'files' | 'no_documents' | 'select_document' | 'file_info' | 'file_comments' | 'file_type' | 'file_size' | 'uploaded_by' | 'upload_date' | 'download' | 'history' | 'send_comment' | 'write_comment' | 'no_comments' | 'no_results' | 'folder_empty'
   | 'search_placeholder_doc' | 'folder_options' | 'file_options' | 'search_results' | 'just_now' | 'minutes_ago' | 'hours_ago' | 'days_ago'
-  | 'team_members' | 'add_member' | 'role_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members'
+  | 'team_members' | 'add_member' | 'role_leader' | 'role_vice_leader' | 'role_supervisor' | 'role_member' | 'invite_member' | 'remove_member' | 'no_members'
   | 'owner_manage_members' | 'failed_to_load_members' | 'failed_to_update_role' | 'failed_to_remove_member' | 'kick_member_confirm' | 'owner_transferred' | 'transfer_ownership' | 'leave_project' | 'failed_to_generate_link' | 'failed_to_invite' | 'invitation_sent' | 'failed_to_revoke' | 'invitation_revoked' | 'copied'
   | 'invite_members' | 'invite_by_account' | 'invite_by_email' | 'invite_by_link' | 'invite_list' | 'send_invitation' | 'generate_link' | 'no_invitations' | 'revoke' | 'link_expires_note' | 'enter_username' | 'enter_email' | 'generating_link' | 'copy'
   | 'you_are_owner' | 'select_new_owner_before_leave' | 'warning_delete_project' | 'last_member_warning' | 'last_member_delete_warning' | 'select_new_owner' | 'will_lose_access' | 'delete_and_leave' | 'confirm_leave' | 'admin'
@@ -109,9 +109,10 @@ export const vi = {
   priority_low: 'Thấp',
   status_backlog: 'Cần làm',
   status_in_progress: 'Đang làm',
-  status_review: 'Tạm hoãn/Chờ xử lý',
+  status_review: 'Xét duyệt',
   status_done: 'Hoàn thành',
   status_on_hold: 'Tạm dừng',
+  status_paused: 'Tạm hoãn',
   status_cancelled: 'Đã hủy',
 
   // Task Board specific
@@ -186,6 +187,7 @@ export const vi = {
   team_members: 'Thành viên nhóm',
   add_member: 'Thêm thành viên',
   role_leader: 'Trưởng nhóm',
+  role_vice_leader: 'Phó nhóm',
   role_supervisor: 'Giám sát',
   role_member: 'Thành viên',
   invite_member: 'Mời thành viên',
@@ -630,7 +632,7 @@ export const en = {
   priority_low: 'Low',
   status_backlog: 'To do',
   status_in_progress: 'In Progress',
-  status_review: 'Pending',
+  status_review: 'Under Review',
   status_done: 'Done',
   status_on_hold: 'On Hold',
   status_cancelled: 'Cancelled',
@@ -707,6 +709,7 @@ export const en = {
   team_members: 'Team Members',
   add_member: 'Add Member',
   role_leader: 'Leader',
+  role_vice_leader: 'Vice Leader',
   role_supervisor: 'Supervisor',
   role_member: 'Member',
   invite_member: 'Invite Member',

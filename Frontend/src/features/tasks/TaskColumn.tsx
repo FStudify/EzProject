@@ -7,7 +7,7 @@ const statusColors: Record<TaskStatus, string> = {
   IN_PROGRESS: 'bg-primary',
   REVIEW: 'bg-amber-500',
   DONE: 'bg-emerald-500',
-  ON_HOLD: 'bg-slate-300',
+  PAUSED: 'bg-slate-300',
   CANCELLED: 'bg-slate-300',
 };
 

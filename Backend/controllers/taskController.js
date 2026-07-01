@@ -95,11 +95,26 @@ async function checkMember(projectId, userId) {
 }
 
 /**
- * Gap 6 fix: LEADER, SUPERVISOR, và isOwner đều có elevated permissions.
- * MEMBER chỉ được thao tác với task của chính mình.
+ * Role helpers:
+ * - LEADER: isOwner || role === 'LEADER' (toàn quyền)
+ * - VICE_LEADER: role === 'VICE_LEADER' (toàn quyền, trừ kick supervisor/leader)
+ * - SUPERVISOR: role === 'SUPERVISOR' (view, đánh giá, không drag/edit task)
+ * - MEMBER: chỉ cập nhật status task được gán hoặc tạo, không drag vào DONE/PAUSED
  */
+function isLeader(member) {
+  return member.isOwner || member.role === 'LEADER';
+}
+
+function isViceLeader(member) {
+  return member.role === 'VICE_LEADER';
+}
+
+function isLeaderOrViceLeader(member) {
+  return isLeader(member) || isViceLeader(member);
+}
+
 function isElevated(member) {
-  return member.isOwner || member.role === 'LEADER' || member.role === 'SUPERVISOR';
+  return isLeaderOrViceLeader(member) || member.role === 'SUPERVISOR';
 }
 
 function ensureValidObjectId(value) {
@@ -115,8 +130,8 @@ async function getProjectWithElevatedAccess(projectId, userId) {
   if (!project) throw errors.Forbidden('You are not a member of this project');
 
   const member = project.members.find((m) => m.userId.toString() === userId);
-  if (!member || !isElevated(member)) {
-    throw errors.Forbidden('Only leaders and supervisors can generate tasks with AI');
+  if (!isLeaderOrViceLeader(member)) {
+    throw errors.Forbidden('Only leaders and vice leaders can generate tasks with AI');
   }
   if (!project.deadline) throw errors.BadRequest('Set a project deadline before generating tasks');
   return project;
@@ -328,10 +343,30 @@ exports.getById = async (req, res, next) => {
 };
 
 // ── POST /projects/:projectId/tasks ───────────────────────────────────────────
-// Bất kỳ member nào đều tạo được task
+// MEMBER: chỉ tạo task, không gán được task
+// LEADER / VICE_LEADER: tạo + gán task (trừ supervisor)
 exports.create = async (req, res, next) => {
   try {
-    await checkMember(req.params.projectId, req.user.id);
+    const member = await checkMember(req.params.projectId, req.user.id);
+    const assigneeId = req.body.assigneeId ? new ObjectId(req.body.assigneeId) : undefined;
+
+    // If trying to assign someone, only leader/vice-leader can
+    if (assigneeId) {
+      if (!isLeaderOrViceLeader(member)) {
+        throw errors.Forbidden('Only leaders can assign tasks');
+      }
+      // Cannot assign to supervisor
+      const assigneeMember = await Project.findOne({
+        _id: new ObjectId(req.params.projectId),
+        'members.userId': assigneeId,
+      }).lean();
+      if (assigneeMember) {
+        const am = assigneeMember.members.find((m) => m.userId.toString() === assigneeId.toString());
+        if (am && am.role === 'SUPERVISOR') {
+          throw errors.Forbidden('Cannot assign tasks to supervisors');
+        }
+      }
+    }
 
     const task = await Task.create({
       projectId: new ObjectId(req.params.projectId),
@@ -339,7 +374,7 @@ exports.create = async (req, res, next) => {
       description: req.body.description ?? null,
       priority: req.body.priority ?? 'MEDIUM',
       deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline)) : undefined,
-      assigneeId: req.body.assigneeId ? new ObjectId(req.body.assigneeId) : undefined,
+      assigneeId,
       creatorId: new ObjectId(req.user.id),
       hashtags: Array.isArray(req.body.hashtags)
         ? req.body.hashtags.map((h) => String(h).trim().toLowerCase().replace(/^#/, '')).filter(Boolean)
@@ -464,6 +499,9 @@ exports.bulkCreate = async (req, res, next) => {
   }
 };
 
+// Status values that only LEADER or VICE_LEADER can move tasks to
+const RESTRICTED_STATUSES = new Set(['DONE', 'PAUSED']);
+
 exports.update = async (req, res, next) => {
   try {
     const member = await checkMember(req.params.projectId, req.user.id);
@@ -473,13 +511,54 @@ exports.update = async (req, res, next) => {
     });
     if (!task) throw errors.NotFound('Task');
 
-    if (!isElevated(member)) {
-      const isAssignee = task.assigneeId?.toString() === req.user.id;
-      const isCreator  = task.creatorId.toString() === req.user.id;
+    // ── Field-level permission map ────────────────────────────────────────────
+    // Only LEADER / VICE_LEADER can edit: title, description, priority,
+    // assigneeId, deadline, hashtags, requestType, requestNote.
+    const restrictedFields = [
+      'title', 'description', 'priority', 'assigneeId',
+      'deadline', 'hashtags', 'requestType', 'requestNote',
+    ];
+    const requestedRestricted = restrictedFields.filter((f) => f in req.body);
+    const requestedStatus = 'status' in req.body ? req.body.status : null;
+
+    // ── Case 1: Supervisor ────────────────────────────────────────────────────
+    if (member.role === 'SUPERVISOR' && !isLeaderOrViceLeader(member)) {
+      // Supervisor can only add comments (handled by addComment endpoint).
+      // Any field update attempt is denied.
+      if (requestedRestricted.length > 0 || requestedStatus) {
+        throw errors.Forbidden('Supervisors cannot edit task fields');
+      }
+    }
+
+    // ── Case 2: Member (not leader / vice-leader) ────────────────────────────
+    if (!isLeaderOrViceLeader(member) && member.role === 'MEMBER') {
+      const isAssignee  = task.assigneeId?.toString() === req.user.id;
+      const isCreator   = task.creatorId.toString() === req.user.id;
+
+      // Members can only update tasks they created or are assigned to
       if (!isAssignee && !isCreator) {
         throw errors.Forbidden('You can only edit tasks assigned to or created by you');
       }
+
+      // Members cannot edit task fields (title, description, priority, etc.)
+      if (requestedRestricted.length > 0) {
+        throw errors.Forbidden('You can only update task status');
+      }
+
+      // Members can only update status via drag — and only to non-restricted columns
+      if (requestedStatus) {
+        if (!isAssignee) {
+          // Creator-only tasks: member cannot change status unless assigned
+          throw errors.Forbidden('Only the assignee can update task status via drag');
+        }
+        if (RESTRICTED_STATUSES.has(requestedStatus)) {
+          throw errors.Forbidden('Only leaders can move tasks to Hoàn thành or Tạm hoãn');
+        }
+      }
     }
+
+    // ── Case 3: Leader / VICE_LEADER ──────────────────────────────────────────
+    // Full access — no additional checks needed.
 
     const update = { ...req.body };
     if (update.deadline) update.deadline = new Date(validateTaskDeadline(update.deadline));
@@ -505,7 +584,8 @@ exports.update = async (req, res, next) => {
 };
 
 // ── DELETE /projects/:projectId/tasks/:taskId ─────────────────────────────────
-// Gap 6: LEADER ✅ | SUPERVISOR ✅ | MEMBER → chỉ task do mình tạo
+// LEADER / VICE_LEADER / isOwner: delete any task
+// MEMBER: cannot delete
 exports.delete = async (req, res, next) => {
   try {
     const member = await checkMember(req.params.projectId, req.user.id);
@@ -515,8 +595,8 @@ exports.delete = async (req, res, next) => {
     });
     if (!task) throw errors.NotFound('Task');
 
-    if (!isElevated(member) && task.creatorId.toString() !== req.user.id) {
-      throw errors.Forbidden('Only the creator, leader, or supervisor can delete this task');
+    if (!isLeaderOrViceLeader(member)) {
+      throw errors.Forbidden('Only leaders can delete tasks');
     }
 
     await Task.findByIdAndDelete(req.params.taskId);

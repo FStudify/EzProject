@@ -18,13 +18,14 @@ import InviteMemberModal from './InviteMemberModal';
 import LeaveProjectModal from './LeaveProjectModal';
 
 const ROLE_OPTIONS: { value: ProjectRole; labelKey: DictKey }[] = [
-  { value: 'MEMBER', labelKey: 'role_member' },
-  { value: 'LEADER', labelKey: 'role_leader' },
+  { value: 'MEMBER',     labelKey: 'role_member'     },
+  { value: 'LEADER',    labelKey: 'role_leader'    },
+  { value: 'VICE_LEADER', labelKey: 'role_vice_leader' },
   { value: 'SUPERVISOR', labelKey: 'role_supervisor' },
 ];
 
 function roleBadgeVariant(role: ProjectRole): 'primary' | 'warning' | 'default' {
-  if (role === 'LEADER') return 'primary';
+  if (role === 'LEADER' || role === 'VICE_LEADER') return 'primary';
   if (role === 'SUPERVISOR') return 'warning';
   return 'default';
 }
@@ -75,7 +76,10 @@ export default function MemberList() {
 
   const currentMembership = members.find((pm) => pm.user.id === authUser?.id);
   const isOwner = currentMembership?.isOwner === true;
-  const canShowActions = isOwner || !!currentMembership;
+  const currentRole = currentMembership?.role ?? 'MEMBER';
+  const isLeader = isOwner || currentRole === 'LEADER';
+  const isViceLeader = currentRole === 'VICE_LEADER';
+  const canShowActions = isOwner || isLeader || isViceLeader;
 
   const getRoleLabel = (role: ProjectRole) => {
     return t(ROLE_OPTIONS.find((o) => o.value === role)?.labelKey ?? 'role_member');
@@ -318,7 +322,7 @@ export default function MemberList() {
                         </div>
                       </td>
                       <td className="px-4 py-3">
-                        {isOwner && !isMemberOwner ? (
+                        {isLeader && !isMemberOwner ? (
                           <select
                             value={role}
                             onChange={(e) =>
@@ -361,8 +365,8 @@ export default function MemberList() {
                                 Chuyển
                               </button>
                             )}
-                            {/* Kick — not owner, not self */}
-                            {isOwner && !isMemberOwner && !isSelf && (
+                            {/* Kick — owner, leader, or vice-leader can kick (vice-leader only kicks members) */}
+                            {(isOwner || isLeader || isViceLeader) && !isMemberOwner && !isSelf && (
                               <button
                                 type="button"
                                 onClick={() => setKickConfirmId(user.id)}

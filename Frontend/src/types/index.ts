@@ -21,7 +21,7 @@ export type {
 } from '@/api/types';
 
 export type ProjectStatus = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
-export type ProjectRole = 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+export type ProjectRole = 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';
 export type WorkloadLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 
 // ── Scalar & scalar-like types ─────────────────────────────────
@@ -54,7 +54,7 @@ export interface Task {
   projectId: string;
   title: string;
   description: string | null;
-  status: 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'ON_HOLD' | 'CANCELLED';
+  status: 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'PAUSED' | 'CANCELLED';
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   assignee: Member | null;
   creator?: Member;

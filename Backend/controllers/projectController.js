@@ -158,14 +158,15 @@ exports.update = async (req, res, next) => {
   try {
     const project = await Project.findOne({
       _id: new ObjectId(req.params.projectId),
-      members: {
-        $elemMatch: {
-          userId: new ObjectId(req.user.id),
-          isOwner: true,
-        },
-      },
-    });
-    if (!project) throw errors.Forbidden('Only the owner can edit this project');
+      'members.userId': new ObjectId(req.user.id),
+    }).lean();
+    if (!project) throw errors.Forbidden('You are not a member of this project');
+
+    const member = project.members.find((m) => m.userId.toString() === req.user.id);
+    const isLeader = member?.isOwner || member?.role === 'LEADER';
+    if (!isLeader) {
+      throw errors.Forbidden('Only leaders can edit this project');
+    }
 
     const update = { ...req.body };
     if (update.deadline) update.deadline = new Date(update.deadline);

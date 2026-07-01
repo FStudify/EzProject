@@ -58,6 +58,7 @@ interface PolishedSelectProps {
   required?: boolean;
   size?: 'default' | 'compact';
   className?: string;
+  disabled?: boolean;
 }
 
 export function PolishedSelect({
@@ -70,6 +71,7 @@ export function PolishedSelect({
   required = false,
   size = 'default',
   className = '',
+  disabled = false,
 }: PolishedSelectProps) {
   const [isOpen, setIsOpen] = useState(false);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -110,8 +112,9 @@ export function PolishedSelect({
 
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-left text-[#1F1F1F] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-150 hover:border-border-strong hover:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/14 ${triggerSizeClass}`}
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-left text-[#1F1F1F] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-150 hover:border-border-strong hover:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/14 ${triggerSizeClass} ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
         aria-haspopup="listbox"
         aria-expanded={isOpen}
       >
@@ -172,6 +175,7 @@ interface DatePickerFieldProps {
   helperText?: string;
   size?: 'default' | 'compact';
   className?: string;
+  disabled?: boolean;
 }
 
 export function DatePickerField({
@@ -184,6 +188,7 @@ export function DatePickerField({
   helperText,
   size = 'default',
   className = '',
+  disabled = false,
 }: DatePickerFieldProps) {
   const [isOpen, setIsOpen] = useState(false);
   const [today] = useState(() => normalizeDate(new Date()));
@@ -275,8 +280,9 @@ export function DatePickerField({
 
       <button
         type="button"
-        onClick={() => setIsOpen((prev) => !prev)}
-        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-left text-[#1F1F1F] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-150 hover:border-border-strong hover:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/14 ${triggerSizeClass}`}
+        disabled={disabled}
+        onClick={() => !disabled && setIsOpen((prev) => !prev)}
+        className={`flex w-full items-center justify-between gap-2 rounded-xl border border-border bg-surface px-3 text-left text-[#1F1F1F] shadow-[inset_0_1px_0_rgba(255,255,255,0.85)] transition-all duration-150 hover:border-border-strong hover:bg-surface focus:outline-none focus:ring-4 focus:ring-primary/14 ${triggerSizeClass} ${disabled ? 'cursor-not-allowed opacity-50' : ''}`}
         aria-haspopup="dialog"
         aria-expanded={isOpen}
       >

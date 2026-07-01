@@ -34,18 +34,13 @@ interface TaskModalProps {
   members?: Member[];
   projectMembers?: ProjectMember[];
   currentUser?: Member;
+  /** Chỉ leader / vice-leader mới được sửa task fields */
+  canEditTask?: boolean;
+  /** Chỉ leader / vice-leader mới được xóa task */
+  canDeleteTask?: boolean;
 }
 
-interface TaskModalContentProps {
-  task: Task;
-  isOpen: boolean;
-  onClose: () => void;
-  onSave?: (task: Task) => void;
-  onDelete?: (task: Task) => void;
-  members?: Member[];
-  projectMembers?: ProjectMember[];
-  currentUser?: Member;
-}
+interface TaskModalContentProps extends TaskModalProps {}
 
 export default function TaskModal({ task, ...props }: TaskModalProps) {
   if (!task) return null;
@@ -61,6 +56,8 @@ function TaskModalContent({
   members = [],
   projectMembers = [],
   currentUser,
+  canEditTask = false,
+  canDeleteTask = false,
 }: TaskModalContentProps) {
   const { t } = useLanguage();
   const [title, setTitle] = useState(task.title);
@@ -102,10 +99,11 @@ function TaskModalContent({
   );
   const statusOptions = useMemo<ModalSelectOption[]>(
     () => [
-      { value: 'BACKLOG', label: t('status_backlog'), tone: 'muted' },
+      { value: 'BACKLOG',     label: t('status_backlog'),     tone: 'muted' },
       { value: 'IN_PROGRESS', label: t('status_in_progress'), tone: 'accent' },
-      { value: 'REVIEW', label: t('status_review'), tone: 'muted' },
-      { value: 'DONE', label: t('status_done'), tone: 'positive' },
+      { value: 'REVIEW',      label: t('status_review'),      tone: 'muted' },
+      { value: 'DONE',        label: t('status_done'),        tone: 'positive' },
+      { value: 'PAUSED',      label: t('status_paused'),     tone: 'muted' },
     ],
     [t],
   );
@@ -213,7 +211,8 @@ function TaskModalContent({
                   type="text"
                   value={title}
                   onChange={(e) => setTitle(e.target.value)}
-                  className="w-full text-xl font-bold text-ink bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 transition-all"
+                  disabled={!canEditTask}
+                  className="w-full text-xl font-bold text-ink bg-transparent border-b border-transparent hover:border-border focus:border-primary focus:outline-none py-1 transition-all disabled:cursor-default disabled:hover:border-transparent"
                   placeholder="Tiêu đề công việc"
                 />
               </div>
@@ -226,6 +225,7 @@ function TaskModalContent({
                   onChange={(nextStatus) => setStatus(nextStatus as TaskStatus)}
                   options={statusOptions}
                   size="compact"
+                  disabled={!canEditTask}
                 />
                 <PolishedSelect
                   label="Độ ưu tiên"
@@ -233,6 +233,7 @@ function TaskModalContent({
                   onChange={(nextPriority) => setPriority(nextPriority as TaskPriority)}
                   options={PRIORITY_OPTIONS}
                   size="compact"
+                  disabled={!canEditTask}
                 />
               </div>
 
@@ -256,6 +257,7 @@ function TaskModalContent({
                         options={assigneeOptions}
                         placeholder="Chọn thành viên"
                         size="compact"
+                        disabled={!canEditTask}
                       />
                     </div>
                   </div>
@@ -267,6 +269,7 @@ function TaskModalContent({
                     onChange={handleStartDateChange}
                     min={todayValue}
                     size="compact"
+                    disabled={!canEditTask}
                   />
                   <DatePickerField
                     label="Hạn chót"
@@ -274,6 +277,7 @@ function TaskModalContent({
                     onChange={handleDeadlineChange}
                     min={startDate || todayValue}
                     size="compact"
+                    disabled={!canEditTask}
                   />
                 </div>
                 {dateError && (
@@ -287,9 +291,10 @@ function TaskModalContent({
                 <textarea
                   value={description}
                   onChange={(e) => setDescription(e.target.value)}
+                  disabled={!canEditTask}
                   rows={2}
                   placeholder="Mô tả công việc..."
-                  className={`${inputClass} min-h-[62px] resize-none`}
+                  className={`${inputClass} min-h-[62px] resize-none disabled:cursor-default disabled:bg-surface-muted/50`}
                 />
               </div>
 
@@ -300,8 +305,9 @@ function TaskModalContent({
                   type="text"
                   value={hashtags}
                   onChange={(e) => setHashtags(e.target.value)}
+                  disabled={!canEditTask}
                   placeholder="ví dụ: backend, api, urgent (phân cách bằng dấu phẩy)"
-                  className={`${inputClass} h-9`}
+                  className={`${inputClass} h-9 disabled:cursor-default disabled:bg-surface-muted/50`}
                 />
                 {hashtags.split(/[,\s#]+/).filter(Boolean).length > 0 && (
                   <div className="mt-1.5 flex flex-wrap gap-1.5">
@@ -327,8 +333,9 @@ function TaskModalContent({
                       <button
                         key={item.value}
                         type="button"
+                        disabled={!canEditTask}
                         onClick={() => setRequestType(item.value)}
-                        className={`rounded-lg px-2.5 py-1.5 text-left text-xs transition font-semibold ${
+                        className={`rounded-lg px-2.5 py-1.5 text-left text-xs transition font-semibold disabled:cursor-default ${
                           requestType === item.value
                             ? 'bg-primary-50 text-primary-dark'
                             : 'bg-white text-slate-600 hover:bg-primary-50'
@@ -344,9 +351,10 @@ function TaskModalContent({
                   <textarea
                     value={requestNote}
                     onChange={(e) => setRequestNote(e.target.value)}
+                    disabled={!canEditTask}
                     placeholder="Ghi chú yêu cầu..."
                     rows={3}
-                    className={`${inputClass} min-h-[86px] resize-none`}
+                    className={`${inputClass} min-h-[86px] resize-none disabled:cursor-default disabled:bg-surface-muted/50`}
                   />
                 </div>
               </div>
@@ -454,17 +462,21 @@ function TaskModalContent({
 
         {/* Footer Actions */}
         <div className="mt-3 flex items-center justify-between border-t border-border pt-2.5 shrink-0">
-          <Button
-            variant="danger"
-            size="sm"
-            onClick={() => {
-              onDelete?.(task);
-              onClose();
-            }}
-            className="!rounded-lg !border !border-border !bg-transparent !px-3.5 !text-danger hover:!bg-red-50"
-          >
-            Xóa
-          </Button>
+          {canDeleteTask ? (
+            <Button
+              variant="danger"
+              size="sm"
+              onClick={() => {
+                onDelete?.(task);
+                onClose();
+              }}
+              className="!rounded-lg !border !border-border !bg-transparent !px-3.5 !text-danger hover:!bg-red-50"
+            >
+              Xóa
+            </Button>
+          ) : (
+            <div />
+          )}
 
           <div className="flex items-center gap-1.5">
             <Button
@@ -475,14 +487,16 @@ function TaskModalContent({
             >
               Hủy
             </Button>
-            <Button
-              variant="primary"
-              size="sm"
-              onClick={handleSave}
-              className="!rounded-lg !bg-primary !px-4 !text-white hover:!bg-primary-dark"
-            >
-              Lưu thay đổi
-            </Button>
+            {canEditTask && (
+              <Button
+                variant="primary"
+                size="sm"
+                onClick={handleSave}
+                className="!rounded-lg !bg-primary !px-4 !text-white hover:!bg-primary-dark"
+              >
+                Lưu thay đổi
+              </Button>
+            )}
           </div>
         </div>
       </div>

@@ -90,7 +90,8 @@ exports.list = async (req, res, next) => {
 };
 
 // ── PUT /projects/:projectId/members/:userId/role ─────────────────────────────
-// isOwner only — đổi project-role của thành viên
+// LEADER / isOwner only — đổi project-role của thành viên (trừ supervisor)
+// VICE_LEADER không có quyền gán role
 exports.updateRole = async (req, res, next) => {
   try {
     const project = await Project.findOne({
@@ -100,13 +101,20 @@ exports.updateRole = async (req, res, next) => {
     if (!project) throw errors.Forbidden('You are not a member of this project');
 
     const currentMember = project.members.find((m) => m.userId.toString() === req.user.id);
-    if (!currentMember?.isOwner) {
-      throw errors.Forbidden('Only the project owner can change roles');
+    const isLeader = currentMember?.isOwner || currentMember?.role === 'LEADER';
+    if (!isLeader) {
+      throw errors.Forbidden('Only leaders can change member roles');
     }
 
     // Owner không thể đổi role của chính mình
     if (req.params.userId === req.user.id) {
       throw errors.BadRequest('Cannot change your own role');
+    }
+
+    // Không đổi role của supervisor
+    const target = project.members.find((m) => m.userId.toString() === req.params.userId);
+    if (target && target.role === 'SUPERVISOR') {
+      throw errors.Forbidden('Cannot change the role of supervisors');
     }
 
     const result = await Project.findOneAndUpdate(
@@ -124,8 +132,10 @@ exports.updateRole = async (req, res, next) => {
   }
 };
 
-// ── DELETE /projects/:projectId/members/:userId ───────────────────────────────
-// isOwner only — hoặc tự rời nhóm
+// ── DELETE /projects/:projectId/members/:userId ────────────────────────────────
+// LEADER / isOwner: kick bất kỳ (trừ leader khác)
+// VICE_LEADER: kick được MEMBER, không kick được supervisor/leader
+// MEMBER: tự rời nhóm
 exports.remove = async (req, res, next) => {
   try {
     const project = await Project.findOne({
@@ -137,14 +147,29 @@ exports.remove = async (req, res, next) => {
     const currentMember = project.members.find((m) => m.userId.toString() === req.user.id);
     const isSelf = req.params.userId === req.user.id;
 
+    const isLeader = currentMember?.isOwner || currentMember?.role === 'LEADER';
+    const isViceLeader = currentMember?.role === 'VICE_LEADER';
+
     // Owner không thể tự rời
     if (isSelf && currentMember?.isOwner) {
       throw errors.BadRequest('Project owner cannot leave. Transfer ownership first.');
     }
 
-    // Chỉ owner mới được xóa người khác
-    if (!isSelf && !currentMember?.isOwner) {
-      throw errors.Forbidden('Only the project owner can remove members');
+    // Tự rời: MEMBER / SUPERVISOR / VICE_LEADER đều được
+    if (isSelf && !currentMember?.isOwner) {
+      // Handled below — fall through to the self-removal logic
+    } else if (!isSelf) {
+      // Xóa người khác: chỉ leader hoặc vice-leader
+      if (!isLeader && !isViceLeader) {
+        throw errors.Forbidden('Only leaders can remove members');
+      }
+      // Vice-leader không kick được supervisor hoặc leader
+      if (isViceLeader && !isLeader) {
+        const target = project.members.find((m) => m.userId.toString() === req.params.userId);
+        if (!target || target.role === 'SUPERVISOR' || target.role === 'LEADER' || target.isOwner) {
+          throw errors.Forbidden('Vice leaders cannot remove supervisors or leaders');
+        }
+      }
     }
 
     await Project.findByIdAndUpdate(req.params.projectId, {

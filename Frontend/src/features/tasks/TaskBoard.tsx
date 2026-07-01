@@ -16,11 +16,12 @@ import { useAuth } from '@/contexts/AuthContext';
 
 type ViewMode = 'kanban' | 'timeline' | 'reminders';
 
-const COLUMNS: { status: TaskStatus; titleKey: 'status_backlog' | 'status_in_progress' | 'status_review' | 'status_done' }[] = [
-  { status: 'BACKLOG', titleKey: 'status_backlog' },
+const COLUMNS: { status: TaskStatus; titleKey: 'status_backlog' | 'status_in_progress' | 'status_review' | 'status_done' | 'status_paused' }[] = [
+  { status: 'BACKLOG',     titleKey: 'status_backlog'     },
   { status: 'IN_PROGRESS', titleKey: 'status_in_progress' },
-  { status: 'REVIEW', titleKey: 'status_review' },
-  { status: 'DONE', titleKey: 'status_done' },
+  { status: 'REVIEW',      titleKey: 'status_review'      },
+  { status: 'DONE',        titleKey: 'status_done'         },
+  { status: 'PAUSED',      titleKey: 'status_paused'      },
 ];
 
 interface Filters {
@@ -63,7 +64,17 @@ export default function TaskBoard() {
 
   const members = project?.members.map((pm) => pm.member) ?? [];
   const currentMembership = project?.members.find((pm) => pm.member.id === user?.id);
-  const canGenerateAi = Boolean(currentMembership && (currentMembership.isOwner || currentMembership.role === 'LEADER' || currentMembership.role === 'SUPERVISOR'));
+  const currentRole = currentMembership?.role ?? 'MEMBER';
+  const isOwner = currentMembership?.isOwner === true;
+  const isLeader = isOwner || currentRole === 'LEADER';
+  const isViceLeader = currentRole === 'VICE_LEADER';
+  const isLeaderOrVice = isLeader || isViceLeader;
+  // AI generation: leader, vice-leader, supervisor, owner
+  const canGenerateAi = Boolean(currentMembership && (isOwner || currentRole === 'LEADER' || currentRole === 'SUPERVISOR' || currentRole === 'VICE_LEADER'));
+  // Can drag to DONE/PAUSED: leader or vice-leader only
+  const canDragToRestricted = isLeaderOrVice;
+  // Can edit task fields (title, description, etc.): leader or vice-leader only
+  const canEditTask = isLeaderOrVice;
 
   const hasActiveFilters = Object.values(filters).some((v) => v !== '');
 
@@ -112,12 +123,11 @@ export default function TaskBoard() {
 
   const getTasksByStatus = (status: TaskStatus) =>
     filteredTasks.filter((t) => {
-      if (status === 'DONE') {
-        return t.status === 'DONE' || t.status === 'CANCELLED';
-      }
-      if (status === 'BACKLOG') {
-        return t.status === 'BACKLOG' || t.status === 'ON_HOLD';
-      }
+      if (status === 'DONE') return t.status === 'DONE' || t.status === 'CANCELLED';
+      if (status === 'BACKLOG')     return t.status === 'BACKLOG';
+      if (status === 'IN_PROGRESS') return t.status === 'IN_PROGRESS';
+      if (status === 'REVIEW')      return t.status === 'REVIEW';
+      if (status === 'PAUSED')      return t.status === 'PAUSED';
       return t.status === status;
     });
 
@@ -176,6 +186,13 @@ export default function TaskBoard() {
 
   const handleStatusChange = useCallback(async (taskId: string, newStatus: TaskStatus) => {
     if (!projectId) return;
+
+    // Frontend guard: only leader/vice-leader can drag to DONE or PAUSED
+    if ((newStatus === 'DONE' || newStatus === 'PAUSED') && !canDragToRestricted) {
+      toast('Chỉ Leader hoặc Vice Leader mới có thể di chuyển công việc vào cột này', 'warning');
+      return;
+    }
+
     try {
       const updated = await apiUpdateTask(projectId, taskId, { status: newStatus });
       setTasks((prev) => prev.map((t) => (t.id === taskId ? updated : t)));
@@ -184,7 +201,7 @@ export default function TaskBoard() {
       console.error('Failed to update task status:', err);
       toast(t('error') || 'Có lỗi xảy ra. Vui lòng thử lại', 'error');
     }
-  }, [projectId, t, toast]);
+  }, [projectId, t, toast, canDragToRestricted]);
 
   const handleSaveTask = useCallback(async (updated: Task) => {
     if (!projectId) return;
@@ -420,8 +437,8 @@ export default function TaskBoard() {
 
         {/* Loading state */}
         {isLoading && (
-          <div className="grid w-full min-w-[1020px] grid-cols-4 gap-2.5">
-            {Array.from({ length: 4 }).map((_, i) => (
+          <div className="grid w-full min-w-[1280px] grid-cols-5 gap-2.5">
+            {Array.from({ length: 5 }).map((_, i) => (
               <div key={i} className="rounded-xl border border-border bg-surface p-4 space-y-4">
                 <Skeleton className="h-4 w-1/3" />
                 <Skeleton className="h-20 w-full" />
@@ -576,7 +593,7 @@ export default function TaskBoard() {
 
             {!isLoading && viewMode === 'kanban' && (
               <div className="kanban-scroll ez-task-scrollbar flex flex-1 min-h-0 overflow-x-auto overflow-y-hidden pb-2">
-                <div className="grid w-full min-w-[1020px] grid-cols-4 gap-2.5">
+                <div className="grid w-full min-w-[1280px] grid-cols-5 gap-2.5">
                   {COLUMNS.map(({ status, titleKey }) => (
                     <TaskColumn
                       key={status}
@@ -626,6 +643,8 @@ export default function TaskBoard() {
         members={members}
         projectMembers={project?.members ?? []}
         currentUser={members[0]}
+        canEditTask={canEditTask}
+        canDeleteTask={canEditTask}
       />
       {projectId && (
         <TaskCreationModal

@@ -11,7 +11,7 @@ const projectMemberSchema = new mongoose.Schema({
   },
   role: {
     type: String,
-    enum: ['LEADER', 'SUPERVISOR', 'MEMBER'],
+    enum: ['LEADER', 'VICE_LEADER', 'SUPERVISOR', 'MEMBER'],
     default: 'MEMBER',
   },
   isOwner: { type: Boolean, default: false },

@@ -56,7 +56,7 @@ export type ProjectStatus = 'ACTIVE' | 'COMPLETED' | 'ARCHIVED';
 export interface ProjectMember {
   user: Pick<User, 'id' | 'fullName' | 'avatar' | 'email'>;
   userId: string;
-  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+  role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   joinedAt?: string;
 }
@@ -79,7 +79,7 @@ export interface Project {
 
 // ── Tasks ────────────────────────────────────────────────────
 
-export type TaskStatus = 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'ON_HOLD' | 'CANCELLED';
+export type TaskStatus = 'BACKLOG' | 'IN_PROGRESS' | 'REVIEW' | 'DONE' | 'PAUSED' | 'CANCELLED';
 export type TaskPriority = 'LOW' | 'MEDIUM' | 'HIGH';
 export type RequestType = 'REVIEW' | 'PAUSE';
 
@@ -196,7 +196,7 @@ export interface ChatMessage {
 
 export interface ProjectMemberDetail {
   user: Pick<User, 'id' | 'fullName' | 'email' | 'avatar'>;
-  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+  role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   tasksAssigned: number;
   tasksCompleted: number;
@@ -236,7 +236,7 @@ export interface MemberEvaluation {
 
 export interface MemberPerformance {
   member: Pick<User, 'id' | 'fullName' | 'avatar' | 'name' | 'email'>;
-  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+  role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   tasksCompleted: number;
   tasksInProgress: number;

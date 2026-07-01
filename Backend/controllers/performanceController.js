@@ -115,8 +115,9 @@ exports.evaluate = async (req, res, next) => {
     if (!project) throw errors.Forbidden('You are not a member of this project');
 
     const member = project.members.find((m) => m.userId.toString() === req.user.id);
-    if (!member || (member.role !== 'LEADER' && member.role !== 'SUPERVISOR')) {
-      throw errors.Forbidden('Only leaders and supervisors can evaluate');
+    const canEvaluate = member?.isOwner || member?.role === 'LEADER' || member?.role === 'VICE_LEADER' || member?.role === 'SUPERVISOR';
+    if (!canEvaluate) {
+      throw errors.Forbidden('Only leaders, vice leaders, and supervisors can evaluate');
     }
 
     await MemberEvaluation.create({
