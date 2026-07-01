@@ -270,7 +270,7 @@ async function recalculateProjectProgress(projectId) {
 exports.list = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
-    const { status, priority, assigneeId, overdue } = req.query;
+    const { status, priority, assigneeId, overdue, hashtag } = req.query;
 
     const match = { projectId: new ObjectId(req.params.projectId) };
     if (status) match.status = status;
@@ -279,6 +279,9 @@ exports.list = async (req, res, next) => {
     if (overdue === 'true') {
       match.deadline = { $lt: new Date() };
       match.status = { $nin: ['DONE', 'CANCELLED'] };
+    }
+    if (hashtag) {
+      match.hashtags = { $in: [String(hashtag).trim().toLowerCase().replace(/^#/, '')] };
     }
 
     const tasks = await Task.aggregate([
@@ -332,10 +335,15 @@ exports.create = async (req, res, next) => {
 
     const task = await Task.create({
       projectId: new ObjectId(req.params.projectId),
-      ...req.body,
+      title: req.body.title,
+      description: req.body.description ?? null,
+      priority: req.body.priority ?? 'MEDIUM',
       deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline)) : undefined,
       assigneeId: req.body.assigneeId ? new ObjectId(req.body.assigneeId) : undefined,
       creatorId: new ObjectId(req.user.id),
+      hashtags: Array.isArray(req.body.hashtags)
+        ? req.body.hashtags.map((h) => String(h).trim().toLowerCase().replace(/^#/, '')).filter(Boolean)
+        : [],
     });
 
     await task.populate([
@@ -476,6 +484,9 @@ exports.update = async (req, res, next) => {
     const update = { ...req.body };
     if (update.deadline) update.deadline = new Date(validateTaskDeadline(update.deadline));
     if (update.assigneeId) update.assigneeId = new ObjectId(update.assigneeId);
+    if (Array.isArray(update.hashtags)) {
+      update.hashtags = update.hashtags.map((h) => String(h).trim().toLowerCase().replace(/^#/, '')).filter(Boolean);
+    }
 
     const updated = await Task.findByIdAndUpdate(
       req.params.taskId,

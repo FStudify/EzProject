@@ -37,11 +37,17 @@ const taskSchema = new mongoose.Schema({
   requestType: { type: String, enum: ['REVIEW', 'PAUSE', null], default: null },
   requestNote: { type: String, default: null },
   comments: { type: [taskCommentSchema], default: [] },
+  hashtags: {
+    type: [String],
+    default: [],
+    set: (v) => (Array.isArray(v) ? v.map((h) => String(h).trim().toLowerCase().replace(/^#/, '')).filter(Boolean) : []),
+  },
 }, { timestamps: true });
 
 taskSchema.index({ projectId: 1, status: 1 });
 taskSchema.index({ assigneeId: 1 });
 taskSchema.index({ deadline: 1 });
+taskSchema.index({ hashtags: 1 });
 
 taskSchema.plugin(idVirtual);
 

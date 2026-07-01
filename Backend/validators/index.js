@@ -117,6 +117,7 @@ const validators = {
     assigneeId: z.string().optional(),
     deadline: z.string().optional(),
     startDate: z.string().optional(),
+    hashtags: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
   }).refine((d) => {
     if (!d.deadline) return true;
     const date = new Date(d.deadline);
@@ -150,6 +151,7 @@ const validators = {
     assigneeId: z.string().optional(),
     deadline: z.string().optional(),
     startDate: z.string().optional(),
+    hashtags: z.array(z.string().trim().min(1).max(50)).max(10).optional(),
   }).refine((d) => {
     if (!d.deadline) return true;
     const date = new Date(d.deadline);

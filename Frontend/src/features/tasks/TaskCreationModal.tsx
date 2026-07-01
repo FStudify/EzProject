@@ -12,6 +12,7 @@ type Draft = {
   description: string;
   deadline: string;
   priority: TaskPriority;
+  hashtags: string;
 };
 
 interface Props {
@@ -75,7 +76,7 @@ export default function TaskCreationModal({
   const [generating, setGenerating] = useState(false);
   const [creating, setCreating] = useState(false);
   const [error, setError] = useState('');
-  const [manual, setManual] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM' as TaskPriority, assigneeId: '' });
+  const [manual, setManual] = useState({ title: '', description: '', deadline: '', priority: 'MEDIUM' as TaskPriority, assigneeId: '', hashtags: '' as string });
   const minDeadline = minDeadlineDateInput();
 
   useEffect(() => {
@@ -104,6 +105,7 @@ export default function TaskCreationModal({
         description: task.description,
         deadline: toDateInput(task.deadline),
         priority: task.priority,
+        hashtags: '',
       })));
     } catch (err) {
       setError(err instanceof Error ? err.message : 'Không thể tạo danh sách công việc bằng AI.');
@@ -117,7 +119,12 @@ export default function TaskCreationModal({
     setCreating(true);
     setError('');
     try {
-      const created = await bulkCreateTasks(projectId, selected.map(({ title, description, deadline: taskDeadline, priority }) => ({ title, description, deadline: taskDeadline, priority })));
+      const created = await bulkCreateTasks(projectId, selected.map(({ title, description, deadline: taskDeadline, priority, hashtags: rawTags }) => {
+        const tags = typeof rawTags === 'string'
+          ? rawTags.split(/[,\s#]+/).map((h) => h.trim().toLowerCase()).filter(Boolean)
+          : [];
+        return { title, description, deadline: taskDeadline, priority, hashtags: tags };
+      }));
       onAiCreated(created);
       onClose();
     } catch (err) {
@@ -134,6 +141,10 @@ export default function TaskCreationModal({
       return;
     }
     const assignee = members.find((member) => member.id === manual.assigneeId) ?? null;
+    const parsedHashtags = manual.hashtags
+      .split(/[,\s#]+/)
+      .map((h: string) => h.trim().toLowerCase())
+      .filter(Boolean);
     onManualAdd({
       projectId,
       title: manual.title.trim(),
@@ -144,6 +155,7 @@ export default function TaskCreationModal({
       deadline: new Date(manual.deadline).toISOString(),
       requestType: null,
       requestNote: null,
+      hashtags: parsedHashtags,
     });
     onClose();
   };
@@ -297,6 +309,17 @@ export default function TaskCreationModal({
                         className={`${inputClass} min-h-[74px] resize-none`}
                       />
 
+                      <div>
+                        <label className={labelClass}>Hashtags</label>
+                        <input
+                          type="text"
+                          value={task.hashtags}
+                          onChange={(event) => updateDraft(task.id, { hashtags: event.target.value })}
+                          placeholder="ví dụ: backend, api"
+                          className={`${inputClass} h-8 text-xs`}
+                        />
+                      </div>
+
                       <div className="mt-3 grid gap-2 sm:grid-cols-2">
                         <DatePickerField
                           label="Deadline"
@@ -347,6 +370,16 @@ export default function TaskCreationModal({
                   {members.map((member) => <option key={member.id} value={member.id}>{member.name}</option>)}
                 </select>
               </label>
+              <div>
+                <label className={labelClass}>Hashtags</label>
+                <input
+                  type="text"
+                  value={manual.hashtags}
+                  onChange={(event) => setManual((value) => ({ ...value, hashtags: event.target.value }))}
+                  placeholder="ví dụ: backend, api, urgent"
+                  className={inputClass}
+                />
+              </div>
             </div>
             <div className="flex justify-end border-t border-border pt-3">
               <Button variant="primary" onClick={createManual} disabled={!manual.title.trim() || !manual.deadline} className="!rounded-xl !px-5">Tạo công việc</Button>

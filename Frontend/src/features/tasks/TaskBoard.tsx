@@ -30,6 +30,7 @@ interface Filters {
   deadlineAfter: string;
   deadlineWithinDays: string;
   search: string;
+  hashtag: string;
 }
 
 const emptyFilters: Filters = {
@@ -39,6 +40,7 @@ const emptyFilters: Filters = {
   deadlineAfter: '',
   deadlineWithinDays: '',
   search: '',
+  hashtag: '',
 };
 
 export default function TaskBoard() {
@@ -101,6 +103,10 @@ export default function TaskBoard() {
         );
       }
     }
+    if (filters.hashtag) {
+      const tag = filters.hashtag.toLowerCase();
+      result = result.filter((t) => t.hashtags?.some((h) => h.toLowerCase().includes(tag)));
+    }
     return result;
   }, [tasks, filters]);
 
@@ -144,6 +150,7 @@ export default function TaskBoard() {
         priority: task.priority,
         assigneeId: task.assignee?.id,
         deadline: task.deadline ?? undefined,
+        hashtags: task.hashtags ?? undefined,
       });
       setTasks((prev) => [...prev, created]);
       toast(t('task_created') || 'Đã tạo công việc thành công', 'success');
@@ -189,6 +196,7 @@ export default function TaskBoard() {
         priority: updated.priority,
         assigneeId: updated.assignee?.id,
         deadline: updated.deadline ?? undefined,
+        hashtags: updated.hashtags,
       });
       setTasks((prev) => prev.map((t) => (t.id === saved.id ? saved : t)));
       setSelectedTask(saved);
@@ -381,6 +389,16 @@ export default function TaskBoard() {
                           placeholder={t('days_example')}
                           value={filters.deadlineWithinDays}
                           onChange={(e) => setFilters((f) => ({ ...f, deadlineWithinDays: e.target.value }))}
+                          className={selectClass + ' w-full'}
+                        />
+                      </div>
+                      <div className="col-span-2">
+                        <label className="mb-0.5 block text-xs font-medium text-slate-500">Hashtag</label>
+                        <input
+                          type="text"
+                          value={filters.hashtag}
+                          onChange={(e) => setFilters((f) => ({ ...f, hashtag: e.target.value }))}
+                          placeholder="Lọc theo hashtag..."
                           className={selectClass + ' w-full'}
                         />
                       </div>

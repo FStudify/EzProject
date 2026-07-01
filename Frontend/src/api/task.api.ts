@@ -13,6 +13,7 @@ interface TaskFilters {
   priority?: Task['priority'];
   assigneeId?: string;
   overdue?: boolean;
+  hashtag?: string;
 }
 
 export interface AiTaskDraft {
@@ -29,6 +30,7 @@ export interface BulkTaskDraft {
   description?: string;
   deadline: string;
   priority: Task['priority'];
+  hashtags?: string | string[];
 }
 
 /** Lay danh sach task cua project */
@@ -41,6 +43,7 @@ export async function getTasks(
   if (filters?.priority) params.set('priority', filters.priority);
   if (filters?.assigneeId) params.set('assigneeId', filters.assigneeId);
   if (filters?.overdue) params.set('overdue', 'true');
+  if (filters?.hashtag) params.set('hashtag', filters.hashtag);
 
   const qs = params.toString();
   const raw = await api.get<unknown[]>(
@@ -64,6 +67,7 @@ export async function createTask(
     priority?: Task['priority'];
     assigneeId?: string;
     deadline?: string;
+    hashtags?: string[];
   },
 ): Promise<Task> {
   const raw = await api.post<unknown>(Endpoints.TASK_LIST(projectId), data);
@@ -78,7 +82,7 @@ export async function generateAiTaskDrafts(
 }
 
 export async function bulkCreateTasks(projectId: string, tasks: BulkTaskDraft[]): Promise<Task[]> {
-  const raw = await api.post<unknown[]>(Endpoints.TASK_BULK_CREATE(projectId), { tasks });
+  const raw = await api.post<unknown[]>(Endpoints.TASK_BULK_CREATE(projectId), { tasks: tasks.map((t) => ({ title: t.title, description: t.description, deadline: t.deadline, priority: t.priority, hashtags: Array.isArray(t.hashtags) ? t.hashtags : (typeof t.hashtags === 'string' ? t.hashtags.split(/[,\s#]+/).map((h) => h.trim().toLowerCase()).filter(Boolean) : []) })) });
   return normalizeTaskList(raw);
 }
 
@@ -93,6 +97,7 @@ export async function updateTask(
     priority: Task['priority'];
     assigneeId: string;
     deadline: string;
+    hashtags: string[];
   }>,
 ): Promise<Task> {
   const raw = await api.put<unknown>(Endpoints.TASK_DETAIL(projectId, taskId), data);

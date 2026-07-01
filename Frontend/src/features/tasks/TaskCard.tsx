@@ -84,6 +84,23 @@ export default function TaskCard({ task, onClick, isDragging }: TaskCardProps) {
             {task.requestType === 'REVIEW' ? 'Review request' : 'Hold/leave request'}
           </Badge>
         )}
+        {task.hashtags && task.hashtags.length > 0 && (
+          <div className="flex flex-wrap gap-1">
+            {task.hashtags.slice(0, 3).map((tag) => (
+              <span
+                key={tag}
+                className="rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary"
+              >
+                #{tag}
+              </span>
+            ))}
+            {task.hashtags.length > 3 && (
+              <span className="rounded-full bg-primary-50 px-1.5 py-0.5 text-[10px] font-medium text-primary">
+                +{task.hashtags.length - 3}
+              </span>
+            )}
+          </div>
+        )}
       </div>
 
       <div className="flex items-center justify-between gap-2">

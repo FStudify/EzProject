@@ -72,6 +72,7 @@ function TaskModalContent({
   const [deadline, setDeadline] = useState((task.deadline ?? '').slice(0, 10));
   const [requestType, setRequestType] = useState<'none' | 'review' | 'pause' | string>((task.requestType as string) ?? 'none');
   const [requestNote, setRequestNote] = useState(task.requestNote ?? '');
+  const [hashtags, setHashtags] = useState(task.hashtags?.join(', ') ?? '');
   const [newComment, setNewComment] = useState('');
   const [comments, setComments] = useState<TaskComment[]>(task.comments ?? []);
   const [activeTab, setActiveTab] = useState<'details' | 'focus'>('details');
@@ -136,6 +137,10 @@ function TaskModalContent({
       requestType: requestType !== 'none' ? requestType : null,
       requestNote: requestNote.trim() || null,
       comments,
+      hashtags: hashtags
+        .split(/[,\s#]+/)
+        .map((h) => h.trim().toLowerCase())
+        .filter(Boolean),
     };
 
     setDateError(null);
@@ -286,6 +291,27 @@ function TaskModalContent({
                   placeholder="Mô tả công việc..."
                   className={`${inputClass} min-h-[62px] resize-none`}
                 />
+              </div>
+
+              {/* Hashtags */}
+              <div>
+                <label className={labelClass}>Hashtags</label>
+                <input
+                  type="text"
+                  value={hashtags}
+                  onChange={(e) => setHashtags(e.target.value)}
+                  placeholder="ví dụ: backend, api, urgent (phân cách bằng dấu phẩy)"
+                  className={`${inputClass} h-9`}
+                />
+                {hashtags.split(/[,\s#]+/).filter(Boolean).length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {hashtags.split(/[,\s#]+/).map((h) => h.trim()).filter(Boolean).map((tag) => (
+                      <span key={tag} className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary">
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
               </div>
 
               {/* Requests Section */}

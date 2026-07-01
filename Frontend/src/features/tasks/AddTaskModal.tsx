@@ -48,6 +48,15 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
   const [deadline, setDeadline] = useState('');
   const [requestType, setRequestType] = useState<'none' | 'review' | 'pause'>('none');
   const [requestNote, setRequestNote] = useState('');
+  const [hashtags, setHashtags] = useState('');
+  const [hashtagInput, setHashtagInput] = useState('');
+
+  const parsedHashtags = useMemo(() => {
+    return hashtags
+      .split(/[,\s#]+/)
+      .map((h) => h.trim().toLowerCase())
+      .filter(Boolean);
+  }, [hashtags]);
 
   const assigneeOptions = useMemo<ModalSelectOption[]>(
     () => members.map((member) => ({ value: member.id, label: member.name, tone: 'muted' })),
@@ -66,10 +75,10 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
       priority,
       assignee,
       deadline: new Date(deadline).toISOString(),
-      createdAt: new Date(startDate).toISOString(),
       requestType: requestType !== 'none' ? requestType : null,
       requestNote: requestNote.trim() || null,
       comments: [],
+      hashtags: parsedHashtags,
     };
     onAdd(newTask);
     setTitle('');
@@ -81,6 +90,7 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
     setDeadline('');
     setRequestType('none');
     setRequestNote('');
+    setHashtags('');
     onClose();
   };
 
@@ -190,15 +200,39 @@ export default function AddTaskModal({ isOpen, onClose, onAdd, projectId, member
                 ))}
               </div>
             </div>
-            <div>
-              <label className={labelClass}>Ghi chú yêu cầu</label>
-              <textarea
-                value={requestNote}
-                onChange={(e) => setRequestNote(e.target.value)}
-                placeholder="Ghi chú cho yêu cầu kiểm duyệt hoặc tạm dừng..."
-                rows={3}
-                className={`${inputClass} min-h-[90px] resize-none`}
-              />
+            <div className="space-y-2.5">
+              <div>
+                <label className={labelClass}>Ghi chú yêu cầu</label>
+                <textarea
+                  value={requestNote}
+                  onChange={(e) => setRequestNote(e.target.value)}
+                  placeholder="Ghi chú cho yêu cầu kiểm duyệt hoặc tạm dừng..."
+                  rows={2}
+                  className={`${inputClass} min-h-[72px] resize-none`}
+                />
+              </div>
+              <div>
+                <label className={labelClass}>Hashtags</label>
+                <input
+                  type="text"
+                  value={hashtags}
+                  onChange={(e) => setHashtags(e.target.value)}
+                  placeholder="ví dụ: backend, api, urgent"
+                  className={`${inputClass} h-10`}
+                />
+                {parsedHashtags.length > 0 && (
+                  <div className="mt-1.5 flex flex-wrap gap-1.5">
+                    {parsedHashtags.map((tag) => (
+                      <span
+                        key={tag}
+                        className="inline-flex items-center rounded-full bg-primary-50 px-2 py-0.5 text-[11px] font-medium text-primary"
+                      >
+                        #{tag}
+                      </span>
+                    ))}
+                  </div>
+                )}
+              </div>
             </div>
           </div>
         </div>

@@ -98,6 +98,7 @@ function normalizeTask(raw: Record<string, unknown>): Task {
   const commentsArr = (raw.comments ?? []) as Record<string, unknown>[];
   const statusStr = ((raw.status as string) ?? 'BACKLOG').toUpperCase().replace('-', '_');
   const priorityStr = ((raw.priority as string) ?? 'LOW').toUpperCase();
+  const hashtags = Array.isArray(raw.hashtags) ? raw.hashtags.map((h) => String(h)) : [];
   return {
     id: normalizeId(raw),
     projectId: (raw.projectId as string) ?? '',
@@ -112,6 +113,7 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     requestNote: null,
     comments: commentsArr.map(normalizeTaskComment),
     commentsCount: (raw.commentsCount as number) ?? 0,
+    hashtags,
     createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
     updatedAt: (raw.updatedAt as string) ?? new Date().toISOString(),
   };
