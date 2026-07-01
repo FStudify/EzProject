@@ -26,7 +26,7 @@ const QUICK_UPDATES = [
 ];
 
 interface TaskModalProps {
-  task: Task | null;
+  task: Task;
   isOpen: boolean;
   onClose: () => void;
   onSave?: (task: Task) => void;
@@ -40,7 +40,9 @@ interface TaskModalProps {
   canDeleteTask?: boolean;
 }
 
-interface TaskModalContentProps extends TaskModalProps {}
+interface TaskModalContentProps extends Omit<TaskModalProps, 'task'> {
+  task: Task;
+}
 
 export default function TaskModal({ task, ...props }: TaskModalProps) {
   if (!task) return null;
@@ -109,8 +111,9 @@ function TaskModalContent({
   );
   const commenter = currentUser ?? members[0] ?? task.assignee;
 
+  const assignee = members.find((member) => member.id === assigneeId) ?? task.assignee ?? null;
+
   const handleSave = () => {
-    const assignee = members.find((member) => member.id === assigneeId) ?? task.assignee;
     const safeStartDate = startDate || task.createdAt.slice(0, 10);
     const safeDeadline = deadline || (task.deadline ?? '').slice(0, 10);
 
@@ -125,12 +128,14 @@ function TaskModalContent({
 
     const updated: Task = {
       ...task,
+      id: task.id,
       title,
       description,
       status,
       priority,
       assignee,
       createdAt: new Date(safeStartDate).toISOString(),
+      updatedAt: new Date().toISOString(),
       deadline: safeDeadline ? new Date(safeDeadline).toISOString() : null,
       requestType: requestType !== 'none' ? requestType : null,
       requestNote: requestNote.trim() || null,
@@ -158,7 +163,8 @@ function TaskModalContent({
 
     setComments((prev) => [...prev, comment]);
     setNewComment('');
-    onSave?.({ ...task, comments: [...comments, comment] });
+    const taskForSave: Task = { ...task, comments: [...comments, comment] };
+    onSave?.(taskForSave);
   };
 
   const handleQuickUpdate = (text: string) => {

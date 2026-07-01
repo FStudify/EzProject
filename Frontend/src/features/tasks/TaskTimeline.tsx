@@ -28,7 +28,7 @@ function getTaskBarStyle(
     REVIEW: 'bg-amber-500',
     IN_PROGRESS: 'bg-primary',
     BACKLOG: 'bg-slate-400',
-    ON_HOLD: 'bg-slate-300',
+    PAUSED: 'bg-slate-300',
     CANCELLED: 'bg-slate-300',
   };
   return {

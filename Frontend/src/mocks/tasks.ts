@@ -124,7 +124,7 @@ export const mockTasks: Task[] = [
     projectId: 'proj-1',
     title: 'Hệ thống thông báo email',
     description: 'Gửi xác nhận đơn hàng và cập nhật vận chuyển qua email.',
-    status: 'ON_HOLD',
+    status: 'PAUSED',
     priority: 'LOW',
     assignee: mockMembers[1],
     deadline: '2026-03-05T23:59:59Z',

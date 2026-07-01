@@ -5,7 +5,7 @@ interface MemberAvatarProps {
   src?: string | null;
   name: string;
   isOwner?: boolean;
-  role?: 'LEADER' | 'SUPERVISOR' | 'MEMBER' | 'leader' | 'supervisor' | 'member';
+  role?: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER' | 'leader' | 'vice_leader' | 'supervisor' | 'member';
   size?: 'sm' | 'md' | 'lg';
   /** Gray ring when offline, green when online */
   online?: boolean;
@@ -16,6 +16,7 @@ const iconSizes = { sm: 'h-3 w-3', md: 'h-4 w-4', lg: 'h-5 w-5' };
 
 const ROLE_ICONS: Record<string, { Icon: typeof Flame; label: string }> = {
   LEADER: { Icon: Flame, label: 'Trưởng nhóm' },
+  VICE_LEADER: { Icon: Flame, label: 'Phó nhóm' },
   SUPERVISOR: { Icon: BookOpen, label: 'Giám sát' },
   MEMBER: { Icon: Pickaxe, label: 'Thành viên' },
 };
@@ -64,7 +65,9 @@ export default function MemberAvatar({
               ? 'text-orange-500'
               : upperRole === 'SUPERVISOR'
                 ? 'text-blue-600'
-                : 'text-slate-600'
+                : upperRole === 'VICE_LEADER'
+                  ? 'text-amber-500'
+                  : 'text-slate-600'
           }`}
           strokeWidth={2}
         />

@@ -11,6 +11,7 @@ const sizeClasses = { sm: 'h-4 w-4', md: 'h-5 w-5' };
 
 const ROLE_ICONS: Record<string, { Icon: typeof Flame; label: string; color: string }> = {
   LEADER: { Icon: Flame, label: 'Leader', color: 'text-orange-500' },
+  VICE_LEADER: { Icon: Flame, label: 'Vice Leader', color: 'text-amber-500' },
   SUPERVISOR: { Icon: BookOpen, label: 'Supervisor', color: 'text-blue-600' },
   MEMBER: { Icon: Pickaxe, label: 'Member', color: 'text-slate-600' },
 };
@@ -18,6 +19,7 @@ const ROLE_ICONS: Record<string, { Icon: typeof Flame; label: string; color: str
 export function getRoleLabel(role: string, isOwner: boolean): string {
   const labels: Record<string, string> = {
     leader: 'Nhóm trưởng',
+    vice_leader: 'Phó nhóm',
     supervisor: 'Giám sát',
     member: 'Thành viên',
   };
