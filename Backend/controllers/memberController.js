@@ -175,7 +175,7 @@ exports.remove = async (req, res, next) => {
 };
 
 // ── POST /projects/:projectId/members/invite ──────────────────────────────────
-// Tạo invite link, lưu vào DB với TTL 7 ngày. Mỗi project có thể có nhiều link
+// Tạo invite link, lưu vào DB với TTL 3 ngày. Mỗi project có thể có nhiều link
 // đang hoạt động; link cũ tự hết hạn nhờ TTL index trên InviteLink.expiresAt.
 exports.createInvite = async (req, res, next) => {
   try {

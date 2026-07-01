@@ -378,10 +378,26 @@ exports.createEmailInvite = async (req, res, next) => {
 exports.getInviteByToken = async (req, res, next) => {
   try {
     const { token } = req.params;
-    const invitation = await Invitation.findOne({ token })
+    const safeToken = (token || '').trim();
+    console.log(`[InviteCtrl] getInviteByToken token="${safeToken}" length=${safeToken.length}`);
+    const invitation = await Invitation.findOne({ token: safeToken })
       .populate('projectId', 'name description')
       .populate('invitedBy', 'fullName avatar')
       .lean();
+
+    if (!invitation) {
+      // Debug: log các token pending gần đây để đối chiếu URL↔DB
+      console.warn(`[InviteCtrl] NOT FOUND. Looking up last 5 pending tokens for debugging...`);
+      const recent = await Invitation.find({ status: 'PENDING' })
+        .sort({ createdAt: -1 })
+        .limit(5)
+        .select('token invitedEmail expiresAt createdAt')
+        .lean();
+      recent.forEach((r) => {
+        const match = r.token === safeToken ? ' ← EXACT MATCH' : '';
+        console.warn(`[InviteCtrl]   db_token="${r.token}" email="${r.invitedEmail}" created=${r.createdAt?.toISOString?.() || r.createdAt}${match}`);
+      });
+    }
 
     if (invitation) {
       if (invitation.status !== 'PENDING') {
