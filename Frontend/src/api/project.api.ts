@@ -51,7 +51,7 @@ export async function createProject(data: {
   description?: string;
   subject?: string;
   deadline?: string;
-  members?: Array<{ userId: string; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER' }>;
+  members?: Array<{ userId: string; role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER' }>;
 }): Promise<Project> {
   const raw = await api.post<unknown>(Endpoints.PROJECT_LIST, data);
   return normalizeProjectDetail(raw);

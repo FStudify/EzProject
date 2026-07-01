@@ -635,7 +635,7 @@ export default function TaskBoard() {
 
       {/* Modals */}
       <TaskModal
-        task={selectedTask}
+        task={selectedTask!}
         isOpen={isDetailOpen}
         onClose={() => { setIsDetailOpen(false); setSelectedTask(null); }}
         onSave={handleSaveTask}

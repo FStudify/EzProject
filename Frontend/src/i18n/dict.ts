@@ -6,7 +6,7 @@ export type DictKey =
   | 'notifications' | 'mark_all_read' | 'no_notifications' | 'search_placeholder'
   | 'projects' | 'recent_projects' | 'all_projects' | 'members'
   | 'welcome_back' | 'project_overview' | 'my_tasks' | 'upcoming_meetings' | 'recent_activity' | 'no_projects' | 'create_project' | 'view_all'
-  | 'add_task' | 'task_title' | 'task_description' | 'task_assignee' | 'task_priority' | 'task_deadline' | 'task_status' | 'task_comments' | 'save' | 'cancel' | 'delete' | 'edit' | 'view' | 'priority_high' | 'priority_medium' | 'priority_low' | 'status_backlog' | 'status_in_progress' | 'status_review' | 'status_done' | 'status_on_hold' | 'status_cancelled'
+  | 'add_task' | 'task_title' | 'task_description' | 'task_assignee' | 'task_priority' | 'task_deadline' | 'task_status' | 'task_comments' | 'save' | 'cancel' | 'delete' | 'edit' | 'view' | 'priority_high' | 'priority_medium' | 'priority_low' | 'status_backlog' | 'status_in_progress' | 'status_review' | 'status_done' | 'status_on_hold' | 'status_paused' | 'status_cancelled'
   | 'kanban_view' | 'timeline_view' | 'reminders' | 'filters' | 'clear_all' | 'search' | 'task_name' | 'member' | 'all_members' | 'priority_label' | 'deadline_from' | 'deadline_to' | 'within_n_days' | 'days_example' | 'overdue' | 'no_overdue' | 'task' | 'assigned_to' | 'due' | 'due_soon_3_days' | 'no_due_soon'
   | 'documents' | 'upload' | 'create_folder' | 'folder_name' | 'rename' | 'rename_folder' | 'delete_folder' | 'delete_file' | 'rename_file' | 'folder_root' | 'folder_up' | 'folders' | 'files' | 'no_documents' | 'select_document' | 'file_info' | 'file_comments' | 'file_type' | 'file_size' | 'uploaded_by' | 'upload_date' | 'download' | 'history' | 'send_comment' | 'write_comment' | 'no_comments' | 'no_results' | 'folder_empty'
   | 'search_placeholder_doc' | 'folder_options' | 'file_options' | 'search_results' | 'just_now' | 'minutes_ago' | 'hours_ago' | 'days_ago'
@@ -635,6 +635,7 @@ export const en = {
   status_review: 'Under Review',
   status_done: 'Done',
   status_on_hold: 'On Hold',
+  status_paused: 'Paused',
   status_cancelled: 'Cancelled',
 
   // Task Board specific

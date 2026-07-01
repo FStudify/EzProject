@@ -25,7 +25,7 @@ export async function getProjectMembers(projectId: string): Promise<ProjectMembe
 export async function updateMemberRole(
   projectId: string,
   userId: string,
-  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER',
+  role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER',
 ): Promise<void> {
   return api.put(`${Endpoints.MEMBER_ROLE(projectId, userId)}`, { role });
 }

@@ -202,7 +202,7 @@ export interface AppNotification {
 
 export interface MemberPerformanceDetail {
   member: Member;
-  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+  role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   tasksCompleted: number;
   tasksInProgress: number;
@@ -218,7 +218,7 @@ export interface MemberPerformanceDetail {
 
 export interface ProjectMemberDetail {
   user: { id: string; fullName: string; avatar?: string | null };
-  role: 'LEADER' | 'SUPERVISOR' | 'MEMBER';
+  role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';
   isOwner: boolean;
   tasksAssigned: number;
   tasksCompleted: number;

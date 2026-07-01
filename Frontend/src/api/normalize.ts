@@ -259,7 +259,7 @@ export function normalizeChatMessages(data: unknown): ChatMessage[] {
   return arr.map((item) => normalizeChatMessage(item as Record<string, unknown>));
 }
 
-export function normalizeMemberList(data: unknown): { user: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksAssigned: number; tasksCompleted: number }[] {
+export function normalizeMemberList(data: unknown): { user: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksAssigned: number; tasksCompleted: number }[] {
   const arr = Array.isArray(data) ? data : ((data as Record<string, unknown>).data as unknown[]) ?? [];
   return arr.map((item) => {
     const raw = item as Record<string, unknown>;
@@ -274,7 +274,7 @@ export function normalizeMemberList(data: unknown): { user: { id: string; name: 
         email: (userDoc?.email as string) ?? '',
         avatar: (userDoc?.avatar as string | null) ?? null,
       },
-      role: roleStr as 'LEADER' | 'SUPERVISOR' | 'MEMBER',
+      role: roleStr as 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER',
       isOwner: Boolean(raw.isOwner),
       tasksAssigned: (raw.tasksAssigned as number) ?? 0,
       tasksCompleted: (raw.tasksCompleted as number) ?? 0,
@@ -282,7 +282,7 @@ export function normalizeMemberList(data: unknown): { user: { id: string; name: 
   });
 }
 
-export function normalizePerformanceList(data: unknown): { member: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksCompleted: number; tasksInProgress: number; tasksTodo: number; documentsUploaded: number; commentsCount: number; score: number; contributions: { date: string; count: number }[]; evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null }[] {
+export function normalizePerformanceList(data: unknown): { member: { id: string; name: string; fullName: string; email: string; avatar: string | null }; role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER'; isOwner: boolean; tasksCompleted: number; tasksInProgress: number; tasksTodo: number; documentsUploaded: number; commentsCount: number; score: number; contributions: { date: string; count: number }[]; evaluation: { rating: number; feedback: string | null; evaluatedAt: string } | null }[] {
   const arr = Array.isArray(data) ? data : ((data as Record<string, unknown>).data as unknown[]) ?? [];
   return arr.map((item) => {
     const raw = item as Record<string, unknown>;
@@ -299,7 +299,7 @@ export function normalizePerformanceList(data: unknown): { member: { id: string;
         email: (memberDoc?.email as string) ?? '',
         avatar: (memberDoc?.avatar as string | null) ?? null,
       },
-      role: roleStr as 'LEADER' | 'SUPERVISOR' | 'MEMBER',
+      role: roleStr as 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER',
       isOwner: Boolean(raw.isOwner),
       tasksCompleted: (raw.tasksCompleted as number) ?? 0,
       tasksInProgress: (raw.tasksInProgress as number) ?? 0,
