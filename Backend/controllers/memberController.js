@@ -111,12 +111,6 @@ exports.updateRole = async (req, res, next) => {
       throw errors.BadRequest('Cannot change your own role');
     }
 
-    // Không đổi role của supervisor
-    const target = project.members.find((m) => m.userId.toString() === req.params.userId);
-    if (target && target.role === 'SUPERVISOR') {
-      throw errors.Forbidden('Cannot change the role of supervisors');
-    }
-
     // VICE_LEADER chỉ được hạ cấp — không được thăng cấp thành LEADER hoặc VICE_LEADER
     if (isViceLeader && !isLeader && (req.body.role === 'LEADER' || req.body.role === 'VICE_LEADER')) {
       throw errors.Forbidden('Vice leaders cannot promote members to leader or vice leader');

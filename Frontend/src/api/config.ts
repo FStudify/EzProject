@@ -367,6 +367,21 @@ const viErrorMessages: Record<string, string> = {
   'Cannot demote yourself': 'Bạn không thể tự hạ quyền của mình',
   'Cannot delete your own account': 'Bạn không thể xóa tài khoản của chính mình',
   'Only leaders and supervisors can evaluate': 'Chỉ trưởng nhóm hoặc giám sát mới có thể đánh giá',
+
+  // Member role changes
+  'Only leaders or vice leaders can change member roles': 'Chỉ trưởng nhóm hoặc phó nhóm mới có thể thay đổi vai trò thành viên',
+  'Vice leaders cannot promote members to leader or vice leader': 'Phó nhóm không có quyền thăng cấp thành trưởng nhóm hoặc phó nhóm',
+
+  // Task permissions
+  'Supervisors cannot edit task fields': 'Giám sát không có quyền chỉnh sửa thông tin công việc',
+  'You can only update task status': 'Bạn chỉ có thể cập nhật trạng thái công việc',
+  'Only the assignee can update task status via drag': 'Chỉ người được giao mới có thể kéo công việc',
+  'Only leaders can move tasks to Hoàn thành or Tạm hoãn': 'Chỉ trưởng nhóm hoặc phó nhóm mới có thể di chuyển công việc sang Hoàn thành hoặc Tạm hoãn',
+
+  // General
+  'Missing authorization header': 'Thiếu thông tin xác thực',
+  'User no longer exists': 'Người dùng không còn tồn tại',
+  'Too many requests, please try again later': 'Bạn thao tác quá nhiều lần, vui lòng thử lại sau',
 };
 
 function translateApiErrorMessage(message: string): string {

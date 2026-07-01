@@ -86,7 +86,7 @@ const validators = {
       .array(
         z.object({
           userId: z.string(),
-          role: z.enum(['LEADER', 'SUPERVISOR', 'MEMBER']),
+          role: z.enum(['LEADER', 'VICE_LEADER', 'SUPERVISOR', 'MEMBER']),
         }),
       )
       .optional(),
@@ -146,7 +146,7 @@ const validators = {
   updateTask: z.object({
     title: z.string().min(1).optional(),
     description: z.string().optional(),
-    status: z.enum(['BACKLOG', 'IN_PROGRESS', 'REVIEW', 'DONE', 'ON_HOLD', 'CANCELLED']).optional(),
+    status: z.enum(['BACKLOG', 'IN_PROGRESS', 'REVIEW', 'DONE', 'PAUSED', 'ON_HOLD', 'CANCELLED']).optional(),
     priority: z.enum(['LOW', 'MEDIUM', 'HIGH']).optional(),
     assigneeId: z.string().optional(),
     deadline: z.string().optional(),
@@ -264,7 +264,7 @@ const validators = {
 
   // ── Members ─────────────────────────────────────────────
   updateRole: z.object({
-    role: z.enum(['LEADER', 'SUPERVISOR', 'MEMBER']),
+    role: z.enum(['LEADER', 'VICE_LEADER', 'SUPERVISOR', 'MEMBER']),
   }),
 
   createEmailInvite: z.object({
@@ -272,7 +272,7 @@ const validators = {
     role: z
       .string()
       .transform((value) => value.toUpperCase())
-      .pipe(z.enum(['MEMBER', 'SUPERVISOR', 'LEADER']))
+      .pipe(z.enum(['MEMBER', 'SUPERVISOR', 'LEADER', 'VICE_LEADER']))
       .default('MEMBER'),
   }),
 
