@@ -2,7 +2,7 @@ import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
 import { useParams, useSearchParams } from 'react-router-dom';
 import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock, ClipboardList, Plus, CheckCircle2 } from 'lucide-react';
 import { projectService } from '@/services';
-import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
+import { getTasks, getTask, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
 import type { Task, TaskStatus } from '@/types';
 import { Button, useToast, Skeleton } from '@/components/ui';
 import Avatar from '@/components/ui/Avatar';
@@ -155,11 +155,15 @@ export default function TaskBoard() {
   const handleAddTask = useCallback(async (task: Omit<Task, 'id' | 'comments' | 'commentsCount' | 'createdAt' | 'updatedAt'>) => {
     if (!projectId) return;
     try {
+      // Default startDate to today (date-only ISO) if not provided so the
+      // backend schema gets a sensible value for new tasks.
+      const startDate = task.startDate ?? new Date().toISOString().slice(0, 10);
       const created = await apiCreateTask(projectId, {
         title: task.title,
         description: task.description ?? undefined,
         priority: task.priority,
         assigneeId: task.assignee?.id,
+        startDate,
         deadline: task.deadline ?? undefined,
         hashtags: task.hashtags ?? undefined,
       });
@@ -220,6 +224,7 @@ export default function TaskBoard() {
         status: updated.status,
         priority: updated.priority,
         assigneeId: updated.assignee?.id,
+        startDate: updated.startDate ?? undefined,
         deadline: updated.deadline ?? undefined,
         hashtags: updated.hashtags,
       });
@@ -240,25 +245,57 @@ export default function TaskBoard() {
     }
 
     setIsLoading(true);
+    const taskIdFromUrl = searchParams.get('taskId');
+
     Promise.all([
       getTasks(projectId),
       projectService.getById(projectId),
     ])
-      .then(([tasksData, projectData]) => {
+      .then(async ([tasksData, projectData]) => {
         setTasks(tasksData);
         setProject(projectData);
-        
-        // Auto-open highlighted task from URL
-        const highlightTaskId = searchParams.get('highlightTaskId');
-        if (highlightTaskId) {
-          const t = tasksData.find(x => x.id === highlightTaskId);
-          if (t) {
-            setSelectedTask(t);
-            setIsDetailOpen(true);
-            // Clear the param so it doesn't re-trigger on refresh if closed
-            setSearchParams({}, { replace: true });
+
+        if (!taskIdFromUrl) return;
+
+        // 1. Try the cached list first (no extra round-trip).
+        let target = tasksData.find((x) => x.id === taskIdFromUrl);
+
+        // 2. Not in the list yet (cross-project jump, just-created task, etc.)
+        //    → fetch the task detail directly so we still open the right drawer.
+        if (!target) {
+          try {
+            const fetched = await getTask(projectId, taskIdFromUrl);
+            if (fetched) {
+              target = fetched;
+              setTasks((prev) =>
+                prev.some((t) => t.id === fetched.id) ? prev : [...prev, fetched],
+              );
+            }
+          } catch (fetchErr: any) {
+            // 404 here means the task is in a different project than the URL.
+            // The notification link already encodes the correct projectId, so
+            // a 404 should not happen in normal flow. If it does, we fall
+            // back to leaving the modal closed and logging a warning so the
+            // user can navigate manually instead of seeing a confusing error.
+            const status = fetchErr?.status ?? fetchErr?.response?.status;
+            console.warn(
+              `[TaskBoard] could not open task ${taskIdFromUrl} in project ${projectId} (status=${status}). ` +
+              'The task likely belongs to a different project. Open it via the notification again.',
+            );
           }
         }
+
+        if (target) {
+          setSelectedTask(target);
+          setIsDetailOpen(true);
+        }
+
+        // Drop the param after consuming so a refresh does not pop the modal
+        // back open. We strip the param even if the task was not opened so the
+        // URL does not stay in an inconsistent state.
+        const next = new URLSearchParams(searchParams);
+        next.delete('taskId');
+        setSearchParams(next, { replace: true });
       })
       .catch((err) => {
         console.error('Failed to load tasks or project:', err);

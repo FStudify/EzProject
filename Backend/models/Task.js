@@ -33,6 +33,7 @@ const taskSchema = new mongoose.Schema({
   },
   assigneeId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', default: null },
   creatorId: { type: mongoose.Schema.Types.ObjectId, ref: 'User', required: true },
+  startDate: { type: Date, default: null },
   deadline: { type: Date, default: null },
   requestType: { type: String, enum: ['REVIEW', 'PAUSE', null], default: null },
   requestNote: { type: String, default: null },
@@ -46,6 +47,7 @@ const taskSchema = new mongoose.Schema({
 
 taskSchema.index({ projectId: 1, status: 1 });
 taskSchema.index({ assigneeId: 1 });
+taskSchema.index({ startDate: 1 });
 taskSchema.index({ deadline: 1 });
 taskSchema.index({ hashtags: 1 });
 

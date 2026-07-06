@@ -47,7 +47,7 @@ export type DictKey =
   | 'evaluation_form_title_leader' | 'evaluation_form_title_supervisor' | 'evaluation_form_subtitle_leader' | 'evaluation_form_subtitle_supervisor' | 'evaluation_max_points'
   | 'evaluation_max_total'
   | 'theme' | 'theme_light' | 'theme_dark' | 'language' | 'account' | 'security' | 'notifications_settings' | 'appearance' | 'general'
-  | 'profile' | 'edit_profile' | 'department' | 'position' | 'phone' | 'bio' | 'save_changes'
+  | 'profile' | 'edit_profile' | 'department' | 'position' | 'phone' | 'bio' | 'save_changes' | 'locked' | 'email_locked_notice'
   | 'loading' | 'error' | 'success' | 'confirm' | 'yes' | 'no' | 'ok' | 'close' | 'back' | 'next' | 'previous' | 'total' | 'name' | 'date' | 'description' | 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'assignee' | 'role' | 'all' | 'active' | 'inactive' | 'today' | 'yesterday' | 'this_week' | 'this_month'
   | 'new_task_assigned' | 'task_due_soon' | 'meeting_reminder' | 'document_shared' | 'member_joined'
   | 'demo_account' | 'demo_account_desc'
@@ -683,6 +683,8 @@ export const vi = {
   badge_2: 'Nhóm trưởng đầu tiên',
   badge_3: '100% review pass',
   default_user: 'Người dùng',
+  locked: 'Không thể thay đổi',
+  email_locked_notice: 'Email đã được dùng để đăng ký và không thể thay đổi. Vui lòng liên hệ hỗ trợ nếu cần cập nhật.',
 
   // Common
   loading: 'Đang tải...',
@@ -1391,6 +1393,8 @@ export const en = {
   badge_2: 'First-time Leader',
   badge_3: '100% review pass',
   default_user: 'User',
+  locked: 'Locked',
+  email_locked_notice: 'Your email is tied to your account and cannot be changed. Please contact support if you need to update it.',
 
   // Common
   loading: 'Loading...',

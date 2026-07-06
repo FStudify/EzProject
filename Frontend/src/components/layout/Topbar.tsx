@@ -57,7 +57,26 @@ export default function Topbar() {
     };
   }, []);
 
-  // Real-time: someone invited us → +1 on invitation badge + toast
+  // Real-time: a new notification arrived over the socket → re-pull counts
+// immediately (so the bell badge lights up) AND show a toast for non-chat
+// notifications so users see them even with the bell drawer closed.
+  useEffect(() => {
+    const handleNew = (event: Event) => {
+      const detail = (event as CustomEvent).detail;
+      console.log('[Topbar] new_notification event received', detail);
+      console.log('[Topbar] my user id =', user?.id);
+      // Optimistic: bump badge immediately so the bell lights up before the API responds
+      setUnreadCount((prev) => prev + 1);
+      void fetchBadge();
+      const payload = detail as { type?: string; title?: string; body?: string };
+      if (!payload?.type || payload.type === 'CHAT') return;
+      toast(`${payload.title ?? 'Thông báo'}: ${payload.body ?? ''}`, 'success');
+    };
+    window.addEventListener('new_notification', handleNew);
+    return () => window.removeEventListener('new_notification', handleNew);
+  }, [toast, user?.id]);
+
+// Real-time: someone invited us → +1 on invitation badge + toast
   useEffect(() => {
     const handleInvitation = (event: Event) => {
       const detail = (event as CustomEvent<{ projectName?: string; invitedBy?: { fullName?: string } }>).detail;

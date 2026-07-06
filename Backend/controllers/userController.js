@@ -19,11 +19,22 @@ exports.getProfile = async (req, res, next) => {
 };
 
 // ── PUT /users/me ─────────────────────────────────────────────────────────────
+// Whitelist editable fields. Email and other sensitive fields (role, passwordHash,
+// emailVerified, etc.) are intentionally NOT included — users must contact
+// support to change them.
+const PROFILE_EDITABLE_FIELDS = ['fullName', 'phone', 'bio', 'avatar'];
 exports.updateProfile = async (req, res, next) => {
   try {
+    const update = {};
+    for (const key of PROFILE_EDITABLE_FIELDS) {
+      if (key in req.body) update[key] = req.body[key];
+    }
+    if (Object.keys(update).length === 0) {
+      throw errors.BadRequest('No fields to update');
+    }
     const user = await User.findByIdAndUpdate(
       req.user.id,
-      { $set: req.body },
+      { $set: update },
       { new: true, runValidators: true },
     ).lean();
     if (!user) throw errors.NotFound('User');

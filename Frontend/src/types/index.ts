@@ -58,6 +58,7 @@ export interface Task {
   priority: 'LOW' | 'MEDIUM' | 'HIGH';
   assignee: Member | null;
   creator?: Member;
+  startDate?: string | null;
   deadline: string | null;
   requestType: string | null;
   requestNote: string | null;

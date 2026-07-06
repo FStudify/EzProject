@@ -118,9 +118,19 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     socketRef.current = socket;
     setSocket(socket);
 
-    socket.on('connect', () => setIsConnected(true));
-    socket.on('disconnect', () => setIsConnected(false));
-    socket.on('connect_error', () => setIsConnected(false));
+    socket.on('connect', () => {
+      console.log('[ChatSocket] connected', socket.id);
+      setIsConnected(true);
+    });
+    socket.on('disconnect', (reason) => {
+      console.log('[ChatSocket] disconnected:', reason);
+      setIsConnected(false);
+    });
+    socket.on('connect_error', (err) => {
+      console.log('[ChatSocket] connect_error:', err?.message || err);
+      setIsConnected(false);
+    });
+    socket.on('reconnect', (attempt) => console.log('[ChatSocket] reconnected after', attempt, 'tries'));
 
     socket.on('new_message', (data: IncomingSocketMessage) => {
       const sender = data.sender;
@@ -172,6 +182,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     });
 
     socket.on('new_notification', (data: unknown) => {
+      console.log('[ChatSocket] received new_notification from server:', data);
       try {
         window.dispatchEvent(new CustomEvent('new_notification', { detail: data }));
         // Trigger generic update to refresh badges (empty detail forces fetchBadge)

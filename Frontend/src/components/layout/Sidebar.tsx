@@ -1,3 +1,4 @@
+import type { CSSProperties } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
 import {
@@ -32,14 +33,61 @@ function extractProjectId(pathname: string): string | undefined {
   return match?.[1];
 }
 
-function navItemClass(isActive: boolean, isDisabled: boolean) {
+/**
+ * Resolve the active/inactive styling for a sidebar NavLink.
+ *
+ * Why we return `{ className, style }` instead of a single className string:
+ * Tailwind utilities like `text-[#8B4A2F]` and the theme-generated
+ * `text-on-sidebar` are both single-class selectors, so they have equal
+ * specificity. Whichever appears last in the compiled stylesheet wins, which
+ * varies across builds and can cause the active state to silently fail
+ * (the text stays white-on-orange and is unreadable). Inline `style.color`
+ * beats both, so the active palette is applied through inline styles only.
+ * The className is reserved for layout (padding, gap, flex, transition, etc).
+ */
+const ACTIVE_BG = '#FFF5EC';
+const ACTIVE_TEXT = '#8B4A2F';
+const ACTIVE_SHADOW = '0 16px 24px -18px rgba(45,18,4,0.55)';
+const HOVER_BG = 'rgba(255,255,255,0.18)';
+
+function navItemStyle(isActive: boolean, isDisabled: boolean): {
+  className: string;
+  style: CSSProperties;
+} {
   if (isDisabled) {
-    return 'cursor-not-allowed opacity-40 text-on-sidebar-muted/60';
+    return {
+      className: 'cursor-not-allowed opacity-40',
+      style: { color: 'rgba(255,255,255,0.6)' },
+    };
   }
   if (isActive) {
-    return 'text-[#8B4A2F] bg-[#FFF5EC] shadow-[0_16px_24px_-18px_rgba(45,18,4,0.55)]';
+    return {
+      className: '',
+      style: { color: ACTIVE_TEXT, backgroundColor: ACTIVE_BG, boxShadow: ACTIVE_SHADOW },
+    };
   }
-  return 'text-on-sidebar hover:bg-[rgba(255,255,255,0.18)]';
+  return {
+    className: 'hover:bg-white/[0.18]',
+    style: { color: '#FFFFFF' },
+  };
+}
+
+/** Footer mini-item variant — same colour palette as `navItemStyle`, so the
+ *  background, icon and text all flip together — no profile-only branch. */
+function footerNavItemStyle(isActive: boolean): {
+  className: string;
+  style: CSSProperties;
+} {
+  if (isActive) {
+    return {
+      className: '',
+      style: { color: ACTIVE_TEXT, backgroundColor: ACTIVE_BG, boxShadow: ACTIVE_SHADOW },
+    };
+  }
+  return {
+    className: 'hover:bg-white/[0.18]',
+    style: { color: '#FFFFFF' },
+  };
 }
 
 export default function Sidebar() {
@@ -104,9 +152,11 @@ export default function Sidebar() {
             <NavLink
               to="/app"
               end
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${navItemClass(isActive, false)}`
-              }
+              className={({ isActive }) => {
+                const s = navItemStyle(isActive, false);
+                return `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${s.className}`;
+              }}
+              style={({ isActive }) => navItemStyle(isActive, false).style}
             >
               <LayoutDashboard className="h-5 w-5 shrink-0" aria-hidden />
               {!collapsed && <span>{t('nav_dashboard')}</span>}
@@ -115,9 +165,11 @@ export default function Sidebar() {
           <li>
             <NavLink
               to="/app/projects"
-              className={({ isActive }) =>
-                `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${navItemClass(isActive, false)}`
-              }
+              className={({ isActive }) => {
+                const s = navItemStyle(isActive, false);
+                return `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${s.className}`;
+              }}
+              style={({ isActive }) => navItemStyle(isActive, false).style}
             >
               <FolderKanban className="h-5 w-5 shrink-0" aria-hidden />
               {!collapsed && <span>{t('nav_projects')}</span>}
@@ -133,10 +185,12 @@ export default function Sidebar() {
               const isDisabled = !hasProject;
 
               if (isDisabled) {
+                const s = navItemStyle(false, true);
                 return (
                   <div
                     key={suffix || 'overview'}
-                    className={`flex items-center gap-2 rounded-r-xl py-2 pl-3 text-[13px] font-medium ${navItemClass(false, true)} ${collapsed ? 'justify-center rounded-xl px-2 py-2.5' : ''}`}
+                    style={s.style}
+                    className={`flex items-center gap-2 rounded-r-xl py-2 pl-3 text-[13px] font-medium ${s.className} ${collapsed ? 'justify-center rounded-xl px-2 py-2.5' : ''}`}
                   >
                     <Icon className="h-4 w-4 shrink-0" />
                     {!collapsed && <span>{t(labelKey)}</span>}
@@ -149,15 +203,27 @@ export default function Sidebar() {
                   key={suffix || 'overview'}
                   to={fullPath}
                   end={suffix === ''}
-                  className={({ isActive }) =>
-                    collapsed
-                      ? `flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ${navItemClass(isActive, false)}`
-                      : `flex items-center gap-2 rounded-r-xl border-l-[3px] py-2 pl-3 text-[13px] font-medium transition-all duration-200 ${
-                          isActive
-                            ? 'border-[#D97853] text-[#8B4A2F] bg-[#FFF5EC] shadow-[0_16px_24px_-18px_rgba(45,18,4,0.55)]'
-                            : 'border-transparent text-on-sidebar-muted hover:bg-[rgba(255,255,255,0.18)] hover:text-on-sidebar'
-                        }`
-                  }
+                  className={({ isActive }) => {
+                    if (collapsed) {
+                      const s = navItemStyle(isActive, false);
+                      return `flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ${s.className}`;
+                    }
+                    return isActive
+                      ? 'flex items-center gap-2 rounded-r-xl border-l-[3px] py-2 pl-3 text-[13px] font-medium transition-all duration-200'
+                      : 'flex items-center gap-2 rounded-r-xl border-l-[3px] border-transparent py-2 pl-3 text-[13px] font-medium transition-all duration-200 hover:bg-white/[0.18]';
+                  }}
+                  style={({ isActive }) => {
+                    if (collapsed) return navItemStyle(isActive, false).style;
+                    if (isActive) {
+                      return {
+                        borderLeftColor: '#D97853',
+                        color: ACTIVE_TEXT,
+                        backgroundColor: ACTIVE_BG,
+                        boxShadow: ACTIVE_SHADOW,
+                      };
+                    }
+                    return { color: 'rgba(255,255,255,0.7)' };
+                  }}
                   title={collapsed ? t(labelKey) : undefined}
                 >
                   <Icon className="h-4 w-4 shrink-0" />
@@ -181,9 +247,11 @@ export default function Sidebar() {
                 <li key={to}>
                   <NavLink
                     to={to}
-                    className={({ isActive }) =>
-                      `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${navItemClass(isActive, false)}`
-                    }
+                    className={({ isActive }) => {
+                      const s = navItemStyle(isActive, false);
+                      return `flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-semibold transition-all duration-200 ${s.className}`;
+                    }}
+                    style={({ isActive }) => navItemStyle(isActive, false).style}
                   >
                     <Icon className="h-5 w-5 shrink-0" aria-hidden />
                     <span>{t(labelKey)}</span>
@@ -203,9 +271,11 @@ export default function Sidebar() {
                 key={to}
                 to={to}
                 title={t(labelKey)}
-                className={({ isActive }) =>
-                  `flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ${navItemClass(isActive, false)}`
-                }
+                className={({ isActive }) => {
+                  const s = navItemStyle(isActive, false);
+                  return `flex items-center justify-center rounded-xl p-2.5 transition-all duration-200 ${s.className}`;
+                }}
+                style={({ isActive }) => navItemStyle(isActive, false).style}
               >
                 <Icon className="h-5 w-5 shrink-0" aria-hidden />
               </NavLink>
@@ -214,24 +284,34 @@ export default function Sidebar() {
         )}
       </nav>
 
-      {/* User */}
+      {/* User mini-card (footer) — same active styling as Profile item above */}
       <div
         className="px-2.5 py-3"
         style={{ borderTop: '1px solid rgba(186, 114, 75, 0.6)' }}
       >
         <NavLink
           to="/app/profile"
-          className={({ isActive }) =>
-            `flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-all duration-200 ${isActive ? 'bg-[#FFF5EC] text-[#8B4A2F]' : 'hover:bg-[rgba(255,255,255,0.18)]'}`
-          }
+          className={({ isActive }) => {
+            const s = footerNavItemStyle(isActive);
+            return `flex items-center gap-2.5 rounded-xl px-2 py-1.5 transition-all duration-200 ${s.className}`;
+          }}
+          style={({ isActive }) => footerNavItemStyle(isActive).style}
         >
           <Avatar src={user?.avatar ?? undefined} name={user?.fullName ?? 'User'} size="sm" />
           {!collapsed && (
             <div className="min-w-0">
-              <p className="truncate text-sm font-semibold text-on-sidebar">
+              <p
+                className="truncate text-sm font-semibold"
+                style={{ color: 'inherit' }}
+              >
                 {user?.fullName ?? user?.username ?? 'User'}
               </p>
-              <p className="truncate text-xs text-on-sidebar-muted">{t('role_student')}</p>
+              <p
+                className="truncate text-xs"
+                style={{ color: 'inherit', opacity: 0.75 }}
+              >
+                {t('role_student')}
+              </p>
             </div>
           )}
         </NavLink>

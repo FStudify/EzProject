@@ -3,7 +3,9 @@
 const mongoose = require('mongoose');
 const Task = require('../models/Task');
 const Project = require('../models/Project');
+const User = require('../models/User');
 const { errors } = require('../middlewares/errorHandler');
+const { notifyUser } = require('../utils/notificationHelper');
 
 const ObjectId = mongoose.Types.ObjectId;
 
@@ -68,6 +70,50 @@ function detectLanguage(text) {
   const viPattern = /[\u00C0-\u00D5\u00D8-\u00F6\u00F8-\u1EF9]/i;
   if (viPattern.test(text)) return 'vi';
   return 'en';
+}
+
+/**
+ * Emit a TASK assignment notification to the assignee. Reuses the standard
+ * Notification collection (same schema as chat mentions / meetings) so the
+ * bell badge, drawer, popup and badge counter all light up without any extra
+ * plumbing on the frontend.
+ *
+ * @param {object} io            – Socket.io instance from req.app.get('io')
+ * @param {object} task          – populated Task document (with assigneeId)
+ * @param {object} project       – populated Project document (with .name)
+ * @param {object} assigner      – User document of the person who assigned
+ * @param {string} assigneeId    – recipient ObjectId string
+ */
+async function notifyTaskAssigned(io, task, project, assigner, assigneeId) {
+  if (!io || !assigneeId) {
+    console.warn(`[TaskAssign] SKIP — io=${!!io} assigneeId=${!!assigneeId}`);
+    return;
+  }
+  const assignerIdentity = assigner._id ? assigner._id.toString() : (assigner.id ? String(assigner.id) : null);
+  if (assigneeId && assignerIdentity && String(assigneeId) === assignerIdentity) {
+    console.log(`[TaskAssign] SKIP self-assign`);
+    return; // do not notify self
+  }
+
+  const projectName = project?.name || 'dự án';
+  const taskTitle = task.title || 'công việc';
+  const assignerName = assigner.fullName || 'Một người';
+  const link = `/app/projects/${project._id}/tasks?taskId=${task._id}`;
+
+  const isVi = detectLanguage(taskTitle) === 'vi';
+  const title = isVi ? 'Bạn được giao công việc mới' : 'You have a new task';
+  const body = isVi
+    ? `${assignerName} đã giao cho bạn công việc "${taskTitle}" trong dự án ${projectName}.`
+    : `${assignerName} assigned you "${taskTitle}" in ${projectName}.`;
+
+  console.log(`[TaskAssign] -> user:${assigneeId} | task="${taskTitle}" | project="${projectName}"`);
+  await notifyUser(io, assigneeId, {
+    type: 'TASK',
+    title,
+    body,
+    link,
+  });
+  console.log(`[TaskAssign] OK — notification persisted and emitted`);
 }
 
 function buildAiPrompt(project, minDueDate, requestedCount, userPrompt) {
@@ -208,6 +254,42 @@ function validateTaskDeadline(value, projectDeadline, startDate) {
     max.setHours(23, 59, 59, 999);
     if (date > max) {
       throw errors.BadRequest('Deadline công việc không được sau deadline dự án');
+    }
+  }
+
+  return date.toISOString();
+}
+
+/**
+ * Validate a task startDate:
+ *  - Phải là Date hợp lệ.
+ *  - Không được trước hôm nay.
+ *  - Không được sau deadline dự án (nếu có).
+ *  - Không được sau deadline task (nếu truyền vào).
+ */
+function validateTaskStartDate(value, projectDeadline, deadline) {
+  const date = new Date(value);
+  if (Number.isNaN(date.valueOf())) {
+    throw errors.BadRequest('Ngày bắt đầu không hợp lệ');
+  }
+
+  const minAllowed = new Date(startOfTodayIso());
+  if (date < minAllowed) {
+    throw errors.BadRequest('Ngày bắt đầu phải lớn hơn hoặc bằng ngày hiện tại');
+  }
+
+  if (projectDeadline) {
+    const max = new Date(projectDeadline);
+    max.setHours(23, 59, 59, 999);
+    if (date > max) {
+      throw errors.BadRequest('Ngày bắt đầu công việc không được sau deadline dự án');
+    }
+  }
+
+  if (deadline) {
+    const due = new Date(deadline);
+    if (!Number.isNaN(due.valueOf()) && date > due) {
+      throw errors.BadRequest('Ngày bắt đầu phải nhỏ hơn hoặc bằng deadline');
     }
   }
 
@@ -411,7 +493,8 @@ exports.create = async (req, res, next) => {
       title: req.body.title,
       description: req.body.description ?? null,
       priority: req.body.priority ?? 'MEDIUM',
-      deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline)) : undefined,
+      startDate: req.body.startDate ? new Date(req.body.startDate) : null,
+      deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline, project.deadline, req.body.startDate)) : undefined,
       assigneeId,
       creatorId: new ObjectId(req.user.id),
       hashtags: Array.isArray(req.body.hashtags)
@@ -425,6 +508,24 @@ exports.create = async (req, res, next) => {
     ]);
 
     await recalculateProjectProgress(req.params.projectId);
+
+    // Realtime TASK assignment notification → bell badge, drawer, popup
+    if (assigneeId && assigneeId.toString() !== req.user.id) {
+      try {
+        const io = req.app.get('io');
+        const project = await Project.findById(req.params.projectId)
+          .select('name')
+          .lean();
+        const assigner = await User.findById(req.user.id)
+          .select('fullName')
+          .lean();
+        if (project && assigner) {
+          await notifyTaskAssigned(io, task, project, assigner, assigneeId.toString());
+        }
+      } catch (notifErr) {
+        console.error('[Task] notify assignment failed:', notifErr?.message || notifErr);
+      }
+    }
 
     res.status(201).json({ success: true, data: task });
   } catch (err) {
@@ -552,7 +653,7 @@ exports.update = async (req, res, next) => {
     // assigneeId, deadline, hashtags, requestType, requestNote.
     const restrictedFields = [
       'title', 'description', 'priority', 'assigneeId',
-      'deadline', 'hashtags', 'requestType', 'requestNote',
+      'startDate', 'deadline', 'hashtags', 'requestType', 'requestNote',
     ];
     const requestedRestricted = restrictedFields.filter((f) => f in req.body);
     const requestedStatus = 'status' in req.body ? req.body.status : null;
@@ -597,7 +698,33 @@ exports.update = async (req, res, next) => {
     // Full access — no additional checks needed.
 
     const update = { ...req.body };
-    if (update.deadline) update.deadline = new Date(validateTaskDeadline(update.deadline));
+    // Look up the project deadline once so both startDate and deadline validators
+    // can clamp to the project window in a single round-trip.
+    const projectForWindow = await Project.findById(req.params.projectId)
+      .select('deadline')
+      .lean();
+    const projectDeadline = projectForWindow?.deadline || null;
+    // Allow explicit null to clear startDate; only validate when truthy
+    if (update.startDate) {
+      update.startDate = new Date(
+        validateTaskStartDate(
+          update.startDate,
+          projectDeadline,
+          update.deadline || task.deadline,
+        ),
+      );
+    } else if (update.startDate === null) {
+      // keep null — user wants to clear
+    }
+    if (update.deadline) {
+      update.deadline = new Date(
+        validateTaskDeadline(
+          update.deadline,
+          projectDeadline,
+          update.startDate || task.startDate || null,
+        ),
+      );
+    }
     if (update.assigneeId) update.assigneeId = new ObjectId(update.assigneeId);
     if (Array.isArray(update.hashtags)) {
       update.hashtags = update.hashtags.map((h) => String(h).trim().toLowerCase().replace(/^#/, '')).filter(Boolean);
@@ -612,6 +739,38 @@ exports.update = async (req, res, next) => {
       .populate('creatorId', 'id fullName avatar');
 
     await recalculateProjectProgress(req.params.projectId);
+
+    // Notify if assignee changed (re-assignment). Compare as ObjectId strings
+    // because `req.body.assigneeId` is a plain string from the client while
+    // `task.assigneeId` is an ObjectId (or null) before we overwrite it.
+    const previousAssigneeId = task.assigneeId ? task.assigneeId.toString() : null;
+    const newAssigneeId =
+      updated.assigneeId && updated.assigneeId._id
+        ? updated.assigneeId._id.toString()
+        : null;
+    console.log(
+      `[TaskAssign-update] taskId=${updated._id} previousAssignee=${previousAssigneeId} newAssignee=${newAssigneeId} req.user=${req.user.id}`,
+    );
+    if (
+      newAssigneeId &&
+      newAssigneeId !== previousAssigneeId &&
+      newAssigneeId !== req.user.id
+    ) {
+      try {
+        const io = req.app.get('io');
+        const project = await Project.findById(req.params.projectId)
+          .select('name')
+          .lean();
+        const assigner = await User.findById(req.user.id)
+          .select('fullName')
+          .lean();
+        if (project && assigner) {
+          await notifyTaskAssigned(io, updated, project, assigner, newAssigneeId);
+        }
+      } catch (notifErr) {
+        console.error('[Task] notify reassignment failed:', notifErr?.message || notifErr);
+      }
+    }
 
     res.json({ success: true, data: updated });
   } catch (err) {

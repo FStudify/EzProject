@@ -109,6 +109,7 @@ function normalizeTask(raw: Record<string, unknown>): Task {
     assignee: assigneeDoc ? normalizeUser(assigneeDoc) : null,
     creator: normalizeUser(creatorDoc ?? raw),
     deadline: (raw.deadline as string | null) ?? null,
+    startDate: (raw.startDate as string | null) ?? null,
     requestType: null,
     requestNote: null,
     comments: commentsArr.map(normalizeTaskComment),

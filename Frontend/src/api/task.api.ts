@@ -66,6 +66,7 @@ export async function createTask(
     description?: string;
     priority?: Task['priority'];
     assigneeId?: string;
+    startDate?: string;
     deadline?: string;
     hashtags?: string[];
   },
@@ -96,6 +97,7 @@ export async function updateTask(
     status: Task['status'];
     priority: Task['priority'];
     assigneeId: string;
+    startDate: string;
     deadline: string;
     hashtags: string[];
   }>,

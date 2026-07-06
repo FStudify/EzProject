@@ -53,6 +53,12 @@ function getAvatarColors(name: string): { bg: string; text: string } {
   };
 }
 
+/**
+ * Always-rounded avatar. The wrapper is `overflow-hidden rounded-full` so the
+ * <img> and the initials fallback are clipped to a circle regardless of the
+ * parent container. `object-cover` keeps the image from squashing or cropping
+ * to a non-square frame.
+ */
 export default function Avatar({
   src,
   name,
@@ -62,23 +68,28 @@ export default function Avatar({
 }: AvatarProps) {
   const [imgError, setImgError] = useState(false);
   const sizeClass = sizeStyles[size];
-  const ringClass = online === undefined ? '' : online ? 'ring-2 ring-primary' : 'ring-2 ring-slate-300';
+  const ringClass =
+    online === undefined
+      ? 'ring-0'
+      : online
+        ? 'ring-2 ring-primary'
+        : 'ring-2 ring-slate-300';
   const { bg, text } = getAvatarColors(name);
 
   const content = (
     <div
-      className={`relative flex overflow-hidden ${sizeClass} ${ringClass}`}
+      className={`relative shrink-0 overflow-hidden rounded-full ${sizeClass} ${ringClass}`}
     >
       {src && !imgError ? (
         <img
           src={src}
           alt={name}
-          className="h-full w-full object-cover"
+          className="absolute inset-0 h-full w-full rounded-full object-cover"
           onError={() => setImgError(true)}
         />
       ) : (
         <div
-          className="flex h-full w-full items-center justify-center font-semibold"
+          className="flex h-full w-full items-center justify-center rounded-full font-semibold"
           style={{
             background: bg,
             color: text,

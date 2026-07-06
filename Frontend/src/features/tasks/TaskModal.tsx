@@ -71,7 +71,7 @@ function TaskModalContent({
   const [status, setStatus] = useState<TaskStatus>(task.status);
   const [priority, setPriority] = useState<TaskPriority>(task.priority);
   const [assigneeId, setAssigneeId] = useState(task.assignee?.id ?? '');
-  const [startDate, setStartDate] = useState(task.createdAt.slice(0, 10));
+  const [startDate, setStartDate] = useState(task.startDate ? task.startDate.slice(0, 10) : task.createdAt.slice(0, 10));
   const [deadline, setDeadline] = useState((task.deadline ?? '').slice(0, 10));
   const [requestType, setRequestType] = useState<'none' | 'review' | 'pause' | string>((task.requestType as string) ?? 'none');
   const [requestNote, setRequestNote] = useState(task.requestNote ?? '');
@@ -139,7 +139,7 @@ function TaskModalContent({
       status,
       priority,
       assignee,
-      createdAt: new Date(safeStartDate).toISOString(),
+      startDate: safeStartDate ? new Date(safeStartDate).toISOString() : null,
       updatedAt: new Date().toISOString(),
       deadline: safeDeadline ? new Date(safeDeadline).toISOString() : null,
       requestType: requestType !== 'none' ? requestType : null,

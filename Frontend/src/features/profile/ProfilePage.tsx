@@ -82,7 +82,7 @@ export default function ProfilePage() {
   const canSaveProfile = Boolean(
     user &&
     (username.trim() !== user.username || displayName.trim() !== user.fullName ||
-     email.trim() !== user.email || phone.trim() !== user.phone || description.trim() !== user.bio),
+     phone.trim() !== user.phone || description.trim() !== user.bio),
   );
 
   const saveProfile = async () => {
@@ -139,12 +139,22 @@ export default function ProfilePage() {
                 <label className="font-label-md text-label-md text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
                   <span className="material-symbols-outlined text-[18px]">mail</span>
                   Email
+                  <span className="ml-1 rounded-full bg-[var(--color-surface-variant)] px-2 py-0.5 text-[10px] font-semibold uppercase tracking-wider text-[var(--color-on-surface-variant)]" title="Email không thể thay đổi">
+                    {t('locked') || 'Không thể thay đổi'}
+                  </span>
                 </label>
                 <input
-                  className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition-all"
+                  type="email"
+                  disabled
+                  readOnly
+                  className="w-full cursor-not-allowed bg-[var(--color-surface-variant)]/50 border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface-variant)] shadow-sm transition-all"
                   value={email}
                   onChange={e => setEmail(e.target.value)}
+                  aria-readonly="true"
                 />
+                <p className="text-xs text-[var(--color-on-surface-variant)]/80">
+                  {t('email_locked_notice') || 'Email đã được dùng để đăng ký và không thể thay đổi. Vui lòng liên hệ hỗ trợ nếu cần cập nhật.'}
+                </p>
               </div>
 
               <div className="space-y-1.5">
