@@ -3,12 +3,13 @@
  * Owner/supervisor can also add/remove attendees, edit or join.
  */
 import { useState } from 'react';
-import { MapPin, Link, Lock, Plus, CheckCircle, XCircle, Pencil } from 'lucide-react';
+import { MapPin, Link, Lock, Plus, CheckCircle, XCircle, Pencil, Share2 } from 'lucide-react';
 import { classifyMeeting, isMeetingJoinable, joinMeeting } from '@/api/meeting.api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button, Modal, ProjectMemberAvatar, useToast } from '@/components/ui';
 import type { Meeting, ProjectMember } from '@/types';
 import { STATUS_VARIANTS, formatDateTime } from './helpers';
+import ShareDialog from '../chat/components/ShareDialog';
 
 interface MeetingDetailModalProps {
   meeting: Meeting;
@@ -33,6 +34,7 @@ export default function MeetingDetailModal({
   const [showAddAttendee, setShowAddAttendee] = useState(false);
   const [selectedToAdd, setSelectedToAdd] = useState<string[]>([]);
   const [addingAttendee, setAddingAttendee] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   const attending = meeting.attendees.filter((a) => meeting.attendeeResponses?.[a.id]?.willAttend === true);
   const declined = meeting.attendees.filter((a) => meeting.attendeeResponses?.[a.id]?.willAttend === false);
@@ -264,6 +266,9 @@ export default function MeetingDetailModal({
         </div>
 
         <div className="flex flex-wrap justify-end gap-2 border-t border-slate-200 pt-4">
+          <Button variant="ghost" onClick={() => setShowShareDialog(true)} className="text-primary hover:bg-primary/10">
+            <Share2 className="mr-1 h-4 w-4" /> Share
+          </Button>
           <Button variant="ghost" onClick={onClose}>{t('close')}</Button>
           {canManageAttendees && (
             <Button variant="primary" size="sm" onClick={onEdit}>
@@ -272,6 +277,13 @@ export default function MeetingDetailModal({
           )}
         </div>
       </div>
+      {showShareDialog && (
+        <ShareDialog
+          title="Share Meeting"
+          sharePayload={`[${meeting.title}](meeting://${meeting.id}?date=${meeting.startTime}&status=${meeting.status})`}
+          onClose={() => setShowShareDialog(false)}
+        />
+      )}
     </Modal>
   );
 }

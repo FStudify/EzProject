@@ -1,9 +1,8 @@
 import { useState, useRef, useEffect, useMemo, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import {
   Hash,
   MessageCircle,
-  Send,
   Plus,
   Search,
   X,
@@ -15,6 +14,7 @@ import {
   Lock,
   Unlock,
   Crown,
+  BellOff,
 } from 'lucide-react';
 import {
   getChatRooms,
@@ -29,12 +29,14 @@ import {
   addChatRoomMembers,
   transferChatOwner,
   openDirectMessage,
+  muteChatRoom,
 } from '@/api/chat.api';
 import { getProjectMembers } from '@/api/member.api';
 import { useAuth } from '@/contexts/AuthContext';
 import { useChatSocket } from '@/contexts/ChatSocketContext';
 import type { ChatMessage, ChatRoom, Member, ProjectMember } from '@/types';
 import ChatMessageBubble from './ChatMessage';
+import ChatInput from './components/ChatInput';
 import { ProjectMemberAvatar, Button, EmptyState } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui';
@@ -55,10 +57,11 @@ function saveRoomId(projectId: string, roomId: string) {
 
 export default function ChatPage() {
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
   const { t } = useLanguage();
   const { user } = useAuth();
   const { toast } = useToast();
-  const { sendMessage: socketSendMessage, onNewMessage, joinRoom, leaveRoom } = useChatSocket();
+  const { sendMessage: socketSendMessage, onNewMessage, joinRoom, leaveRoom, markRoomRead } = useChatSocket();
   const currentUserId = user?.id ?? '';
 
   const [, setLoadingRooms] = useState(false);
@@ -75,6 +78,32 @@ export default function ChatPage() {
   const skipPersist = useRef(false);
   const prevRoomIdRef = useRef<string>('');
 
+  const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
+
+  useEffect(() => {
+    const counts: Record<string, number> = {};
+    rooms.forEach(r => {
+      if (r.unreadCount) counts[r.id] = r.unreadCount;
+    });
+    setUnreadCounts(prev => ({ ...prev, ...counts }));
+  }, [rooms]);
+
+  const updateUnreadCounts = useCallback((roomId: string, increment: boolean) => {
+    setUnreadCounts(prev => {
+      const next = { ...prev };
+      if (increment) {
+        next[roomId] = (next[roomId] || 0) + 1;
+      } else {
+        delete next[roomId];
+      }
+      
+      const totalUnread = Object.values(next).reduce((a, b) => a + b, 0);
+      document.title = totalUnread > 0 ? `(${totalUnread}) EZProject Chat` : 'EZProject Chat';
+      
+      return next;
+    });
+  }, []);
+
   const setActiveRoomId = (id: string) => {
     if (!projectId) return;
     if (prevRoomIdRef.current && prevRoomIdRef.current !== id) {
@@ -85,6 +114,11 @@ export default function ChatPage() {
       prevRoomIdRef.current = id;
     }
     _setActiveRoomId(id);
+    
+    // Clear unread count when opening a room
+    updateUnreadCounts(id, false);
+    markRoomRead(id, projectId);
+
     if (!skipPersist.current && projectId) saveRoomId(projectId, id);
     skipPersist.current = false;
   };
@@ -119,37 +153,7 @@ export default function ChatPage() {
     Promise.all([getChatRooms(projectId), getProjectMembers(projectId)])
       .then(([roomsData, membersData]) => {
         const all = [...roomsData.general, ...roomsData.channels, ...roomsData.direct];
-        const hasGeneral = all.some((r) => r.type === 'general');
-        const finalRooms: ChatRoom[] = hasGeneral
-          ? all
-          : [
-              {
-                id: defaultRoomId,
-                projectId,
-                name: 'General',
-                type: 'general',
-                members: membersData.map((m) => ({
-                  id: m.user.id,
-                  name: m.user.fullName,
-                  fullName: m.user.fullName,
-                  email: m.user.email ?? '',
-                  avatar: m.user.avatar ?? null,
-                })),
-                createdAt: new Date().toISOString(),
-                createdBy: {
-                  id: currentUserId,
-                  name: user?.fullName ?? 'User',
-                  fullName: user?.fullName ?? 'User',
-                  email: user?.email ?? '',
-                  avatar: user?.avatar ?? null,
-                },
-                inviteLocked: false,
-                chatAdmins: [],
-              },
-              ...all,
-            ];
-
-        setRooms(finalRooms);
+        setRooms(all);
         setAllMembers(
           membersData.map((m) => ({
             id: m.user.id,
@@ -159,16 +163,27 @@ export default function ChatPage() {
             avatar: m.user.avatar ?? null,
           })),
         );
-        const savedRoomId = getSavedRoomId(projectId);
-        const restoredRoomId = savedRoomId && all.some((r) => r.id === savedRoomId)
-          ? savedRoomId
-          : (hasGeneral ? (roomsData.general[0]?.id ?? defaultRoomId) : defaultRoomId);
-        if (savedRoomId && restoredRoomId === savedRoomId) skipPersist.current = true;
+        const targetRoomId = searchParams.get('roomId');
+        
+        let restoredRoomId = roomsData.general[0]?.id ?? defaultRoomId;
+        
+        if (targetRoomId && all.some(r => r.id === targetRoomId)) {
+          restoredRoomId = targetRoomId;
+          // Clear query param so it doesn't persist on refresh
+          setSearchParams({}, { replace: true });
+        } else {
+          const savedRoomId = getSavedRoomId(projectId);
+          if (savedRoomId && all.some((r) => r.id === savedRoomId)) {
+            restoredRoomId = savedRoomId;
+            if (restoredRoomId === savedRoomId) skipPersist.current = true;
+          }
+        }
+        
         setActiveRoomId(restoredRoomId);
       })
       .catch(() => { toast(t('error_load_data'), 'error'); })
       .finally(() => setLoadingRooms(false));
-  }, [projectId, t, currentUserId, user]);
+  }, [projectId, t, currentUserId, user, searchParams, setSearchParams]);
 
   // ── Load messages ─────────────────────────────────────────────
   useEffect(() => {
@@ -198,6 +213,10 @@ export default function ChatPage() {
   // ── Socket: listen for incoming messages ─────────────────────
   useEffect(() => {
     const unsub = onNewMessage((msg) => {
+      if (msg.roomId !== prevRoomIdRef.current && msg.sender.id !== currentUserId) {
+        updateUnreadCounts(msg.roomId, true);
+      }
+      
       setAllMessages((prev) => {
         if (msg.sender.id === currentUserId) {
           const noTemp = prev.filter((m) => !m.id.startsWith('temp-'));
@@ -208,7 +227,7 @@ export default function ChatPage() {
       });
     });
     return unsub;
-  }, [onNewMessage, currentUserId]);
+  }, [onNewMessage, currentUserId, updateUnreadCounts]);
 
   // ── Room helpers ────────────────────────────────────────────
 
@@ -248,9 +267,9 @@ export default function ChatPage() {
 
   // ── Actions ─────────────────────────────────────────────────
 
-  const handleSend = useCallback(() => {
-    const trimmed = input.trim();
-    if (!trimmed || !projectId || !activeRoomId) return;
+  const handleSend = useCallback((finalText?: string) => {
+    const textToProcess = (typeof finalText === 'string' ? finalText : input).trim();
+    if (!textToProcess || !projectId || !activeRoomId) return;
     const currentUser: Member = allMembers.find((m) => m.id === currentUserId) ?? {
       id: currentUserId, name: user?.fullName ?? 'User',
       fullName: user?.fullName ?? 'User', email: user?.email ?? '', avatar: user?.avatar ?? null,
@@ -260,13 +279,13 @@ export default function ChatPage() {
       id: tempId,
       roomId: activeRoomId,
       sender: { id: currentUser.id, name: currentUser.name, fullName: currentUser.fullName, avatar: currentUser.avatar, email: currentUser.email },
-      content: trimmed,
+      content: textToProcess,
       channel: 'group',
       timestamp: new Date().toISOString(),
     };
     setInput('');
     setAllMessages((prev) => [...prev, optimistic]);
-    socketSendMessage(activeRoomId, projectId, trimmed, 'GROUP');
+    socketSendMessage(activeRoomId, projectId, textToProcess, 'GROUP');
   }, [input, projectId, activeRoomId, allMembers, currentUserId, user, socketSendMessage]);
 
   const handleCreateChannel = useCallback(async (name: string, memberIds: string[]) => {
@@ -385,9 +404,29 @@ export default function ChatPage() {
 
   // ── Render room row ──────────────────────────────────────────
 
+  const handleMuteRoom = async (roomId: string, duration: '1h' | '8h' | '24h' | '7d' | 'forever' | null) => {
+    if (!projectId) return;
+    try {
+      const { mutedUntil } = await muteChatRoom(projectId, roomId, duration);
+      setRooms(prev => prev.map(r => r.id === roomId ? { ...r, mutedUntil } : r));
+      
+      const muteKey = `mute_${roomId}`;
+      if (mutedUntil) {
+        localStorage.setItem(muteKey, mutedUntil);
+      } else {
+        localStorage.removeItem(muteKey);
+      }
+      
+      toast(duration ? 'Đã tắt thông báo nhóm' : 'Đã bật lại thông báo', 'success');
+    } catch (err: any) {
+      toast(err.message || 'Lỗi khi thao tác', 'error');
+    }
+  };
+
   const renderChannelRow = (room: ChatRoom) => {
     const isActive = room.id === activeRoomId;
     const last = getLastMessage(room.id);
+    const unreadCount = unreadCounts[room.id] || 0;
     return (
       <div key={room.id} className="relative">
         <button
@@ -410,6 +449,11 @@ export default function ChatPage() {
               </p>
             )}
           </div>
+          {unreadCount > 0 && (
+            <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+              {unreadCount > 99 ? '99+' : unreadCount}
+            </span>
+          )}
         </button>
       </div>
     );
@@ -419,6 +463,7 @@ export default function ChatPage() {
     const dmRoom = getDmRoomForMember(member);
     const last = dmRoom ? getLastMessage(dmRoom.id) : null;
     const isActive = dmRoom?.id === activeRoomId;
+    const unreadCount = dmRoom ? (unreadCounts[dmRoom.id] || 0) : 0;
     return (
       <button
         key={member.id}
@@ -443,6 +488,11 @@ export default function ChatPage() {
             <p className="truncate text-xs" style={{ color: isActive ? '#C4957A' : '#9a9086' }}>{last.content}</p>
           )}
         </div>
+        {unreadCount > 0 && (
+          <span className="flex h-5 min-w-[20px] shrink-0 items-center justify-center rounded-full bg-red-500 px-1.5 text-[10px] font-bold text-white shadow-sm ring-2 ring-white">
+            {unreadCount > 99 ? '99+' : unreadCount}
+          </span>
+        )}
       </button>
     );
   };
@@ -509,8 +559,11 @@ export default function ChatPage() {
               >
                 {getRoomIcon(room)}
                 <div className="min-w-0 flex-1">
-                  <span className={`block truncate text-sm ${room.id === activeRoomId ? 'font-semibold' : 'font-medium'}`}>
+                  <span className={`flex items-center gap-2 truncate text-sm ${room.id === activeRoomId ? 'font-semibold' : 'font-medium'}`}>
                     {room.name}
+                    {room.mutedUntil && new Date(room.mutedUntil).getTime() > Date.now() && (
+                      <BellOff className="h-3 w-3 text-slate-400" />
+                    )}
                   </span>
                   {getLastMessage(room.id) && (
                     <p className="truncate text-xs" style={{ color: room.id === activeRoomId ? '#C4957A' : '#9a9086' }}>
@@ -588,28 +641,14 @@ export default function ChatPage() {
 
             {/* Input */}
             <div className="shrink-0 p-4" style={{ borderTop: '1px solid #E8D8CF' }}>
-              <div className="flex min-w-0 gap-2">
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder={`Nhắn tin trong ${activeRoom.name}...`}
-                  className="min-w-0 flex-1 rounded-xl border py-2.5 pl-4 pr-4 text-sm transition-all focus:outline-none focus:ring-2 resize-none max-h-32 overflow-y-auto"
-                  style={{ backgroundColor: '#FFFDFB', color: '#1F1F1F', borderColor: '#E8C7AE' }}
-                  onFocus={e => { e.currentTarget.style.borderColor = '#D97853'; e.currentTarget.style.boxShadow = '0 0 0 3px rgba(217,120,83,0.16)'; }}
-                  onBlur={e => { e.currentTarget.style.borderColor = '#E8C7AE'; e.currentTarget.style.boxShadow = ''; }}
-                />
-                <Button variant="accent" size="md" onClick={handleSend} aria-label={t('send_message')}>
-                  <Send className="h-4 w-4" />
-                </Button>
-              </div>
+              <ChatInput 
+                value={input} 
+                onChange={setInput} 
+                onSend={handleSend} 
+                members={allMembers.filter(m => m.id !== currentUserId)}
+                placeholder={`Nhắn tin trong ${activeRoom.name}...`} 
+                autoFocus 
+              />
             </div>
           </>
         ) : (
@@ -634,6 +673,7 @@ export default function ChatPage() {
           onLeave={handleLeaveRoom}
           onInvite={handleInviteMembers}
           onTransferOwner={handleTransferOwner}
+          onMute={handleMuteRoom}
         />
       )}
 
@@ -665,11 +705,12 @@ interface RoomMenuModalProps {
   onLeave: (roomId: string, newOwnerId?: string) => void;
   onInvite: (roomId: string, memberIds: string[]) => void;
   onTransferOwner: (roomId: string, userId: string) => void;
+  onMute: (roomId: string, duration: '1h' | '8h' | '24h' | '7d' | 'forever' | null) => void;
 }
 
 function RoomMenuModal({
   room, currentUserId, allMembers, onClose,
-  onRename, onToggleLock, onPromote, onDemote, onKick, onLeave, onInvite, onTransferOwner,
+  onRename, onToggleLock, onPromote, onDemote, onKick, onLeave, onInvite, onTransferOwner, onMute,
 }: RoomMenuModalProps) {
   const { t } = useLanguage();
   const isGeneral = room.type === 'general';
@@ -1035,6 +1076,45 @@ function RoomMenuModal({
                 );
               })}
             </div>
+          </div>
+
+          {/* Mute Notifications */}
+          <div className="px-6 py-3" style={{ borderBottom: '1px solid #E8D8CF' }}>
+            <div className="mb-2 flex items-center gap-2">
+              <BellOff className="h-4 w-4" style={{ color: '#7D6F66' }} />
+              <div className="text-sm font-bold" style={{ color: '#1F1F1F' }}>Tắt thông báo</div>
+            </div>
+            {room.mutedUntil && new Date(room.mutedUntil).getTime() > Date.now() ? (
+              <div className="flex items-center justify-between mt-2">
+                <span className="text-xs text-slate-500">
+                  Đang tắt thông báo (đến {new Date(room.mutedUntil).toLocaleString()})
+                </span>
+                <button
+                  type="button"
+                  onClick={() => onMute(room.id, null)}
+                  className="rounded-lg px-3 py-1.5 text-xs font-semibold transition-colors"
+                  style={{ backgroundColor: '#D97853', color: '#fff' }}
+                >
+                  Bật lại
+                </button>
+              </div>
+            ) : (
+              <div className="flex flex-wrap gap-2 mt-2">
+                {(['1h', '8h', '24h', '7d', 'forever'] as const).map(dur => (
+                  <button
+                    key={dur}
+                    type="button"
+                    onClick={() => onMute(room.id, dur)}
+                    className="rounded-lg px-2.5 py-1.5 text-xs font-medium transition-colors border"
+                    style={{ borderColor: '#E8D8CF', color: '#7D6F66', backgroundColor: '#FFFDFB' }}
+                    onMouseEnter={e => { e.currentTarget.style.backgroundColor = '#F8F3EE'; }}
+                    onMouseLeave={e => { e.currentTarget.style.backgroundColor = '#FFFDFB'; }}
+                  >
+                    {dur === 'forever' ? 'Vĩnh viễn' : dur}
+                  </button>
+                ))}
+              </div>
+            )}
           </div>
 
           {/* Leave (channels only — not General, not Direct) */}

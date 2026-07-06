@@ -3,9 +3,13 @@
 const rateLimit = require('express-rate-limit');
 const config = require('../config');
 
+// General API rate limit. Higher in development to keep local devs unblocked
+// (Socket reconnect + StrictMode re-mounts + multiple contexts hydrating can
+// easily spike above 100 req/min).
+const DEV_MAX = 2000;
 const apiLimiter = rateLimit({
   windowMs: config.rateLimit.windowMs,
-  max: config.rateLimit.max,
+  max: config.isDev ? DEV_MAX : config.rateLimit.max,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -18,7 +22,7 @@ const apiLimiter = rateLimit({
 
 const authLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: config.isDev ? 200 : 10,
   standardHeaders: true,
   legacyHeaders: false,
   handler: (req, res) => {
@@ -31,7 +35,7 @@ const authLimiter = rateLimit({
 
 const generateProjectLimiter = rateLimit({
   windowMs: 60 * 1000,
-  max: 10,
+  max: config.isDev ? 50 : 10,
   keyGenerator: (req) => req.user?.id || req.ip,
   standardHeaders: true,
   legacyHeaders: false,

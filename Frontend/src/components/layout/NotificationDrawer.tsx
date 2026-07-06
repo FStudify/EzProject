@@ -138,6 +138,20 @@ export default function NotificationDrawer({ isOpen, onClose }: NotificationDraw
     }
   }, [isOpen]);
 
+  // Live update: if the drawer is already open, refetch whenever a new
+  // notification arrives so the row appears in real time without forcing the
+  // user to close + reopen the drawer.
+  useEffect(() => {
+    if (!isOpen) return;
+    const onUpdate = () => void fetchNotifications();
+    window.addEventListener('new_notification', onUpdate);
+    window.addEventListener('notifications:updated', onUpdate);
+    return () => {
+      window.removeEventListener('new_notification', onUpdate);
+      window.removeEventListener('notifications:updated', onUpdate);
+    };
+  }, [isOpen]);
+
   const filtered = useMemo(() => {
     if (tab === 'unread') return items.filter((n) => !n.read);
     if (tab === 'all') return items;
@@ -358,10 +372,21 @@ function NotificationRow({
   }
 
   if (item.link) {
+    let finalLink = item.link;
+    // Handle legacy chat mention links formatted as "?projectId=...&roomId=..."
+    if (finalLink.startsWith('?projectId=')) {
+      const params = new URLSearchParams(finalLink);
+      const projId = params.get('projectId');
+      const roomId = params.get('roomId');
+      if (projId && roomId) {
+        finalLink = `/app/projects/${projId}/chat?roomId=${roomId}`;
+      }
+    }
+
     return (
       <li>
         <Link
-          to={item.link}
+          to={finalLink}
           onClick={() => {
             void onRead();
             onNavigate();

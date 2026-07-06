@@ -6,6 +6,7 @@ const config = require('./config');
 const User = require('./models/User');
 const { ChatRoom, ChatMessage } = require('./models/Chat');
 const Project = require('./models/Project');
+const { Notification } = require('./models/Activity');
 
 const ObjectId = mongoose.Types.ObjectId;
 
@@ -121,12 +122,53 @@ function initSocket(io) {
         io.to(roomId).emit('new_message', {
           _id: msg._id,
           roomId,
+          projectId,
           sender: msg.senderId,
           content: msg.content,
           channel: msg.channel,
           targetId: msg.targetId,
           timestamp: msg.timestamp,
         });
+        
+        // --- Parse Mentions and Create Notifications ---
+        // Match both old @[Name](mention://id) and new [Name](mention://id)
+        const mentionRegex = /(?:@)?\[(.*?)\]\(mention:\/\/(.*?)\)/g;
+        let match;
+        const mentionedIds = new Set();
+        while ((match = mentionRegex.exec(content)) !== null) {
+          mentionedIds.add(match[2]);
+        }
+        
+        for (const targetUserId of mentionedIds) {
+          if (targetUserId === socket.user.id) continue;
+          
+          // Validate that the mentioned user is actually in this chat room
+          if (!room.memberRoles?.some(mr => mr.userId.toString() === targetUserId)) {
+            continue;
+          }
+          
+          try {
+            const notif = await Notification.create({
+              userId: new ObjectId(targetUserId),
+              type: 'CHAT',
+              title: `Bạn được nhắc đến trong tin nhắn`,
+              body: `${socket.user.fullName} đã nhắc đến bạn trong một tin nhắn.`,
+              link: `/app/projects/${projectId}/chat?roomId=${roomId}`,
+              read: false,
+            });
+            io.to(`user:${targetUserId}`).emit('new_notification', {
+              _id: notif._id,
+              type: notif.type,
+              title: notif.title,
+              body: notif.body,
+              link: notif.link,
+              read: notif.read,
+              createdAt: notif.createdAt,
+            });
+          } catch (e) {
+            console.error('[Socket] Error creating mention notification:', e);
+          }
+        }
       } catch (err) {
         socket.emit('error', { message: err.message });
       }
@@ -139,6 +181,18 @@ function initSocket(io) {
         fullName: socket.user.fullName,
         isTyping,
       });
+    });
+
+    // ── mark_room_read ───────────────────────────────────────────────────
+    socket.on('mark_room_read', async ({ roomId, projectId }) => {
+      try {
+        await ChatRoom.updateOne(
+          { _id: new ObjectId(roomId), 'memberRoles.userId': new ObjectId(socket.user.id) },
+          { $set: { 'memberRoles.$.lastRead': new Date() } }
+        );
+      } catch (err) {
+        console.error('[Socket] Error marking room read:', err);
+      }
     });
 
     // ── disconnect ────────────────────────────────────────────────────────

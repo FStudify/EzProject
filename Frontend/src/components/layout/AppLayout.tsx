@@ -12,6 +12,8 @@ export default function AppLayout() {
   );
 }
 
+import ChatNotificationPopup from './ChatNotificationPopup';
+
 function AppLayoutContent() {
   const { collapsed, setCollapsed, isMobile } = useSidebar();
 
@@ -26,6 +28,7 @@ function AppLayoutContent() {
         />
       )}
       <AppMain />
+      <ChatNotificationPopup />
     </div>
   );
 }

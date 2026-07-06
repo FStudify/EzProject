@@ -58,6 +58,14 @@ export async function getChatMessages(
   };
 }
 
+export async function markRoomAsRead(projectId: string, roomId: string): Promise<void> {
+  // We emit mark_room_read via socket instead of a REST API
+  if (typeof window !== 'undefined' && (window as any)._ezSocket) {
+    (window as any)._ezSocket.emit('mark_room_read', { projectId, roomId });
+  }
+  return Promise.resolve();
+}
+
 /** Tao kenh (CHANNEL) hoac nhan tin truc tiep (DIRECT) */
 export async function createChatRoom(
   projectId: string,
@@ -208,6 +216,20 @@ export async function updateChatRoomSettings(
     settings,
   );
   return normalizeChatRoom(raw as Record<string, unknown>);
+}
+
+/** Tắt thông báo kênh */
+export async function muteChatRoom(
+  projectId: string,
+  roomId: string,
+  duration: '1h' | '8h' | '24h' | '7d' | 'forever' | null,
+): Promise<{ mutedUntil: string | null }> {
+  const raw = await api.patch<unknown>(
+    `${Endpoints.CHAT_ROOM_DETAIL(projectId, roomId)}/mute`,
+    { duration },
+  );
+  const obj = raw as Record<string, unknown>;
+  return obj as { mutedUntil: string | null };
 }
 
 /** Gui tin nhan vao phong */

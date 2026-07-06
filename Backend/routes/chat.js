@@ -24,6 +24,7 @@ router.post('/rooms/:roomId/admins/:userId', requireAuth, chatController.promote
 router.delete('/rooms/:roomId/admins/:userId', requireAuth, chatController.demoteChatAdmin);
 router.post('/rooms/:roomId/owner/:userId', requireAuth, chatController.transferOwner);
 router.patch('/rooms/:roomId/settings', requireAuth, chatController.updateRoomSettings);
+router.patch('/rooms/:roomId/mute', requireAuth, chatController.muteRoom);
 router.delete('/rooms/:roomId', requireAuth, chatController.deleteRoom);
 router.post(
   '/rooms/:roomId/messages',

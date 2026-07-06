@@ -10,6 +10,8 @@ const MemberRoleSchema = new mongoose.Schema({
     default: 'MEMBER',
   },
   joinedAt: { type: Date, default: Date.now },
+  lastRead: { type: Date, default: Date.now },
+  mutedUntil: { type: Date, default: null },
 }, { _id: false });
 
 const chatMessageSchema = new mongoose.Schema({
@@ -22,7 +24,7 @@ const chatMessageSchema = new mongoose.Schema({
   content: { type: String, required: true },
   channel: {
     type: String,
-    enum: ['GROUP', 'TASK', 'DOCUMENT', 'AI'],
+    enum: ['GROUP', 'TASK', 'DOCUMENT', 'AI', 'DIRECT'],
     default: 'GROUP',
   },
   targetId: { type: mongoose.Schema.Types.ObjectId, default: null },

@@ -32,9 +32,10 @@ const SOCKET_URL = getSocketUrl();
 interface IncomingSocketMessage {
   _id: string;
   roomId: string;
+  projectId: string;
   sender: {
-    _id: string;
-    id: string;
+    _id?: string;
+    id?: string;
     fullName: string;
     avatar: string | null;
   };
@@ -72,6 +73,8 @@ interface ChatSocketValue {
   onTyping: (cb: TypingCallback) => () => void;
   /** Emit typing status */
   emitTyping: (roomId: string, isTyping: boolean) => void;
+  /** Mark a room as read */
+  markRoomRead: (roomId: string, projectId: string) => void;
   /**
    * Subscribe to a project to receive project-wide real-time events
    * (member joined/removed, project updates, etc.).
@@ -124,6 +127,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       const msg = {
         id: data._id,
         roomId: data.roomId,
+        projectId: data.projectId,
         sender: {
           id: sender._id || sender.id,
           name: sender.fullName,
@@ -134,6 +138,10 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
         channel: (data.channel || 'GROUP').toLowerCase() as ChatMessage['channel'],
         timestamp: data.timestamp,
       };
+      
+      // Dispatch globally for Notification Popups
+      window.dispatchEvent(new CustomEvent('chat:new_message', { detail: msg }));
+      
       newMessageCbsRef.current.forEach((cb) => cb(msg));
     });
 
@@ -159,6 +167,16 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
         window.dispatchEvent(new CustomEvent('invitation:response', { detail: data }));
       } catch (err) {
         console.warn('[ChatSocket] failed to dispatch invitation:response', err);
+      }
+    });
+
+    socket.on('new_notification', (data: unknown) => {
+      try {
+        window.dispatchEvent(new CustomEvent('new_notification', { detail: data }));
+        // Trigger generic update to refresh badges (empty detail forces fetchBadge)
+        window.dispatchEvent(new CustomEvent('notifications:updated', { detail: {} }));
+      } catch (err) {
+        console.warn('[ChatSocket] failed to dispatch new_notification', err);
       }
     });
 
@@ -219,6 +237,11 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
     socketRef.current.emit('typing', { roomId, isTyping });
   }, []);
 
+  const markRoomRead = useCallback((roomId: string, projectId: string) => {
+    if (!socketRef.current?.connected) return;
+    socketRef.current.emit('mark_room_read', { roomId, projectId });
+  }, []);
+
   const onNewMessage = useCallback((cb: NewMessageCallback) => {
     newMessageCbsRef.current.push(cb);
     return () => {
@@ -276,6 +299,7 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
       onNewMessage,
       onTyping,
       emitTyping,
+      markRoomRead,
       joinProject,
       leaveProject,
       isConnected,

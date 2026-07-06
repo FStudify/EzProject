@@ -1,6 +1,5 @@
 import { Sparkles } from 'lucide-react';
-import ReactMarkdown from 'react-markdown';
-import remarkGfm from 'remark-gfm';
+import RichMessageRenderer from './components/RichMessageRenderer';
 import type { ChatMessage as ChatMessageType, Member } from '@/types';
 import Avatar from '@/components/ui/Avatar';
 
@@ -69,13 +68,13 @@ export default function ChatMessage({ message, isOwn }: ChatMessageProps) {
           }`}
         >
           {isAI ? (
-            <ReactMarkdown
-              remarkPlugins={[remarkGfm]}
-            >
-              {sanitizeMessage(message.content)}
-            </ReactMarkdown>
+            <RichMessageRenderer content={sanitizeMessage(message.content)} />
           ) : (
-            <p className="break-words text-sm leading-relaxed">{sanitizeMessage(message.content)}</p>
+            <div className="break-words text-sm leading-relaxed">
+              <RichMessageRenderer
+                content={sanitizeMessage(message.content)}
+              />
+            </div>
           )}
         </div>
         <span className="mt-0.5 text-xs text-slate-500">{formatRelativeTime(message.timestamp)}</span>

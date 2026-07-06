@@ -74,7 +74,7 @@ if (config.isDev) {
 // ── Static Files ───────────────────────────────────────
 app.use('/public', express.static(path.join(__dirname, 'public')));
 
-// ── Health Check ───────────────────────────────────────────
+// ── Health Check (excluded from API rate limit) ─────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });

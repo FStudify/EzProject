@@ -47,17 +47,56 @@ async function populateMembers(room) {
 exports.getRooms = async (req, res, next) => {
   try {
     await checkMember(req.params.projectId, req.user.id);
-    const rooms = await ChatRoom.find({
+    let rooms = await ChatRoom.find({
       projectId: new ObjectId(req.params.projectId),
       members: req.user.id,
     })
       .populate('members', 'id fullName avatar')
       .populate('createdBy', 'id fullName avatar')
       .lean();
+      
+    const hasGeneral = rooms.some(r => r.type === 'GENERAL');
+    if (!hasGeneral) {
+      const project = await Project.findById(req.params.projectId).lean();
+      if (project) {
+        const memberIds = project.members.map(m => new ObjectId(m.userId));
+        if (!memberIds.some(id => id.toString() === req.user.id)) {
+          memberIds.push(new ObjectId(req.user.id));
+        }
+        const generalRoom = await ChatRoom.create({
+          projectId: new ObjectId(req.params.projectId),
+          name: 'General',
+          type: 'GENERAL',
+          createdBy: new ObjectId(project.ownerId || req.user.id),
+          members: memberIds,
+          chatAdmins: [],
+          memberRoles: memberIds.map(id => ({ userId: id, role: 'MEMBER', joinedAt: new Date() })),
+        });
+        await generalRoom.populate('members', 'id fullName avatar');
+        await generalRoom.populate('createdBy', 'id fullName avatar');
+        rooms.unshift(generalRoom.toObject());
+      }
+    }
 
-    const enriched = rooms.map((r) => ({
-      ...r,
-      memberRoles: r.memberRoles ?? [],
+    const enriched = await Promise.all(rooms.map(async (r) => {
+      let unreadCount = 0;
+      let mutedUntil = null;
+      const role = r.memberRoles?.find(mr => mr.userId.toString() === req.user.id);
+      if (role) {
+        mutedUntil = role.mutedUntil || null;
+        const lastRead = role.lastRead || new Date(0);
+        unreadCount = await ChatMessage.countDocuments({
+          roomId: r._id,
+          timestamp: { $gt: lastRead },
+          senderId: { $ne: new ObjectId(req.user.id) }
+        });
+      }
+      return {
+        ...r,
+        unreadCount,
+        mutedUntil,
+        memberRoles: r.memberRoles ?? [],
+      };
     }));
 
     res.json({
@@ -617,6 +656,38 @@ exports.sendMessage = async (req, res, next) => {
 
     await msg.populate('senderId', 'id fullName avatar');
     return res.status(201).json({ success: true, data: msg });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ─── MUTE ROOM ──────────────────────────────────────────────────
+
+exports.muteRoom = async (req, res, next) => {
+  try {
+    const { duration } = req.body;
+    let mutedUntil = null;
+
+    if (duration) {
+      const now = new Date();
+      switch (duration) {
+        case '1h': mutedUntil = new Date(now.getTime() + 60 * 60 * 1000); break;
+        case '8h': mutedUntil = new Date(now.getTime() + 8 * 60 * 60 * 1000); break;
+        case '24h': mutedUntil = new Date(now.getTime() + 24 * 60 * 60 * 1000); break;
+        case '7d': mutedUntil = new Date(now.getTime() + 7 * 24 * 60 * 60 * 1000); break;
+        case 'forever': mutedUntil = new Date(now.getTime() + 100 * 365 * 24 * 60 * 60 * 1000); break;
+      }
+    }
+
+    const room = await ChatRoom.findOneAndUpdate(
+      { _id: new ObjectId(req.params.roomId), 'memberRoles.userId': new ObjectId(req.user.id) },
+      { $set: { 'memberRoles.$.mutedUntil': mutedUntil } },
+      { new: true }
+    );
+
+    if (!room) throw errors.NotFound('Room or Membership not found');
+
+    return res.json({ success: true, data: { mutedUntil } });
   } catch (err) {
     next(err);
   }

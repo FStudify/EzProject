@@ -123,7 +123,9 @@ export interface ChatRoom {
   inviteLocked?: boolean;
   createdAt: string;
   /** Per-member roles — source of truth for OWNER/ADMIN/MEMBER */
-  memberRoles?: { userId: string; role: ChannelRole; joinedAt: string }[];
+  memberRoles?: { userId: string; role: ChannelRole; joinedAt: string; lastRead?: string }[];
+  unreadCount?: number;
+  mutedUntil?: string | null;
 }
 
 /** Local ChatMessage — sender uses local Member (with `.name`) */

@@ -1,4 +1,5 @@
-import { Outlet, NavLink, useParams } from 'react-router-dom';
+import { useEffect } from 'react';
+import { Outlet, NavLink, useParams, useSearchParams } from 'react-router-dom';
 import { Info, CheckSquare, FileText, Users, Video, TrendingUp, MessageCircle } from 'lucide-react';
 import { useLanguage } from '@/contexts/LanguageContext';
 import AIChatDialog from '@/features/chat/AIChatDialog';
@@ -16,6 +17,22 @@ const projectTabs = [
 export default function ProjectLayout() {
   const { t } = useLanguage();
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams] = useSearchParams();
+
+  useEffect(() => {
+    const taskId = searchParams.get('taskId');
+    const meetingId = searchParams.get('meetingId');
+
+    if (taskId) {
+      // TODO: Fetch task by taskId and open TaskModal
+      console.log(`[Deep Link] Navigate/Open Task Modal for task: ${taskId}`);
+    }
+
+    if (meetingId) {
+      // TODO: Fetch meeting by meetingId and open MeetingDetailModal
+      console.log(`[Deep Link] Navigate/Open Meeting Modal for meeting: ${meetingId}`);
+    }
+  }, [searchParams]);
 
   return (
     <div className="flex flex-col">

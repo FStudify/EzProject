@@ -198,7 +198,9 @@ export function normalizeChatRoom(raw: Record<string, unknown>): ChatRoom {
       userId: String(r.userId ?? ''),
       role: (r.role as 'OWNER' | 'ADMIN' | 'MEMBER') ?? 'MEMBER',
       joinedAt: (r.joinedAt as string) ?? new Date().toISOString(),
+      lastRead: (r.lastRead as string) ?? new Date().toISOString(),
     })),
+    unreadCount: (raw.unreadCount as number) ?? 0,
     createdAt: (raw.createdAt as string) ?? new Date().toISOString(),
   };
 }

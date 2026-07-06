@@ -1,8 +1,9 @@
-import { useState, useRef, useEffect } from 'react';
-import { ChevronLeft, Send, MessageCircle } from 'lucide-react';
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ChevronLeft, MessageCircle } from 'lucide-react';
 import { getChatMessages } from '@/api/chat.api';
 import type { ChatMessage } from '@/types';
 import ChatMessageBubble from './ChatMessage';
+import ChatInput from './components/ChatInput';
 
 interface ChatPanelProps {
   projectId: string;
@@ -46,21 +47,21 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
     }
   }, [input]);
 
-  const handleSend = () => {
-    const trimmed = input.trim();
-    if (!trimmed) return;
+  const handleSend = useCallback((finalText?: string) => {
+    const textToProcess = (typeof finalText === 'string' ? finalText : input).trim();
+    if (!textToProcess) return;
 
     const newMessage: ChatMessage = {
       id: `msg-new-${Date.now()}`,
       roomId: channel === 'task' ? 'task-panel' : 'doc-panel',
       sender: null,
-      content: trimmed,
+      content: textToProcess,
       timestamp: new Date().toISOString(),
       channel: channel === 'task' ? 'task' : 'document',
     };
     setMessages((prev) => [...prev, newMessage]);
     setInput('');
-  };
+  }, [input, channel]);
 
   return (
     <>
@@ -123,30 +124,13 @@ export default function ChatPanel({ projectId, channel }: ChatPanelProps) {
 
             {/* Input */}
             <div className="border-t border-slate-200 p-3">
-              <div className="flex gap-2">
-                <textarea
-                  ref={textareaRef}
-                  rows={1}
-                  value={input}
-                  onChange={(e) => setInput(e.target.value)}
-                  onKeyDown={(e) => {
-                    if (e.key === 'Enter' && !e.shiftKey) {
-                      e.preventDefault();
-                      handleSend();
-                    }
-                  }}
-                  placeholder="Nhập tin nhắn..."
-                  className="flex-1 rounded-lg border border-slate-300 px-3 py-2 text-sm placeholder:text-slate-400 focus:border-primary focus:outline-none focus:ring-1 focus:ring-primary resize-none max-h-32 overflow-y-auto"
-                />
-                <button
-                  type="button"
-                  onClick={handleSend}
-                  className="flex h-9 w-9 shrink-0 items-center justify-center rounded-lg bg-primary text-white transition-colors hover:bg-primary-dark"
-                  aria-label="Gửi"
-                >
-                  <Send className="h-4 w-4" />
-                </button>
-              </div>
+              <ChatInput 
+                value={input} 
+                onChange={setInput} 
+                onSend={handleSend} 
+                members={[]} // panel doesn't have project members easily available, would need to fetch or pass them
+                placeholder="Nhập tin nhắn..." 
+              />
             </div>
           </div>
         </div>

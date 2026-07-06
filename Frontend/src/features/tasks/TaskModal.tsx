@@ -1,10 +1,11 @@
 import { useMemo, useState, useEffect } from 'react';
-import { MessageSquare, Send, Timer } from 'lucide-react';
+import { MessageSquare, Send, Timer, Share2 } from 'lucide-react';
 import type { Task, TaskStatus, TaskPriority, TaskComment, Member, ProjectMember } from '@/types';
 import { Modal, Button, ProjectMemberAvatar } from '@/components/ui';
 import { DatePickerField, PolishedSelect } from './TaskFormControls';
 import { addTaskComment } from '@/api/task.api';
 import { useLanguage } from '@/contexts/LanguageContext';
+import ShareDialog from '../chat/components/ShareDialog';
 
 type ModalSelectOption = {
   value: string;
@@ -79,6 +80,7 @@ function TaskModalContent({
   const [comments, setComments] = useState<TaskComment[]>(task.comments ?? []);
   const [activeTab, setActiveTab] = useState<'details' | 'focus'>('details');
   const [dateError, setDateError] = useState<string | null>(null);
+  const [showShareDialog, setShowShareDialog] = useState(false);
 
   const todayValue = useMemo(() => {
     const now = new Date();
@@ -487,6 +489,15 @@ function TaskModalContent({
             <Button
               variant="ghost"
               size="sm"
+              onClick={() => setShowShareDialog(true)}
+              className="!rounded-lg !border !border-border !bg-transparent !px-3.5 !text-primary hover:!bg-primary/10"
+            >
+              <Share2 className="mr-1.5 h-3.5 w-3.5" />
+              Share
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
               onClick={onClose}
               className="!rounded-lg !border !border-border !bg-transparent !px-3.5 !text-ink-secondary hover:!bg-surface-muted"
             >
@@ -504,6 +515,13 @@ function TaskModalContent({
             )}
           </div>
         </div>
+        {showShareDialog && (
+          <ShareDialog
+            title="Share Task"
+            sharePayload={`[${task.title}](task://${task.id})`}
+            onClose={() => setShowShareDialog(false)}
+          />
+        )}
       </div>
     </Modal>
   );

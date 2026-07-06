@@ -1,5 +1,5 @@
 import { useState, useMemo, useRef, useEffect, useCallback } from 'react';
-import { useParams } from 'react-router-dom';
+import { useParams, useSearchParams } from 'react-router-dom';
 import { Filter, LayoutGrid, GanttChart, AlertTriangle, Clock, ClipboardList, Plus, CheckCircle2 } from 'lucide-react';
 import { projectService } from '@/services';
 import { getTasks, createTask as apiCreateTask, updateTask as apiUpdateTask, deleteTask as apiDeleteTask } from '@/api/task.api';
@@ -49,6 +49,7 @@ export default function TaskBoard() {
   const { user } = useAuth();
   const { toast } = useToast();
   const { projectId } = useParams<{ projectId: string }>();
+  const [searchParams, setSearchParams] = useSearchParams();
 
   const [tasks, setTasks] = useState<Task[]>([]);
   const [project, setProject] = useState<Awaited<ReturnType<typeof projectService.getById>> | null>(null);
@@ -246,6 +247,18 @@ export default function TaskBoard() {
       .then(([tasksData, projectData]) => {
         setTasks(tasksData);
         setProject(projectData);
+        
+        // Auto-open highlighted task from URL
+        const highlightTaskId = searchParams.get('highlightTaskId');
+        if (highlightTaskId) {
+          const t = tasksData.find(x => x.id === highlightTaskId);
+          if (t) {
+            setSelectedTask(t);
+            setIsDetailOpen(true);
+            // Clear the param so it doesn't re-trigger on refresh if closed
+            setSearchParams({}, { replace: true });
+          }
+        }
       })
       .catch((err) => {
         console.error('Failed to load tasks or project:', err);
@@ -255,7 +268,7 @@ export default function TaskBoard() {
       .finally(() => {
         setIsLoading(false);
       });
-  }, [projectId]);
+  }, [projectId, searchParams, setSearchParams]);
 
   useEffect(() => {
     const handleClickOutside = (e: MouseEvent) => {
