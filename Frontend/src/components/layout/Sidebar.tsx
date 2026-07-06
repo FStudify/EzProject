@@ -48,7 +48,6 @@ function extractProjectId(pathname: string): string | undefined {
 const ACTIVE_BG = '#FFF5EC';
 const ACTIVE_TEXT = '#8B4A2F';
 const ACTIVE_SHADOW = '0 16px 24px -18px rgba(45,18,4,0.55)';
-const HOVER_BG = 'rgba(255,255,255,0.18)';
 
 function navItemStyle(isActive: boolean, isDisabled: boolean): {
   className: string;

@@ -81,8 +81,9 @@ export default function ProfilePage() {
 
   const canSaveProfile = Boolean(
     user &&
-    (username.trim() !== user.username || displayName.trim() !== user.fullName ||
-     phone.trim() !== user.phone || description.trim() !== user.bio),
+    (displayName.trim() !== (user.fullName || '') ||
+     phone.trim() !== (user.phone || '') || 
+     description.trim() !== (user.bio || '')),
   );
 
   const saveProfile = async () => {
@@ -168,6 +169,19 @@ export default function ProfilePage() {
                   onChange={e => setPhone(e.target.value)}
                 />
               </div>
+            </div>
+
+            <div className="space-y-1.5 mt-2">
+              <label className="font-label-md text-label-md text-[var(--color-on-surface-variant)] flex items-center gap-1.5">
+                <span className="material-symbols-outlined text-[18px]">description</span>
+                {t('bio') || 'Tiểu sử'}
+              </label>
+              <textarea
+                className="w-full bg-[var(--color-surface)] border border-[var(--color-outline-variant)]/50 rounded-xl px-4 py-2.5 text-[var(--color-on-surface)] shadow-sm focus:outline-none focus:ring-2 focus:ring-[var(--color-primary)]/30 focus:border-[var(--color-primary)] transition-all resize-y min-h-[100px]"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                placeholder="Giới thiệu ngắn về bạn..."
+              />
             </div>
 
             <div className="flex justify-end gap-3 mt-4 pt-4 border-t border-[var(--color-outline-variant)]/30">
