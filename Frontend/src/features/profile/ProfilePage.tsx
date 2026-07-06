@@ -36,7 +36,6 @@ export default function ProfilePage() {
   };
 
   const [isEditing, setIsEditing] = useState(false);
-  const [username, setUsername] = useState(user?.username ?? '');
   const [displayName, setDisplayName] = useState(user?.fullName ?? '');
   const [email, setEmail] = useState(user?.email ?? '');
   const [phone, setPhone] = useState(user?.phone ?? '');
@@ -50,7 +49,6 @@ export default function ProfilePage() {
   const [avatarError, setAvatarError] = useState(false);
 
   useEffect(() => {
-    setUsername(user?.username ?? '');
     setDisplayName(user?.fullName ?? '');
     setEmail(user?.email ?? '');
     setPhone(user?.phone ?? '');
