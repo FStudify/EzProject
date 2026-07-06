@@ -10,7 +10,6 @@ interface ChatInputProps {
   placeholder?: string;
   members: Member[];
   autoFocus?: boolean;
-  autoFocus?: boolean;
 }
 
 export default function ChatInput({ value, onChange, onSend, placeholder, members, autoFocus }: ChatInputProps) {

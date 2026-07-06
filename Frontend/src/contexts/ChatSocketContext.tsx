@@ -124,12 +124,13 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
 
     socket.on('new_message', (data: IncomingSocketMessage) => {
       const sender = data.sender;
+      const senderId = sender._id ?? sender.id ?? '';
       const msg = {
         id: data._id,
         roomId: data.roomId,
         projectId: data.projectId,
         sender: {
-          id: sender._id || sender.id,
+          id: senderId,
           name: sender.fullName,
           fullName: sender.fullName,
           avatar: sender.avatar,
@@ -138,10 +139,10 @@ export function ChatSocketProvider({ children }: { children: ReactNode }) {
         channel: (data.channel || 'GROUP').toLowerCase() as ChatMessage['channel'],
         timestamp: data.timestamp,
       };
-      
+
       // Dispatch globally for Notification Popups
       window.dispatchEvent(new CustomEvent('chat:new_message', { detail: msg }));
-      
+
       newMessageCbsRef.current.forEach((cb) => cb(msg));
     });
 
