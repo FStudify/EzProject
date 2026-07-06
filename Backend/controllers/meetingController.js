@@ -106,6 +106,46 @@ function emitMeetingEvent(io, projectId, event, data) {
   io.to(`project:${projectId}`).emit(event, data);
 }
 
+/**
+ * Phân loại cuộc họp theo thời điểm hiện tại so với startTime/endTime.
+ *
+ * Quy ước:
+ *   - 'UPCOMING' : now < startTime (chưa bắt đầu)
+ *   - 'ONGOING'  : startTime <= now <= endTime (đang diễn ra)
+ *   - 'ENDED'    : now > endTime (đã kết thúc)
+ *
+ * Meeting bị huỷ (status === 'CANCELLED') luôn được xếp vào 'ENDED' dù
+ * thời gian chưa tới — vì nó không còn diễn ra nữa.
+ */
+function classifyMeeting(meeting, now = new Date()) {
+  if (!meeting) return 'ENDED';
+  if (meeting.status === 'CANCELLED') return 'ENDED';
+  const start = meeting.startTime ? new Date(meeting.startTime) : null;
+  const end = meeting.endTime ? new Date(meeting.endTime) : null;
+  if (!start || !end || Number.isNaN(start.getTime()) || Number.isNaN(end.getTime())) {
+    return 'ENDED';
+  }
+  const t = now.getTime();
+  if (t < start.getTime()) return 'UPCOMING';
+  if (t <= end.getTime()) return 'ONGOING';
+  return 'ENDED';
+}
+
+/**
+ * Gắn trường `phase` ('UPCOMING' | 'ONGOING' | 'ENDED') và `joinable`
+ * (true nếu còn trong thời gian hợp lệ để vào link cuộc họp) cho mỗi meeting.
+ * Mutates mảng truyền vào để không tốn thêm bộ nhớ; trả về cùng mảng đó.
+ */
+function annotateMeetings(meetings, now = new Date()) {
+  for (const m of meetings) {
+    const phase = classifyMeeting(m, now);
+    m.phase = phase;
+    // Chỉ cho click vào link khi đang ONGOING (trong khoảng startTime–endTime).
+    m.joinable = phase === 'ONGOING';
+  }
+  return meetings;
+}
+
 // ── GET /projects/:projectId/meetings ───────────────────────────────────────
 exports.list = async (req, res, next) => {
   try {
@@ -114,6 +154,7 @@ exports.list = async (req, res, next) => {
     if (req.query.status) match.status = req.query.status;
 
     const meetings = await buildMeetingPipeline(match);
+    annotateMeetings(meetings);
     res.json({ success: true, data: meetings });
   } catch (err) {
     next(err);
@@ -133,6 +174,7 @@ exports.getById = async (req, res, next) => {
       .lean();
 
     if (!meeting) throw errors.NotFound('Meeting');
+    annotateMeetings([meeting]);
     res.json({ success: true, data: meeting });
   } catch (err) {
     next(err);
@@ -163,6 +205,7 @@ exports.create = async (req, res, next) => {
     });
 
     const [created] = await buildMeetingPipeline({ _id: meeting._id });
+    annotateMeetings(created ? [created] : []);
 
     // Socket event
     const io = req.app.get('io');
@@ -256,6 +299,7 @@ exports.update = async (req, res, next) => {
     await meeting.save();
 
     const [updated] = await buildMeetingPipeline({ _id: meeting._id });
+    annotateMeetings(updated ? [updated] : []);
 
     const io = req.app.get('io');
     emitMeetingEvent(io, req.params.projectId, 'meeting.updated', updated);
@@ -330,6 +374,7 @@ exports.rsvp = async (req, res, next) => {
     await meeting.save();
 
     const [updated] = await buildMeetingPipeline({ _id: meeting._id });
+    annotateMeetings(updated ? [updated] : []);
 
     const io = req.app.get('io');
     emitMeetingEvent(io, req.params.projectId, 'meeting.response.updated', updated);
@@ -381,6 +426,7 @@ exports.addAttendees = async (req, res, next) => {
     }
 
     const [updated] = await buildMeetingPipeline({ _id: meeting._id });
+    annotateMeetings(updated ? [updated] : []);
 
     const io = req.app.get('io');
     emitMeetingEvent(io, req.params.projectId, 'meeting.attendee.added', updated);
@@ -426,6 +472,7 @@ exports.removeAttendee = async (req, res, next) => {
     await meeting.save();
 
     const [updated] = await buildMeetingPipeline({ _id: meeting._id });
+    annotateMeetings(updated ? [updated] : []);
 
     const io = req.app.get('io');
     emitMeetingEvent(io, req.params.projectId, 'meeting.attendee.removed', updated);
@@ -450,7 +497,49 @@ exports.updateSummary = async (req, res, next) => {
     await meeting.save();
 
     const [updated] = await buildMeetingPipeline({ _id: meeting._id });
+    annotateMeetings(updated ? [updated] : []);
     res.json({ success: true, data: updated });
+  } catch (err) {
+    next(err);
+  }
+};
+
+// ── POST /projects/:projectId/meetings/:meetingId/join ────────────────────────
+// Trả về meetingLink để client mở tab mới; từ chối nếu meeting đã kết thúc
+// hoặc bị huỷ. Đây là điểm kiểm soát duy nhất ở backend cho việc "vào" meeting,
+// nên FE nên gọi endpoint này thay vì tự mở href.
+exports.join = async (req, res, next) => {
+  try {
+    await checkMember(req.params.projectId, req.user.id);
+    const meeting = await Meeting.findOne({
+      _id: new ObjectId(req.params.meetingId),
+      projectId: new ObjectId(req.params.projectId),
+    }).lean();
+
+    if (!meeting) throw errors.NotFound('Meeting');
+    if (meeting.status === 'CANCELLED') {
+      throw errors.Forbidden('Meeting has been cancelled');
+    }
+
+    const phase = classifyMeeting(meeting);
+    if (phase === 'ENDED') {
+      throw errors.Forbidden('Meeting has already ended');
+    }
+    if (phase === 'UPCOMING') {
+      throw errors.Forbidden('Meeting has not started yet');
+    }
+
+    if (!meeting.meetingLink) {
+      throw errors.BadRequest('Meeting has no link');
+    }
+
+    res.json({
+      success: true,
+      data: {
+        meetingLink: meeting.meetingLink,
+        phase,
+      },
+    });
   } catch (err) {
     next(err);
   }

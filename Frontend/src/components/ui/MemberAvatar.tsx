@@ -38,7 +38,7 @@ export default function MemberAvatar({
   const readableRole = isOwner ? 'Chủ sở hữu' : label;
 
   return (
-    <div className="relative inline-block group/avatar" title={`${name} - ${readableRole}`}>
+    <div className="relative flex shrink-0 items-center justify-center" title={`${name} - ${readableRole}`}>
       <div
         className="overflow-hidden rounded-full"
         style={{ width: px, height: px, boxShadow: ringStyle }}

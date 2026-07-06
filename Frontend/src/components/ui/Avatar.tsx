@@ -67,8 +67,7 @@ export default function Avatar({
 
   const content = (
     <div
-      className={`relative flex overflow-hidden ${sizeClass} ${ringClass}`.trim()}
-      style={{ borderRadius: '50%', width: '2rem', height: '2rem' }}
+      className={`relative flex overflow-hidden ${sizeClass} ${ringClass}`}
     >
       {src && !imgError ? (
         <img

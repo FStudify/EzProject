@@ -1,258 +1,306 @@
 # EZProject
 
-Unified workspace platform for student teams — tasks, documents, chat, meetings, and performance tracking in one collaborative app.
+> **Unified workspace platform for student teams** — manage projects, tasks, documents, meetings, chat, and member performance in a single collaborative app.
 
-## Project Structure
+EZProject helps student teams run a project end-to-end: from planning tasks and assigning members, to chatting in real time, sharing documents, scheduling meetings, and tracking each member's performance. It's a full-stack monorepo with a React frontend, an Express + MongoDB backend, and a Socket.io real-time layer.
+
+---
+
+## Table of Contents
+
+- [Highlights](#highlights)
+- [Tech Stack](#tech-stack)
+- [Repository Structure](#repository-structure)
+- [Quick Start](#quick-start)
+- [Environment Configuration](#environment-configuration)
+- [Deployment](#deployment)
+- [Documentation](#documentation)
+- [License](#license)
+
+---
+
+## Highlights
+
+- **Authentication** — JWT (access + refresh), Google OAuth, role-based access (`admin`, `leader`, `vice-leader`, `member`).
+- **Projects & Tasks** — Kanban-style task board, comments, hashtags, AI-generated task suggestions, vice-leader permissions.
+- **Documents** — Upload files (PDF, DOCX, images) to Cloudinary, organize into folders.
+- **Meetings** — Schedule meetings, RSVP, attendee tracking.
+- **Real-time Chat** — Per-project chat rooms via Socket.io.
+- **Performance Tracking** — Member evaluations per project.
+- **Notifications** — Per-user notification feed and email (Resend).
+- **i18n** — Custom Vietnamese / English dictionary.
+- **Activity Feed** — Project-scoped activity log.
+- **Security** — Helmet, CORS, rate limiting, Zod validation, file-type sniffing.
+
+---
+
+## Tech Stack
+
+### Frontend (`Frontend/`)
+
+| Layer            | Technology                             |
+|------------------|----------------------------------------|
+| Framework        | **React 19** + **Vite 7**              |
+| Language         | **TypeScript 5.9**                     |
+| Styling          | **Tailwind CSS 4**                     |
+| Routing          | React Router 7                          |
+| Real-time        | Socket.io Client 4.8                    |
+| Markdown / Files | `react-markdown`, `remark-gfm`, `pdfjs-dist`, `docx-preview` |
+| Icons            | `lucide-react`                          |
+| Lint             | ESLint 9                               |
+
+### Backend (`Backend/`)
+
+| Layer            | Technology                          |
+|------------------|-------------------------------------|
+| Runtime          | **Node.js 20**                      |
+| Framework        | **Express 4.21**                    |
+| Database         | **MongoDB Atlas** via Mongoose 8.9   |
+| Real-time        | Socket.io 4.8                        |
+| Auth             | JWT (`jsonwebtoken`), Passport + Google OAuth |
+| Validation       | **Zod**                              |
+| File Storage     | Cloudinary (`multer-storage-cloudinary`) |
+| Email            | Resend                                |
+| AI               | Google Generative AI                  |
+| Security         | `helmet`, `express-rate-limit`, `bcrypt` |
+
+### Infra
+
+- **Frontend** deployed to **Vercel** (`Frontend/vercel.json`).
+- **Backend** deployed to **Render** (`render.yaml`, Docker).
+- **MongoDB** hosted on **MongoDB Atlas** (free M0 cluster).
+
+---
+
+## Repository Structure
 
 ```
 EzProject/
-├── Frontend/              # React 19 + Vite + TypeScript + Tailwind CSS 4
+├── Frontend/                       # React 19 + Vite + TS + Tailwind
 │   ├── src/
-│   │   ├── api/           # Centralized API layer (config, endpoints, *.api.ts)
-│   │   ├── contexts/      # Auth, Theme, Language, ChatSocket, Sidebar
-│   │   ├── components/    # Shared UI (ui/) + Layout (layout/)
-│   │   ├── features/      # Feature modules (auth, dashboard, projects, tasks, ...)
-│   │   ├── i18n/          # Custom VI/EN dictionary
-│   │   ├── mocks/         # Mock data fallback (dev only)
-│   │   └── services/      # projectService, taskService
-│   ├── package.json
-│   └── vercel.json
-│
-├── Backend/               # Express.js (CommonJS) + Mongoose + MongoDB Atlas
-│   ├── server.js          # Entry: start HTTP + Socket.io
-│   ├── app.js             # Express config (middleware, routes)
-│   ├── config/            # index.js (env-based), database.js, upload.config.js
-│   ├── models/            # 11 Mongoose models (User, Project, Task, Chat, Document, Meeting, ...)
-│   ├── controllers/       # 12 business logic handlers
-│   ├── routes/            # 14 route files
-│   ├── middlewares/       # auth, errorHandler, rateLimit, upload, documentUploadRateLimiter
-│   ├── services/          # emailService
-│   ├── socket.js          # Socket.io server logic
-│   ├── utils/             # fileStorage
-│   ├── validators/        # Zod schemas
-│   ├── seed/              # seed.js (5 users), seedAdmin.js
-│   ├── scripts/           # migrate-document-size.js
+│   │   ├── api/                    # Centralized API layer (config, endpoints, *.api.ts)
+│   │   ├── contexts/               # Auth, Theme, Language, ChatSocket, Sidebar
+│   │   ├── components/             # Shared UI (ui/) + layout (layout/)
+│   │   ├── features/               # Feature modules (auth, dashboard, projects, tasks, chat, ...)
+│   │   ├── i18n/                   # Custom VI/EN dictionary
+│   │   ├── mocks/                  # Mock data fallback (dev only)
+│   │   └── services/               # projectService, taskService
+│   ├── public/                     # Static assets (logos, icons)
+│   ├── vercel.json                 # Vercel routing config
 │   └── package.json
 │
-├── docs/                  # Project documentation
-│   ├── 1-BRD-Project-Overview.md
-│   ├── 2-SRS-Functional-Requirements.md
-│   ├── 3-UseCase-User-Flow.md
-│   ├── 4-Database-Design.md
-│   ├── 5-API-Specification.md
-│   ├── 6-System-Architecture.md
-│   ├── 7-NFR-Non-Functional-Requirements.md
-│   ├── 8-TechStack-Coding-Conventions.md
-│   ├── 9-UIUX-Design.md
-│   └── deployment/DEPLOY_GUIDE.md
+├── Backend/                        # Express.js + Mongoose + Socket.io
+│   ├── server.js                   # Entry: HTTP + Socket.io bootstrap
+│   ├── app.js                      # Express config (middleware, routes)
+│   ├── config/                     # index.js (env), database.js, upload.config.js
+│   ├── models/                     # 11 Mongoose models
+│   ├── controllers/                # Business logic handlers
+│   ├── routes/                     # 14 route files
+│   ├── middlewares/                # auth, errorHandler, rateLimit, upload
+│   ├── services/                   # emailService
+│   ├── socket.js                   # Socket.io server
+│   ├── utils/                      # fileStorage
+│   ├── validators/                 # Zod schemas
+│   ├── seed/                       # seed.js, seedAdmin.js
+│   ├── scripts/                    # migrate-document-size.js
+│   └── package.json
 │
-├── render.yaml            # Render infra-as-code
-└── gundsetupdeploy.ps1    # Helper script for .env management
+├── docs/                           # Full project documentation
+│   ├── 01_Project_Overview.md
+│   ├── 02_System_Architecture.md
+│   ├── 03_Technology_Stack.md
+│   ├── 04_Functional_Requirements.md
+│   ├── 05_Non_Functional_Requirements.md
+│   ├── 06_User_Roles_Permissions.md
+│   ├── 07_Business_Rules.md
+│   ├── 08_Use_Case_Specification.md
+│   ├── 09_API_Documentation.md
+│   ├── 10_Database_Design.md
+│   ├── 11_Realtime_Socket_Design.md
+│   ├── 12_State_Flow_Diagram.md
+│   ├── 13_Frontend_Architecture.md
+│   ├── 14_Backend_Architecture.md
+│   ├── 15_Deployment_Guide.md
+│   ├── 16_Environment_Configuration.md
+│   ├── 17_Testing_Strategy.md
+│   ├── 18_Development_Guidelines.md
+│   ├── 19_ENVIRONMENT_GUIDE.md
+│   └── 20_DESIGN_SYSTEM.md
+│
+├── gundsetupdeploy.ps1             # Helper script for .env management
+├── package.json                    # Root: concurrently runs both services
+├── package-lock.json
+├── render.yaml                     # Render infrastructure-as-code
+└── README.md
 ```
 
 ---
 
 ## Quick Start
 
-### Chạy cả Backend + Frontend cùng lúc (khuyến nghị)
+### Prerequisites
 
-Từ **thư mục root** của repo (`EzProject/`), chỉ cần 1 lệnh:
+- **Node.js 20+**
+- **MongoDB** — either a local instance or a free [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) cluster.
+- **npm 10+**
+
+### One-command dev (recommended)
+
+From the repository root:
 
 ```bash
-npm install            # Cài concurrently cho root (đã có sẵn trong package.json)
-npm run dev            # Chạy đồng thời Backend (port 3000) + Frontend (port 5173)
+npm run start:install   # install deps for root + Backend + Frontend
+npm run dev             # runs Backend (port 3000) + Frontend (port 5173) concurrently
 ```
 
-Kết quả:
-- Backend: `http://localhost:3000`
-- Frontend: `http://localhost:5173`
-- Nhấn `Ctrl+C` 1 lần là tắt cả 2.
+Then open <http://localhost:5173>.
 
-> Lần đầu cũng cần `cd Backend && npm install` và `cd Frontend && npm install`. Chạy `npm run start:install` ở root để cài cả 3 folder một lúc.
+| Command                          | What it does                                              |
+|----------------------------------|-----------------------------------------------------------|
+| `npm run dev`                    | Run Backend + Frontend together                            |
+| `npm run dev:backend-only`       | Run only Backend (port 3000)                               |
+| `npm run dev:frontend-only`      | Run only Frontend (port 5173)                              |
+| `npm run build`                  | Build Frontend for production                              |
+| `npm run type-check`             | TypeScript check on Frontend                               |
+| `npm run seed`                   | Seed demo data (5 users + 2 projects)                      |
+| `npm run seed:admin`             | Seed an admin account                                      |
+| `npm run start:install`          | Install deps for root + Backend + Frontend                 |
 
-### Các lệnh hữu ích ở root
-
-| Lệnh | Tác dụng |
-|------|---------|
-| `npm run dev` | Chạy Backend + Frontend đồng thời |
-| `npm run dev:backend-only` | Chỉ chạy Backend |
-| `npm run dev:frontend-only` | Chỉ chạy Frontend |
-| `npm run build` | Build Frontend production |
-| `npm run type-check` | TypeScript check cho Frontend |
-| `npm run seed` | Seed dữ liệu demo (5 user + 2 project) |
-| `npm run seed:admin` | Tạo tài khoản admin |
-| `npm run start:install` | Cài deps cho cả 3 folder (root + Backend + Frontend) |
-
-### Chạy tách 2 terminal (cách cũ, vẫn dùng được)
+### Separate terminals (alternative)
 
 ```bash
 # Terminal 1
-cd Backend && npm run dev
+cd Backend && npm install && npm run dev
 
 # Terminal 2
-cd Frontend && npm run dev
+cd Frontend && npm install && npm run dev
 ```
 
-### Setup `.env` lần đầu
+---
 
-Trước khi `npm run dev`, đảm bảo đã có `.env` cho cả 2 phía:
+## Environment Configuration
+
+The project uses **25 environment variables** (24 Backend + 1 Frontend). All example values are committed in `.env.example` — only secrets need to be generated.
+
+### Initialize `.env` files (Windows / PowerShell)
 
 ```powershell
-.\gundsetupdeploy.ps1 -Mode init          # copy .env.example -> .env cho cả Backend + Frontend
-.\gundsetupdeploy.ps1 -Mode validate      # kiểm tra đủ biến bắt buộc chưa
+.\gundsetupdeploy.ps1 -Mode init       # copy .env.example -> .env for Backend + Frontend
+.\gundsetupdeploy.ps1 -Mode validate   # verify required keys are set
 ```
 
-Sửa `Backend/.env` (điền `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, ...) và `Frontend/.env` (`VITE_API_URL=http://localhost:3000`).
+Then edit:
 
----
+- `Backend/.env` — fill `MONGO_URI`, `JWT_SECRET`, `JWT_REFRESH_SECRET`, `CORS_ORIGIN`, `FRONTEND_URL` (required). `CLOUDINARY_*` and `SMTP_*` can be empty if unused.
+- `Frontend/.env` — set `VITE_API_URL=http://localhost:3000/api/v1`.
 
-## Environment Setup
-
-Dự án có **25 biến môi trường** (24 Backend + 1 Frontend). File `.env.example` ở cả `Backend/` và `Frontend/` chỉ chứa placeholder, mọi key đều được phép commit lên repo.
-
-### Workflow nhanh
-
-```powershell
-# 1. Khoi tao .env tu .env.example
-.\gundsetupdeploy.ps1 -Mode init
-
-# 2. Mo Backend\.env, dien 5 gia tri bat buoc:
-#    MONGO_URI, JWT_SECRET, JWT_REFRESH_SECRET, CORS_ORIGIN, FRONTEND_URL
-#    (CLOUDINARY_* va SMTP_* co the de trong neu khong dung)
-
-# 3. Mo Frontend\.env, dien:
-#    VITE_API_URL=http://localhost:3000
-
-# 4. Validate da du keys chua
-.\gundsetupdeploy.ps1 -Mode validate
-
-# 5. Chay app — chi can 1 lenh o root (se chay ca Backend va Frontend cung luc)
-npm run dev
-# Muon chay tach 2 terminal thi giu cach cu:
-#   Terminal 1: cd Backend && npm run dev
-#   Terminal 2: cd Frontend && npm run dev
-```
-
-### Lay gia tri o dau?
-
-| Bien | Lay tu |
-|------|--------|
-| `MONGO_URI` | https://www.mongodb.com/cloud/atlas (cluster free M0) |
-| `JWT_SECRET` / `JWT_REFRESH_SECRET` | `openssl rand -base64 32` hoac Render "Generate Value" |
-| `CLOUDINARY_*` | https://cloudinary.com (free 25GB, optional) |
-| `SMTP_*` | https://resend.com (free 100 email/ngay, optional) |
-
-### Deploy production
-
-| Nền tảng | File config | Bien can paste |
-|----------|------------|-----------------|
-| **Render** (Backend) | `render.yaml` (auto-detect) | `MONGO_URI`, `CORS_ORIGIN`, `FRONTEND_URL` + (optional) Cloudinary, SMTP |
-| **Vercel** (Frontend) | `vercel.json` | `VITE_API_URL` = URL Render |
-
-Helper script cung cấp lệnh `export-render` và `export-vercel` để xuất keys ra clipboard.
-
-> **Chi tiết đầy đủ** từng bước: xem **[docs/19_ENVIRONMENT_GUIDE.md](docs/19_ENVIRONMENT_GUIDE.md)** (hướng dẫn lấy từng giá trị, troubleshooting 8 lỗi thường gặp, security checklist).
-
----
-
-## Frontend — API Layer
-
-The frontend uses a **centralized API layer** pattern at `src/api/`:
-
-| File | Purpose |
-|---|---|
-| `config.ts` | Fetch wrapper — JWT injection, timeout, retry, error normalization, token refresh |
-| `errors.ts` | Typed error classes (ApiError, UnauthorizedError, NetworkError) |
-| `types.ts` | TypeScript types matching backend API responses |
-| `endpoints.ts` | Centralized URL management — no hardcoded URLs |
-| `auth.api.ts` | Login, register, logout, refresh |
-| `user.api.ts` | Profile, preferences, password, notifications |
-| `project.api.ts` | CRUD + pagination + filter |
-| `task.api.ts` | CRUD + comments |
-| `document.api.ts` | File/folder operations |
-| `meeting.api.ts` | CRUD + RSVP |
-| `chat.api.ts` | Rooms + messages |
-| `member.api.ts` | Members, roles, invite links |
-| `index.ts` | Barrel export |
-
-### Environment Variables (Frontend)
+### Generate secrets
 
 ```bash
-VITE_API_URL=http://localhost:3000/api/v1
+openssl rand -base64 32
 ```
+
+### Required keys
+
+| Service   | Variable             | Where to get it                                      |
+|-----------|----------------------|------------------------------------------------------|
+| Backend   | `MONGO_URI`          | [MongoDB Atlas](https://www.mongodb.com/cloud/atlas) — free M0 cluster |
+| Backend   | `JWT_SECRET`         | `openssl rand -base64 32` or Render "Generate Value" |
+| Backend   | `JWT_REFRESH_SECRET` | same as above                                        |
+| Backend   | `CORS_ORIGIN`        | Frontend URL (e.g. `http://localhost:5173`)          |
+| Backend   | `FRONTEND_URL`       | Frontend URL                                         |
+| Frontend  | `VITE_API_URL`       | Backend URL + `/api/v1`                              |
+
+### Optional services
+
+| Service     | Variables                                            | Notes                          |
+|-------------|------------------------------------------------------|--------------------------------|
+| Cloudinary  | `CLOUDINARY_CLOUD_NAME`, `CLOUDINARY_API_KEY`, `CLOUDINARY_API_SECRET` | File uploads (free 25 GB) |
+| Resend SMTP | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`    | Transactional email (100/day free) |
+| Google AI   | `GEMINI_API_KEY`                                     | AI task suggestion             |
+
+> **Full details**, troubleshooting 8 common errors, and security checklist: see [`docs/16_Environment_Configuration.md`](docs/16_Environment_Configuration.md) and [`docs/19_ENVIRONMENT_GUIDE.md`](docs/19_ENVIRONMENT_GUIDE.md).
 
 ---
 
-## Backend — MongoDB + Mongoose
+## Deployment
 
-### Models
+| Component | Platform | Config file          |
+|-----------|----------|----------------------|
+| Backend   | Render   | `render.yaml` (Docker) |
+| Frontend  | Vercel   | `Frontend/vercel.json` |
+| Database  | MongoDB Atlas | Atlas dashboard  |
 
-| Model | Collection | Description |
-|---|---|---|
-| `User` | `users` | User accounts with auth |
-| `RefreshToken` | `refresh_tokens` | JWT refresh tokens (TTL auto-delete) |
-| `Project` | `projects` | Projects with embedded members array |
-| `Task` | `tasks` | Tasks with embedded comments array |
-| `Folder` | `folders` | Document folders |
-| `Document` | `documents` | Uploaded files metadata |
-| `Meeting` | `meetings` | Meetings with embedded attendees |
-| `ChatRoom` | `chat_rooms` | Chat rooms |
-| `ChatMessage` | `chat_messages` | Chat messages |
-| `Activity` | `activities` | Project activity feed |
-| `Notification` | `notifications` | User notifications |
-| `MemberEvaluation` | `member_evaluations` | Performance evaluations |
+Workflow:
 
-### API Endpoints
+1. Push to GitHub (`master` branch).
+2. **Render** auto-detects `render.yaml` and builds the Backend Docker image. Set `MONGO_URI`, `CORS_ORIGIN`, `FRONTEND_URL` in the Render dashboard.
+3. **Vercel** imports the `Frontend/` folder. Set `VITE_API_URL` to the Render backend URL.
+4. Update `CORS_ORIGIN` and `FRONTEND_URL` on Render to match the Vercel URL.
 
-All endpoints prefixed with `/api/v1/`.
-
-| Module | Endpoints |
-|---|---|
-| **Auth** | `POST /auth/login`, `POST /auth/register`, `POST /auth/refresh`, `POST /auth/logout` |
-| **Users** | `GET /users/me`, `PUT /users/me`, `PUT /users/me/preferences`, `PUT /users/me/password`, `GET /users/me/notifications` |
-| **Projects** | `GET /projects`, `POST /projects`, `GET /projects/:id`, `PUT /projects/:id`, `DELETE /projects/:id` |
-| **Tasks** | `GET /projects/:pid/tasks`, `POST /projects/:pid/tasks`, `PUT /projects/:pid/tasks/:id`, `DELETE /projects/:pid/tasks/:id`, `PUT /projects/:pid/tasks/:id/comments` |
-| **Documents** | `GET /projects/:pid/documents`, `POST /projects/:pid/documents`, `PUT /projects/:pid/documents/:id`, `DELETE /projects/:pid/documents/:id` |
-| **Meetings** | `GET /projects/:pid/meetings`, `POST /projects/:pid/meetings`, `PUT /projects/:pid/meetings/:id`, `DELETE /projects/:pid/meetings/:id`, `PUT /projects/:pid/meetings/:id/rsvp` |
-| **Chat** | `GET /projects/:pid/chat/rooms`, `POST /projects/:pid/chat/rooms`, `GET /projects/:pid/chat/rooms/:id/messages` |
-| **Members** | `GET /projects/:pid/members`, `PUT /projects/:pid/members/:uid/role`, `DELETE /projects/:pid/members/:uid`, `POST /projects/:pid/members/invite` |
-| **Performance** | `GET /projects/:pid/performance`, `POST /projects/:pid/performance/evaluate` |
-| **Activities** | `GET /projects/:pid/activities` |
-
-### Authentication
-
-All protected routes require:
-```
-Authorization: Bearer <access_token>
-```
-
-Access tokens expire in **15 minutes**. Use `/api/v1/auth/refresh` to get a new pair.
-
-### Environment Variables (Backend)
-
-```bash
-MONGO_URI=mongodb+srv://<user>:<password>@<cluster>.mongodb.net/ezproject
-JWT_SECRET=your-jwt-secret
-JWT_REFRESH_SECRET=your-refresh-secret
-PORT=3000
-NODE_ENV=development
-FRONTEND_URL=http://localhost:5173
-```
+> Step-by-step guide with screenshots: [`docs/15_Deployment_Guide.md`](docs/15_Deployment_Guide.md).
 
 ---
 
 ## Documentation
 
-| # | Document | Contents |
-|---|---|---|
-| 1 | BRD Project Overview | Team, problems, solution, scope, KPIs |
-| 2 | SRS Functional Requirements | Module-by-module functional specs (Auth, Projects, Tasks, Docs, Members, Meetings, Chat, Performance, Profile) |
-| 3 | Use Case / User Flow | Actors (Customer/Admin/Leader/Supervisor/Member), 14 use cases, flows |
-| 4 | Database Design | **MongoDB + Mongoose** — 11 collections, ERD, business rules, TTL indexes |
-| 5 | API Specification | 40+ endpoints, request/response, Socket.io events, error codes |
-| 6 | System Architecture | Frontend, Backend, MongoDB Atlas, Render + Vercel, real-time Socket.io |
-| 7 | NFR Non-Functional | Performance, security, rate limits, env vars |
-| 8 | Tech Stack & Conventions | Stack (React 19, Express 4.21, Mongoose 8.9), naming, Git flow |
-| 9 | UI/UX Design | Color palette, typography, components |
-| 19 | [Environment Guide](docs/19_ENVIRONMENT_GUIDE.md) | 25 env vars, cách lấy từng giá trị, deploy Render + Vercel |
-| — | [Deployment Guide](docs/deployment/DEPLOY_GUIDE.md) | Step-by-step: MongoDB Atlas + Render + Vercel |
+The full documentation set lives in [`docs/`](docs/). Start with the overview:
+
+| #   | Document                                       | Contents                                  |
+|-----|------------------------------------------------|-------------------------------------------|
+| 01  | [Project Overview](docs/01_Project_Overview.md) | Team, problem, solution, scope, KPIs     |
+| 02  | [System Architecture](docs/02_System_Architecture.md) | Frontend, Backend, MongoDB, Render + Vercel, Socket.io |
+| 03  | [Technology Stack](docs/03_Technology_Stack.md) | Stack and versions                        |
+| 04  | [Functional Requirements](docs/04_Functional_Requirements.md) | Module-by-module specs                    |
+| 05  | [Non-Functional Requirements](docs/05_Non_Functional_Requirements.md) | Performance, security, rate limits       |
+| 06  | [User Roles & Permissions](docs/06_User_Roles_Permissions.md) | `admin`, `leader`, `vice-leader`, `member` |
+| 07  | [Business Rules](docs/07_Business_Rules.md)   | Invariants and validation rules           |
+| 08  | [Use Case Specification](docs/08_Use_Case_Specification.md) | Actors and flows                          |
+| 09  | [API Documentation](docs/09_API_Documentation.md) | 40+ endpoints, request/response, errors |
+| 10  | [Database Design](docs/10_Database_Design.md) | MongoDB collections, ERD, TTL indexes    |
+| 11  | [Realtime Socket Design](docs/11_Realtime_Socket_Design.md) | Socket.io rooms, events, auth            |
+| 12  | [State Flow Diagram](docs/12_State_Flow_Diagram.md) | UI state machines                        |
+| 13  | [Frontend Architecture](docs/13_Frontend_Architecture.md) | React app structure, contexts, API layer |
+| 14  | [Backend Architecture](docs/14_Backend_Architecture.md) | Express layers, middleware, services     |
+| 15  | [Deployment Guide](docs/15_Deployment_Guide.md) | MongoDB Atlas + Render + Vercel          |
+| 16  | [Environment Configuration](docs/16_Environment_Configuration.md) | All env vars in detail                    |
+| 17  | [Testing Strategy](docs/17_Testing_Strategy.md) | Test pyramid and tooling                  |
+| 18  | [Development Guidelines](docs/18_Development_Guidelines.md) | Naming, Git flow, PR rules               |
+| 19  | [Environment Guide](docs/19_ENVIRONMENT_GUIDE.md) | Troubleshooting + security checklist      |
+| 20  | [Design System](docs/20_DESIGN_SYSTEM.md)     | Colors, typography, components            |
+
+---
+
+## API Overview
+
+All endpoints are prefixed with `/api/v1`. Authentication uses `Authorization: Bearer <access_token>` (15-minute TTL, refresh via `/auth/refresh`).
+
+| Module        | Base path                                  |
+|---------------|--------------------------------------------|
+| Auth          | `/api/v1/auth`                             |
+| Users         | `/api/v1/users`                            |
+| Projects      | `/api/v1/projects`                         |
+| Tasks         | `/api/v1/projects/:id/tasks`               |
+| Documents     | `/api/v1/projects/:id/documents`           |
+| Meetings      | `/api/v1/projects/:id/meetings`            |
+| Chat          | `/api/v1/projects/:id/chat`                |
+| Members       | `/api/v1/projects/:id/members`             |
+| Performance   | `/api/v1/projects/:id/performance`         |
+| Activities    | `/api/v1/projects/:id/activities`          |
+
+See [`docs/09_API_Documentation.md`](docs/09_API_Documentation.md) for the full reference.
+
+---
+
+## Contributing
+
+1. Read [`docs/18_Development_Guidelines.md`](docs/18_Development_Guidelines.md) for the Git flow, branch naming, and PR conventions.
+2. Use feature branches: `feat/<scope>`, `fix/<scope>`, `docs/<scope>`.
+3. Run `npm run type-check` and `npm run build` before opening a PR.
+4. Make sure backend boots cleanly: `cd Backend && npm run dev`.
+
+---
+
+## License
+
+This project is private / unlicensed. All rights reserved by the EZProject team.

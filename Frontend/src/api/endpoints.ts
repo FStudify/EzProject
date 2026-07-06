@@ -100,6 +100,10 @@ export const Endpoints = {
   PERFORMANCE_LIST: (projectId: string) => `${BASE}/projects/${projectId}/performance`,
   PERFORMANCE_EVALUATE: (projectId: string) =>
     `${BASE}/projects/${projectId}/performance/evaluate`,
+  PERFORMANCE_LEADER_EVALUATION: (projectId: string, memberId: string) =>
+    `${BASE}/projects/${projectId}/performance/leader/${memberId}`,
+  PERFORMANCE_SUPERVISOR_EVALUATION: (projectId: string, memberId: string) =>
+    `${BASE}/projects/${projectId}/performance/supervisor/${memberId}`,
 
   // ── Activities ──────────────────────────────────────────
   ACTIVITY_LIST: (projectId: string) => `${BASE}/projects/${projectId}/activities`,

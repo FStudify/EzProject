@@ -45,5 +45,6 @@ router.put(
   validate(validators.updateSummary),
   meetingController.updateSummary,
 );
+router.post('/:meetingId/join', requireAuth, meetingController.join);
 
 module.exports = router;

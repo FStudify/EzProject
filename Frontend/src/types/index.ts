@@ -29,7 +29,7 @@ export type WorkloadLevel = 'LOW' | 'MEDIUM' | 'HIGH';
 export type { User } from '@/api/types';
 export type { ApiResponse, PaginatedResponse, AuthTokens, AuthResponse } from '@/api/types';
 export type { RequestType } from '@/api/types';
-export type { ContributionDay, MemberEvaluation, MemberPerformance } from '@/api/types';
+export type { ContributionDay, MemberEvaluation, MemberPerformance, DetailedEvaluation, DetailedEvaluationList } from '@/api/types';
 
 // ── Local types (shape must match component expectations) ─────────
 
@@ -81,6 +81,10 @@ export interface TaskComment {
 export type MeetingStatus2 = 'scheduled' | 'in_progress' | 'completed' | 'cancelled';
 export type MeetingType2 = 'online' | 'offline';
 
+/** Phase tính theo thời gian thực so với startTime/endTime (do backend set,
+ *  FE cũng tự tính lại được khi không có). */
+export type MeetingPhase = 'UPCOMING' | 'ONGOING' | 'ENDED';
+
 export interface Meeting {
   id: string;
   projectId: string;
@@ -98,6 +102,10 @@ export interface Meeting {
   attendeeResponses?: Record<string, { willAttend: boolean | null; declineReason?: string | null }>;
   summary?: string;
   createdAt: string;
+  /** Backend gắn kèm: phase tính theo giờ server; FE có thể tự tính nếu thiếu. */
+  phase?: MeetingPhase;
+  /** Backend gắn kèm: true nếu còn được phép click vào meetingLink. */
+  joinable?: boolean;
 }
 
 /** Role của thành viên trong channel */

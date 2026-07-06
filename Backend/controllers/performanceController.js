@@ -1,7 +1,13 @@
 'use strict';
-
 const mongoose = require('mongoose');
-const { Activity, MemberEvaluation } = require('../models/Activity');
+const {
+  Activity,
+  MemberEvaluation,
+  LeaderEvaluation,
+  SupervisorEvaluation,
+  EVALUATION_CRITERIA,
+  MAX_CRITERION_SCORE,
+} = require('../models/Activity');
 const Task = require('../models/Task');
 const { Document } = require('../models/Document');
 const Project = require('../models/Project');
@@ -132,4 +138,189 @@ exports.evaluate = async (req, res, next) => {
   } catch (err) {
     next(err);
   }
+};
+
+/* ====================================================================
+ *  Helpers — shared by LeaderEvaluation & SupervisorEvaluation routes
+ * ================================================================== */
+
+function pickCriteria(body) {
+  const out = {};
+  let total = 0;
+  for (const key of EVALUATION_CRITERIA) {
+    const value = Number(body?.[key]);
+    if (!Number.isFinite(value) || value < 0 || value > MAX_CRITERION_SCORE) {
+      throw errors.BadRequest(`Invalid score for "${key}" (expected 0..${MAX_CRITERION_SCORE})`);
+    }
+    out[key] = value;
+    total += value;
+  }
+  out.totalScore = total;
+  return out;
+}
+
+async function resolveProjectAndMember(req) {
+  const project = await Project.findOne({
+    _id: new ObjectId(req.params.projectId),
+    'members.userId': new ObjectId(req.user.id),
+  }).lean();
+  if (!project) throw errors.Forbidden('You are not a member of this project');
+  const me = project.members.find((m) => m.userId.toString() === req.user.id);
+  if (!me) throw errors.Forbidden('Member record not found');
+
+  const target = project.members.find((m) => m.userId.toString() === req.params.memberId);
+  if (!target) throw errors.NotFound('Member to evaluate not found in this project');
+
+  return { project, me, target };
+}
+
+/* ====================================================================
+ *  Leader Evaluation — plan §7.8
+ *  Only the Project Leader can create / edit evaluations.
+ *  Leader cannot evaluate themselves.
+ * ================================================================== */
+
+async function listLeaderEvaluations(req, res, next) {
+  try {
+    const project = await Project.findOne({
+      _id: new ObjectId(req.params.projectId),
+      'members.userId': new ObjectId(req.user.id),
+    }).lean();
+    if (!project) throw errors.Forbidden('You are not a member of this project');
+
+    const evaluations = await LeaderEvaluation.find({
+      projectId: project._id,
+      memberId: new ObjectId(req.params.memberId),
+    })
+      .populate('evaluatorId', 'id fullName avatar')
+      .sort({ evaluationDate: -1 })
+      .lean();
+
+    const latest = evaluations[0] || null;
+    res.json({ success: true, data: { latest, history: evaluations } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function upsertLeaderEvaluation(req, res, next) {
+  try {
+    const { project, me } = await resolveProjectAndMember(req);
+
+    if (!me.isOwner && me.role !== 'LEADER') {
+      throw errors.Forbidden('Only the project leader can submit leader evaluations');
+    }
+    if (me.isOwner && me.userId.toString() === req.params.memberId) {
+      throw errors.BadRequest('You cannot evaluate yourself');
+    }
+
+    const criteria = pickCriteria(req.body);
+
+    // One active evaluation per (project, member) — replace the latest.
+    const existing = await LeaderEvaluation.findOne({
+      projectId: project._id,
+      memberId: new ObjectId(req.params.memberId),
+    }).sort({ evaluationDate: -1 });
+
+    if (existing) {
+      Object.assign(existing, criteria, {
+        comment: req.body.comment ?? existing.comment,
+        status: req.body.status || 'SUBMITTED',
+        updatedAt: new Date(),
+      });
+      await existing.save();
+      return res.json({ success: true, data: existing });
+    }
+
+    const created = await LeaderEvaluation.create({
+      projectId: project._id,
+      memberId: new ObjectId(req.params.memberId),
+      evaluatorId: new ObjectId(req.user.id),
+      ...criteria,
+      comment: req.body.comment,
+      status: req.body.status || 'SUBMITTED',
+    });
+    res.status(201).json({ success: true, data: created });
+  } catch (err) {
+    next(err);
+  }
+}
+
+/* ====================================================================
+ *  Supervisor Evaluation — plan §7.9
+ *  Only Supervisors can create / edit evaluations.
+ * ================================================================== */
+
+async function listSupervisorEvaluations(req, res, next) {
+  try {
+    const project = await Project.findOne({
+      _id: new ObjectId(req.params.projectId),
+      'members.userId': new ObjectId(req.user.id),
+    }).lean();
+    if (!project) throw errors.Forbidden('You are not a member of this project');
+
+    const evaluations = await SupervisorEvaluation.find({
+      projectId: project._id,
+      memberId: new ObjectId(req.params.memberId),
+    })
+      .populate('evaluatorId', 'id fullName avatar')
+      .sort({ evaluationDate: -1 })
+      .lean();
+
+    const latest = evaluations[0] || null;
+    res.json({ success: true, data: { latest, history: evaluations } });
+  } catch (err) {
+    next(err);
+  }
+}
+
+async function upsertSupervisorEvaluation(req, res, next) {
+  try {
+    const { project, me } = await resolveProjectAndMember(req);
+
+    if (me.role !== 'SUPERVISOR') {
+      throw errors.Forbidden('Only supervisors can submit supervisor evaluations');
+    }
+    if (me.userId.toString() === req.params.memberId) {
+      throw errors.BadRequest('You cannot evaluate yourself');
+    }
+
+    const criteria = pickCriteria(req.body);
+
+    const existing = await SupervisorEvaluation.findOne({
+      projectId: project._id,
+      memberId: new ObjectId(req.params.memberId),
+    }).sort({ evaluationDate: -1 });
+
+    if (existing) {
+      Object.assign(existing, criteria, {
+        comment: req.body.comment ?? existing.comment,
+        status: req.body.status || 'SUBMITTED',
+        updatedAt: new Date(),
+      });
+      await existing.save();
+      return res.json({ success: true, data: existing });
+    }
+
+    const created = await SupervisorEvaluation.create({
+      projectId: project._id,
+      memberId: new ObjectId(req.params.memberId),
+      evaluatorId: new ObjectId(req.user.id),
+      ...criteria,
+      comment: req.body.comment,
+      status: req.body.status || 'SUBMITTED',
+    });
+    res.status(201).json({ success: true, data: created });
+  } catch (err) {
+    next(err);
+  }
+}
+
+module.exports = {
+  getPerformance: exports.getPerformance,
+  evaluate: exports.evaluate,
+  listLeaderEvaluations,
+  upsertLeaderEvaluation,
+  listSupervisorEvaluations,
+  upsertSupervisorEvaluation,
 };

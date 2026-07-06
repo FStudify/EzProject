@@ -234,6 +234,27 @@ export interface MemberEvaluation {
   evaluatedAt: string;
 }
 
+/* Shared shape between LeaderEvaluation and SupervisorEvaluation */
+export interface DetailedEvaluation {
+  id: string;
+  responsibility: number;
+  communication: number;
+  initiative: number;
+  teamwork: number;
+  qualityOfWork: number;
+  totalScore: number;
+  comment: string | null;
+  status: 'PENDING' | 'SUBMITTED';
+  evaluationDate: string;
+  updatedAt: string;
+  evaluator: Pick<User, 'id' | 'fullName' | 'avatar'> | null;
+}
+
+export interface DetailedEvaluationList {
+  latest: DetailedEvaluation | null;
+  history: DetailedEvaluation[];
+}
+
 export interface MemberPerformance {
   member: Pick<User, 'id' | 'fullName' | 'avatar' | 'name' | 'email'>;
   role: 'LEADER' | 'VICE_LEADER' | 'SUPERVISOR' | 'MEMBER';

@@ -9,6 +9,8 @@ import {
   normalizeMemberList,
   normalizePerformanceList,
   normalizeActivityList,
+  normalizeEvaluation,
+  normalizeEvaluationList,
 } from './normalize';
 import type { Activity } from '@/types';
 import type { ProjectMemberDetail, MemberPerformance } from './types';
@@ -189,6 +191,72 @@ export async function evaluateMember(
   data: { memberId: string; rating: number; feedback?: string },
 ): Promise<void> {
   return api.post(Endpoints.PERFORMANCE_EVALUATE(projectId), data);
+}
+
+/** ── Leader Evaluation (plan §7.8) ───────────────────────────── */
+
+export async function getLeaderEvaluation(
+  projectId: string,
+  memberId: string,
+): Promise<import('./types').DetailedEvaluationList> {
+  const res = await api.get<unknown>(Endpoints.PERFORMANCE_LEADER_EVALUATION(projectId, memberId));
+  const payload = (res && typeof res === 'object' && 'data' in (res as Record<string, unknown>))
+    ? (res as { data: unknown }).data
+    : res;
+  return normalizeEvaluationList(payload);
+}
+
+export async function upsertLeaderEvaluation(
+  projectId: string,
+  memberId: string,
+  data: {
+    responsibility: number;
+    communication: number;
+    initiative: number;
+    teamwork: number;
+    qualityOfWork: number;
+    comment?: string;
+    status?: 'PENDING' | 'SUBMITTED';
+  },
+): Promise<import('./types').DetailedEvaluation> {
+  const res = await api.put<unknown>(Endpoints.PERFORMANCE_LEADER_EVALUATION(projectId, memberId), data);
+  const payload = (res && typeof res === 'object' && 'data' in (res as Record<string, unknown>))
+    ? (res as { data: unknown }).data
+    : res;
+  return normalizeEvaluation(payload);
+}
+
+/** ── Supervisor Evaluation (plan §7.9) ───────────────────────── */
+
+export async function getSupervisorEvaluation(
+  projectId: string,
+  memberId: string,
+): Promise<import('./types').DetailedEvaluationList> {
+  const res = await api.get<unknown>(Endpoints.PERFORMANCE_SUPERVISOR_EVALUATION(projectId, memberId));
+  const payload = (res && typeof res === 'object' && 'data' in (res as Record<string, unknown>))
+    ? (res as { data: unknown }).data
+    : res;
+  return normalizeEvaluationList(payload);
+}
+
+export async function upsertSupervisorEvaluation(
+  projectId: string,
+  memberId: string,
+  data: {
+    responsibility: number;
+    communication: number;
+    initiative: number;
+    teamwork: number;
+    qualityOfWork: number;
+    comment?: string;
+    status?: 'PENDING' | 'SUBMITTED';
+  },
+): Promise<import('./types').DetailedEvaluation> {
+  const res = await api.put<unknown>(Endpoints.PERFORMANCE_SUPERVISOR_EVALUATION(projectId, memberId), data);
+  const payload = (res && typeof res === 'object' && 'data' in (res as Record<string, unknown>))
+    ? (res as { data: unknown }).data
+    : res;
+  return normalizeEvaluation(payload);
 }
 
 /** ── Activity ─────────────────────────────────────────── */

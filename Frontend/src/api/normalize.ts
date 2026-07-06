@@ -321,3 +321,51 @@ export function normalizePerformanceList(data: unknown): { member: { id: string;
     };
   });
 }
+
+/* ----- Detailed evaluations (Leader / Supervisor) ----- */
+
+import type { DetailedEvaluation, DetailedEvaluationList } from './types';
+
+function normalizeDetailedEvaluation(raw: unknown): DetailedEvaluation {
+  const r = (raw ?? {}) as Record<string, unknown>;
+  const evaluatorDoc = r.evaluatorId as Record<string, unknown> | null | undefined;
+  const statusRaw = ((r.status as string) ?? 'SUBMITTED').toUpperCase();
+  return {
+    id: normalizeId(r),
+    responsibility: (r.responsibility as number) ?? 0,
+    communication: (r.communication as number) ?? 0,
+    initiative: (r.initiative as number) ?? 0,
+    teamwork: (r.teamwork as number) ?? 0,
+    qualityOfWork: (r.qualityOfWork as number) ?? 0,
+    totalScore: (r.totalScore as number) ?? 0,
+    comment: (r.comment as string | null) ?? null,
+    status: statusRaw === 'PENDING' ? 'PENDING' : 'SUBMITTED',
+    evaluationDate: (r.evaluationDate as string) ?? new Date().toISOString(),
+    updatedAt: (r.updatedAt as string) ?? (r.evaluationDate as string) ?? new Date().toISOString(),
+    evaluator: evaluatorDoc
+      ? {
+          id: normalizeId(evaluatorDoc),
+          fullName: (evaluatorDoc.fullName as string) ?? '',
+          avatar: (evaluatorDoc.avatar as string | null) ?? null,
+        }
+      : null,
+  };
+}
+
+export function normalizeEvaluation(data: unknown): DetailedEvaluation {
+  const payload = (data && typeof data === 'object' && 'data' in (data as Record<string, unknown>))
+    ? (data as { data: unknown }).data
+    : data;
+  return normalizeDetailedEvaluation(payload);
+}
+
+export function normalizeEvaluationList(data: unknown): DetailedEvaluationList {
+  const payload = (data && typeof data === 'object' && 'data' in (data as Record<string, unknown>))
+    ? (data as { data: unknown }).data
+    : data;
+  const obj = (payload ?? {}) as { latest?: unknown; history?: unknown };
+  const latest = obj.latest ? normalizeDetailedEvaluation(obj.latest) : null;
+  const historyArr = Array.isArray(obj.history) ? obj.history : [];
+  const history = historyArr.map((item) => normalizeDetailedEvaluation(item));
+  return { latest, history };
+}

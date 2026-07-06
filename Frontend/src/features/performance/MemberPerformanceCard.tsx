@@ -1,184 +1,190 @@
-import { useState } from 'react';
-import type { MemberPerformance, MemberEvaluation } from '@/types';
-import { ProjectMemberAvatar } from '@/components/ui';
-import Badge from '@/components/ui/Badge';
-import { Button } from '@/components/ui';
-import Modal from '@/components/ui/Modal';
-import ContributionGraph from './ContributionGraph';
-import { CheckCircle, Clock, FileUp, MessageSquare, MessageSquarePlus } from 'lucide-react';
+/**
+ * MemberPerformanceCard — Section 5 of plan
+ *
+ * Renders one card per project member with:
+ *   - avatar + name + role badge
+ *   - Performance Score (0-100)
+ *   - Contribution % (vs team)
+ *   - Rank (medal for top 3, numeric otherwise)
+ *   - Completed / In Progress / Overdue tasks
+ *   - Activity heatmap (compact)
+ *
+ * Clicking anywhere on the card opens the PerformanceDetailModal.
+ */
 
-function getScoreVariant(score: number): 'success' | 'warning' | 'danger' {
-  if (score >= 80) return 'success';
-  if (score >= 60) return 'warning';
-  return 'danger';
-}
+import type { MemberPerformance, MemberEvaluation, ProjectMember } from '@/types';
+import type { ProjectRole } from '@/types';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { Button, ProjectMemberAvatar, Badge } from '@/components/ui';
+import { CheckCircle, Clock, AlertTriangle, Eye } from 'lucide-react';
+import { scoreToStatusVariant } from './utils';
+import ActivityHeatmap from './ActivityHeatmap';
+import RankingBadge from './RankingBadge';
 
 interface MemberPerformanceCardProps {
   performance: MemberPerformance;
+  /** Member's rank (1-based) within the project, sorted by score desc. */
+  rank: number;
+  /**
+   * Score to display on the card — derived from the active ranking mode
+   * (system / leader / supervisor / averages). May be null if the chosen
+   * mode has no evaluation for this member yet.
+   */
+  displayScore: number | null;
+  /** Member's contribution % vs the team's total score (0-100). */
+  contributionPct: number;
+  /** Number of overdue tasks for this member — derived from project task list. */
+  overdueTasks: number;
+  /** All project members for ProjectMemberAvatar role badges. */
+  projectMembers?: ProjectMember[];
+  /** Latest evaluation, if any. */
   evaluation?: MemberEvaluation | null;
-  onSaveEvaluation?: (memberId: string, rating: number, feedback: string) => void;
-  projectMembers?: import('@/types').ProjectMember[];
+  /** Click handler — opens PerformanceDetailModal. */
+  onOpen: () => void;
 }
 
 export default function MemberPerformanceCard({
   performance,
-  evaluation,
-  onSaveEvaluation,
+  rank,
+  displayScore,
+  contributionPct,
+  overdueTasks,
   projectMembers = [],
+  evaluation,
+  onOpen,
 }: MemberPerformanceCardProps) {
-  const [modalOpen, setModalOpen] = useState(false);
-  const [rating, setRating] = useState(evaluation?.rating ?? 0);
-  const [feedback, setFeedback] = useState(evaluation?.feedback ?? '');
-  const [saved, setSaved] = useState(false);
+  const { t } = useLanguage();
+  const { member, tasksCompleted, tasksInProgress, contributions } = performance;
 
-  const { member: perfMember, tasksCompleted, tasksInProgress, documentsUploaded, commentsCount, contributions, score } = performance;
-  const member = { id: perfMember.id, name: perfMember.fullName, fullName: perfMember.fullName, email: perfMember.email, avatar: perfMember.avatar };
-  const scoreVariant = getScoreVariant(score);
+  // Fall back to system score if the active ranking mode has no evaluation for this member.
+  const score = displayScore ?? performance.score;
+  const status = scoreToStatusVariant(score);
 
-  const openModal = () => {
-    setRating(evaluation?.rating ?? 0);
-    setFeedback(evaluation?.feedback ?? '');
-    setSaved(false);
-    setModalOpen(true);
-  };
-
-  const handleSave = () => {
-    if (!onSaveEvaluation) return;
-    onSaveEvaluation(member.id, Number(rating.toFixed(2)), feedback);
-    setSaved(true);
-    setTimeout(() => setModalOpen(false), 800);
+  const localMember = {
+    id: member.id,
+    name: member.fullName,
+    fullName: member.fullName,
+    email: member.email,
+    avatar: member.avatar,
   };
 
   return (
-    <>
-      <article className="rounded-xl border border-border bg-surface p-4">
-        <div className="mb-4 flex items-center gap-2.5">
-          <ProjectMemberAvatar member={member} projectMembers={projectMembers} size="sm" />
-          <div>
-            <p className="text-sm font-semibold text-ink">{member.name}</p>
-            <p className="text-[11px] text-ink-muted truncate max-w-[120px]">{member.email}</p>
+    <article
+      onClick={onOpen}
+      onKeyDown={(e) => {
+        if (e.key === 'Enter' || e.key === ' ') {
+          e.preventDefault();
+          onOpen();
+        }
+      }}
+      role="button"
+      tabIndex={0}
+      className="group flex h-full cursor-pointer flex-col gap-3 rounded-xl border border-border bg-surface p-4 transition-all hover:-translate-y-0.5 hover:border-primary/40 hover:shadow-md focus:outline-none focus:ring-2 focus:ring-primary/40"
+    >
+      {/* Header: avatar + name + rank */}
+      <header className="flex items-center gap-3">
+        <ProjectMemberAvatar member={localMember} projectMembers={projectMembers} size="md" />
+        <div className="min-w-0 flex-1">
+          <p className="truncate text-sm font-semibold text-ink">{member.fullName}</p>
+          <p className="truncate text-[11px] text-ink-muted">
+            {roleLabel(t, performance.role as ProjectRole, performance.isOwner)}
+          </p>
+        </div>
+        <RankingBadge rank={rank} />
+      </header>
+
+      {/* Performance score + contribution */}
+      <div className="grid grid-cols-2 gap-2">
+        <div className="rounded-lg border border-border bg-canvas px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+            {t('perf_score')}
+          </p>
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className={`text-lg font-bold tabular-nums text-${status.variant}`}>
+              {score}
+            </span>
+            <span className="text-[10px] text-ink-muted">{t('perf_score_out_of')}</span>
           </div>
         </div>
-
-        <div className="mb-4 grid grid-cols-4 gap-2">
-          {[
-            { icon: CheckCircle, label: 'Xong', value: tasksCompleted, color: 'text-success' },
-            { icon: Clock, label: 'Đang làm', value: tasksInProgress, color: 'text-warning' },
-            { icon: FileUp, label: 'Tài liệu', value: documentsUploaded, color: 'text-primary' },
-            { icon: MessageSquare, label: 'Bình luận', value: commentsCount, color: 'text-secondary' },
-          ].map(({ icon: Icon, label, value, color }) => (
-            <div key={label} className="text-center rounded-lg border border-border bg-canvas px-1 py-2">
-              <Icon className={`mx-auto h-3.5 w-3.5 ${color}`} />
-              <p className="mt-1 text-sm font-bold text-ink">{value}</p>
-              <p className="text-[10px] text-ink-muted">{label}</p>
-            </div>
-          ))}
+        <div className="rounded-lg border border-border bg-canvas px-2.5 py-2">
+          <p className="text-[10px] font-semibold uppercase tracking-wider text-ink-muted">
+            {t('contribution')}
+          </p>
+          <div className="mt-1 flex items-baseline gap-1">
+            <span className="text-lg font-bold tabular-nums text-primary">
+              {contributionPct}
+            </span>
+            <span className="text-[10px] text-ink-muted">%</span>
+          </div>
         </div>
+      </div>
 
-        <ContributionGraph contributions={contributions} />
+      {/* Task counts */}
+      <div className="grid grid-cols-3 gap-2">
+        <TaskMini icon={CheckCircle} value={tasksCompleted} label={t('completed_tasks')} tone="text-success" />
+        <TaskMini icon={Clock} value={tasksInProgress} label={t('in_progress_tasks')} tone="text-warning" />
+        <TaskMini icon={AlertTriangle} value={overdueTasks} label={t('overdue_tasks')} tone="text-danger" />
+      </div>
 
-        {evaluation?.feedback && (
-          <div className="mt-4 rounded-xl border border-primary/20 bg-primary-50 px-4 py-3">
-            <div className="mb-2 flex items-start justify-between gap-2">
-              <p className="text-xs font-semibold text-primary">Nhận xét đã đánh giá</p>
-              {evaluation.rating > 0 && (
-                <span className="rounded-full bg-primary px-2 py-0.5 text-[11px] font-bold text-white">
-                  {evaluation.rating}/10
-                </span>
-              )}
-            </div>
-            <p className="text-sm leading-relaxed text-ink-secondary">{evaluation.feedback}</p>
-          </div>
-        )}
+      {/* Heatmap (compact) */}
+      <ActivityHeatmap contributions={contributions} compact />
 
-        {onSaveEvaluation && (
-          <Button
-            variant={evaluation ? 'secondary' : 'primary'}
-            size="sm"
-            className="mt-3 w-full justify-center text-xs"
-            onClick={openModal}
-          >
-            <MessageSquarePlus className="mr-1.5 h-3.5 w-3.5" />
-            {evaluation ? 'Cập nhật đánh giá' : 'Đánh giá thành viên'}
-          </Button>
-        )}
-      </article>
-
-      {onSaveEvaluation && (
-        <Modal
-          isOpen={modalOpen}
-          onClose={() => setModalOpen(false)}
-          title={`Đánh giá: ${member.name}`}
-          size="sm"
-        >
-          <div className="space-y-4">
-            <div className="flex items-center gap-3 rounded-lg border border-border bg-canvas px-4 py-3">
-              <ProjectMemberAvatar member={member} projectMembers={projectMembers} size="md" />
-              <div>
-                <p className="font-semibold text-ink">{member.name}</p>
-                <p className="text-xs text-ink-muted">{member.email}</p>
-              </div>
-              <div className="ml-auto text-right">
-                <Badge variant={scoreVariant}>{score} điểm</Badge>
-                <p className="mt-1 text-[10px] text-ink-muted">Điểm hệ thống</p>
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink">Điểm đánh giá (0 – 10)</label>
-              <input
-                type="number"
-                min={0}
-                max={10}
-                step={0.1}
-                value={rating || ''}
-                onChange={(e) => {
-                  const v = parseFloat(e.target.value);
-                  setRating(Number.isNaN(v) ? 0 : Math.min(10, Math.max(0, v)));
-                }}
-                placeholder="Nhập điểm..."
-                className="ez-input w-full"
-              />
-              <div className="mt-1 flex gap-1">
-                {[5, 6, 7, 8, 9, 10].map(n => (
-                  <button
-                    key={n}
-                    type="button"
-                    onClick={() => setRating(n)}
-                    className={`flex-1 rounded-lg border py-1.5 text-xs font-medium transition-colors ${
-                      rating === n
-                        ? 'border-primary bg-primary-50 text-primary'
-                        : 'border-border text-ink-muted hover:border-primary/30'
-                    }`}
-                  >
-                    {n}
-                  </button>
-                ))}
-              </div>
-            </div>
-
-            <div className="space-y-1.5">
-              <label className="text-sm font-medium text-ink">Nhận xét</label>
-              <textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Nhận xét về thành viên này (điểm mạnh, điểm cần cải thiện...)"
-                rows={4}
-                className="ez-input w-full resize-none"
-              />
-            </div>
-
-            <div className="flex gap-2 pt-2">
-              <Button variant="secondary" size="sm" className="flex-1 justify-center" onClick={() => setModalOpen(false)}>
-                Hủy
-              </Button>
-              <Button variant="primary" size="sm" className="flex-1 justify-center" onClick={handleSave}>
-                {saved ? 'Đã lưu!' : 'Lưu đánh giá'}
-              </Button>
-            </div>
-          </div>
-        </Modal>
+      {/* Optional evaluation hint */}
+      {evaluation?.feedback && (
+        <Badge variant="primary" className="self-start">
+          {t('evaluated_feedback')}
+        </Badge>
       )}
-    </>
+
+      {/* Footer action — opens the Performance Detail Modal.
+          stopPropagation() để không double-trigger với onClick của <article>. */}
+      <div className="mt-auto pt-2" onClick={(e) => e.stopPropagation()}>
+        <Button
+          variant="primary"
+          size="sm"
+          onClick={onOpen}
+          className="w-full"
+        >
+          <Eye className="mr-1.5 h-3.5 w-3.5" />
+          {t('view_details')}
+        </Button>
+      </div>
+    </article>
   );
+}
+
+function TaskMini({
+  icon: Icon,
+  value,
+  label,
+  tone,
+}: {
+  icon: typeof CheckCircle;
+  value: number;
+  label: string;
+  tone: string;
+}) {
+  return (
+    <div className="rounded-lg border border-border bg-canvas px-2 py-2 text-center">
+      <Icon className={`mx-auto h-3.5 w-3.5 ${tone}`} />
+      <p className="mt-1 text-sm font-bold tabular-nums text-ink">{value}</p>
+      <p className="text-[10px] leading-tight text-ink-muted">{label}</p>
+    </div>
+  );
+}
+
+/** Returns the member's role label, falling back to "Thành viên / Member". */
+function roleLabel(
+  t: (k: import('@/i18n/dict').DictKey) => string,
+  role: ProjectRole,
+  isOwner: boolean,
+): string {
+  const keyByRole: Record<ProjectRole, import('@/i18n/dict').DictKey> = {
+    LEADER: 'role_leader',
+    VICE_LEADER: 'role_vice_leader',
+    SUPERVISOR: 'role_supervisor',
+    MEMBER: 'role_member',
+  };
+  const base = t(keyByRole[role] ?? 'role_member');
+  return isOwner && role === 'LEADER' ? `${base} (${t('owner')})` : base;
 }

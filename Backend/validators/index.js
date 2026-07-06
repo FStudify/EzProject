@@ -335,6 +335,26 @@ const validators = {
     feedback: z.string().optional(),
   }),
 
+  leaderEvaluation: z.object({
+    responsibility: z.number().min(0).max(20),
+    communication: z.number().min(0).max(20),
+    initiative: z.number().min(0).max(20),
+    teamwork: z.number().min(0).max(20),
+    qualityOfWork: z.number().min(0).max(20),
+    comment: z.string().max(2000).optional(),
+    status: z.enum(['PENDING', 'SUBMITTED']).optional(),
+  }),
+
+  supervisorEvaluation: z.object({
+    responsibility: z.number().min(0).max(20),
+    communication: z.number().min(0).max(20),
+    initiative: z.number().min(0).max(20),
+    teamwork: z.number().min(0).max(20),
+    qualityOfWork: z.number().min(0).max(20),
+    comment: z.string().max(2000).optional(),
+    status: z.enum(['PENDING', 'SUBMITTED']).optional(),
+  }),
+
   // ── Users ──────────────────────────────────────────────
   updateProfile: z.object({
     fullName: z.string().optional(),
