@@ -488,13 +488,20 @@ exports.create = async (req, res, next) => {
       }
     }
 
+    // Fetch project once for deadline validation and notifications
+    const project = await Project.findById(req.params.projectId)
+      .select('name deadline')
+      .lean();
+    if (!project) throw errors.NotFound('Project');
+    const projectDeadline = project.deadline || null;
+
     const task = await Task.create({
       projectId: new ObjectId(req.params.projectId),
       title: req.body.title,
       description: req.body.description ?? null,
       priority: req.body.priority ?? 'MEDIUM',
       startDate: req.body.startDate ? new Date(req.body.startDate) : null,
-      deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline, project.deadline, req.body.startDate)) : undefined,
+      deadline: req.body.deadline ? new Date(validateTaskDeadline(req.body.deadline, projectDeadline, req.body.startDate)) : undefined,
       assigneeId,
       creatorId: new ObjectId(req.user.id),
       hashtags: Array.isArray(req.body.hashtags)
@@ -513,9 +520,6 @@ exports.create = async (req, res, next) => {
     if (assigneeId && assigneeId.toString() !== req.user.id) {
       try {
         const io = req.app.get('io');
-        const project = await Project.findById(req.params.projectId)
-          .select('name')
-          .lean();
         const assigner = await User.findById(req.user.id)
           .select('fullName')
           .lean();
