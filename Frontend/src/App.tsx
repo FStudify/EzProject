@@ -12,8 +12,9 @@ import { ChatPage } from '@/features/chat';
 import { PerformancePage } from '@/features/performance';
 import { ProfilePage, SettingsPage } from '@/features/profile';
 import { ProtectedRoute, GuestRoute, LoginPage, RegisterPage, GoogleCallbackPage, ForgotPasswordPage, ResetPasswordPage } from '@/features/auth';
-import { PaymentResultPage } from '@/features/payment';
+import { PaymentResultPage, PaymentHistoryPage } from '@/features/payment';
 import { ToastProvider } from '@/components/ui';
+import ErrorBoundary from '@/components/ErrorBoundary';
 import { ThemeProvider, LanguageProvider, AuthProvider } from '@/contexts';
 import { ChatSocketProvider } from '@/contexts/ChatSocketContext';
 import LandingPage from '@/features/landing/LandingPage';
@@ -36,6 +37,7 @@ import {
 const router = createBrowserRouter([
   {
     path: '/login',
+    errorElement: <ErrorBoundary />,
     element: (
       <GuestRoute>
         <LoginPage />
@@ -44,6 +46,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/register',
+    errorElement: <ErrorBoundary />,
     element: (
       <GuestRoute>
         <RegisterPage />
@@ -52,6 +55,7 @@ const router = createBrowserRouter([
   },
   {
     path: '/forgot-password',
+    errorElement: <ErrorBoundary />,
     element: (
       <GuestRoute>
         <ForgotPasswordPage />
@@ -62,24 +66,29 @@ const router = createBrowserRouter([
     // Không bọc GuestRoute: token có thể được mở từ email trong khi user
     // vẫn còn đăng nhập ở tab khác — không cần ép logout để đặt lại pass.
     path: '/reset-password',
+    errorElement: <ErrorBoundary />,
     element: <ResetPasswordPage />,
   },
   {
     // Trang nhận callback từ Google OAuth
     path: '/auth/google/callback',
+    errorElement: <ErrorBoundary />,
     element: <GoogleCallbackPage />,
   },
   {
     path: '/',
+    errorElement: <ErrorBoundary />,
     element: <LandingPage />,
   },
   {
     path: '/pricing',
+    errorElement: <ErrorBoundary />,
     element: <PricingPage />,
   },
   {
     // PayOS return/cancel URL — bắt buộc đăng nhập.
     path: '/payment/result',
+    errorElement: <ErrorBoundary />,
     element: (
       <ProtectedRoute>
         <PaymentResultPage />
@@ -88,14 +97,17 @@ const router = createBrowserRouter([
   },
   {
     path: '/invite/:token',
+    errorElement: <ErrorBoundary />,
     element: <InviteLandingPage />,
   },
   {
     path: '/app/join/:token',
+    errorElement: <ErrorBoundary />,
     element: <JoinProjectPage />,
   },
   {
     path: '/app',
+    errorElement: <ErrorBoundary />,
     element: (
       <ProtectedRoute>
         <AppLayout />
@@ -105,6 +117,7 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'settings', element: <SettingsPage /> },
+      { path: 'payments', element: <PaymentHistoryPage /> },
 
       { path: 'projects', element: <ProjectListPage /> },
       {
@@ -125,6 +138,7 @@ const router = createBrowserRouter([
   // ── Admin Panel ──────────────────────────────────────────────
   {
     path: '/admin',
+    errorElement: <ErrorBoundary />,
     element: (
       <AdminRoute>
         <AdminLayout />

@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon, Shield, Sparkles, Crown, Receipt } from 'lucide-react';
 import { Avatar, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
@@ -11,7 +11,6 @@ import { fetchMyCurrentSubscription } from '@/api/payment.api';
 import NotificationDrawer, { NOTIFICATIONS_UPDATED_EVENT } from './NotificationDrawer';
 import { useSidebar } from './SidebarContext';
 import SubscriptionModal from '@/components/payment/SubscriptionModal';
-import PaymentHistoryModal from '@/components/payment/PaymentHistoryModal';
 export default function Topbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
@@ -19,13 +18,13 @@ export default function Topbar() {
   const { toggle, isMobile } = useSidebar();
   const { toast } = useToast();
   const location = useLocation();
+  const navigate = useNavigate();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [invitationCount, setInvitationCount] = useState(0);
   const [currentPlanKey, setCurrentPlanKey] = useState<string | null>(null);
   const [isSubModalOpen, setIsSubModalOpen] = useState(false);
-  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const fetchBadge = async () => {
@@ -428,7 +427,7 @@ export default function Topbar() {
                 <button
                   onClick={() => {
                     setIsMenuOpen(false);
-                    setIsHistoryModalOpen(true);
+                    navigate('/app/payments');
                   }}
                   role="menuitem"
                   className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
@@ -461,10 +460,7 @@ export default function Topbar() {
       <NotificationDrawer isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
       
       {!isAdmin && (
-        <>
-          <SubscriptionModal isOpen={isSubModalOpen} onClose={() => setIsSubModalOpen(false)} />
-          <PaymentHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} />
-        </>
+        <SubscriptionModal isOpen={isSubModalOpen} onClose={() => setIsSubModalOpen(false)} />
       )}
     </>
   );
