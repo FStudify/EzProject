@@ -7,4 +7,5 @@ export { default as AdminLogsPage } from './AdminLogsPage';
 export { default as AdminHealthPage } from './AdminHealthPage';
 export { default as AdminAnnouncementsPage } from './AdminAnnouncementsPage';
 export { default as AdminProfilePage } from './AdminProfilePage';
+export { default as AdminRevenuePage } from './AdminRevenuePage';
 export { default as AnnouncementBanner } from './AnnouncementBanner';

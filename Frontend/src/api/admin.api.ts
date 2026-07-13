@@ -51,6 +51,7 @@ export interface AdminUser {
   blockedReason: string | null;
   createdAt: string;
   updatedAt?: string;
+  currentPlan?: string;
 }
 
 export interface AdminUserProject {
@@ -183,6 +184,7 @@ export interface AdminUserFilters {
   search?: string;
   status?: 'active' | 'blocked';
   role?: AdminRole;
+  planKey?: string;
   page?: number;
   limit?: number;
 }
@@ -214,7 +216,7 @@ export async function getAdminStats(): Promise<AdminStats> {
   return api.get<AdminStats>(Endpoints.ADMIN_STATS);
 }
 
-export async function getAdminDashboardRecent(range: '7d' | '30d' = '7d') {
+export async function getAdminDashboardRecent(range: '7d' | '30d' | '90d' | '1y' = '7d') {
   return api.get<{
     recentUsers: AdminUser[];
     growth: {
@@ -232,6 +234,7 @@ function buildUserParams(f?: AdminUserFilters): string {
   if (f?.search) p.set('search', f.search);
   if (f?.status) p.set('status', f.status);
   if (f?.role) p.set('role', f.role);
+  if (f?.planKey) p.set('planKey', f.planKey);
   if (f?.page) p.set('page', String(f.page));
   if (f?.limit) p.set('limit', String(f.limit));
   const s = p.toString();

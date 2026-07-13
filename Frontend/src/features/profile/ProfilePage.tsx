@@ -2,6 +2,7 @@ import { useEffect, useState, useRef } from 'react';
 import { useAuth } from '@/contexts/AuthContext';
 import { getProjects } from '@/api/project.api';
 import { updateProfile, getUserActivities, getUserStats, uploadAvatar } from '@/api/user.api';
+import { fetchMyCurrentSubscription } from '@/api/payment.api';
 import type { Project } from '@/types';
 import { useToast } from '@/components/ui';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -47,6 +48,7 @@ export default function ProfilePage() {
   const [activities, setActivities] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [avatarError, setAvatarError] = useState(false);
+  const [currentPlanKey, setCurrentPlanKey] = useState<string | null>(null);
 
   useEffect(() => {
     setDisplayName(user?.fullName ?? '');
@@ -62,13 +64,15 @@ export default function ProfilePage() {
       getProjects({ limit: 50 }),
       getUserActivities().catch(() => []),
       getUserStats().catch(() => null),
+      fetchMyCurrentSubscription().catch(() => null)
     ])
-      .then(([res, acts, stats]) => {
+      .then(([res, acts, stats, sub]) => {
         const myProjects = res.data.filter((p) => p.members.some((m) => m.member.id === user.id));
         setProjects(myProjects);
         setTasksCompleted(stats?.completedTasks ?? myProjects.reduce((acc, p) => acc + p.completedTasks, 0));
         setOnTimeRate(stats?.onTimeRate ?? 0);
         setActivities(acts);
+        setCurrentPlanKey(sub?.planKey ?? 'FREE');
       })
       .catch((err) => {
         console.error('Failed to load profile data:', err);
@@ -210,10 +214,22 @@ export default function ProfilePage() {
                     src={user.avatar}
                     alt="Avatar"
                     onError={() => setAvatarError(true)}
-                    className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner"
+                    className={`w-[120px] h-[120px] rounded-full object-cover shadow-inner ${
+                      currentPlanKey?.toUpperCase() === 'ULTRA' 
+                        ? 'border-4 border-fuchsia-500 shadow-[0_0_15px_rgba(217,70,239,0.8)]' 
+                        : currentPlanKey?.toUpperCase() === 'PRO' 
+                        ? 'border-4 border-amber-400 shadow-[0_0_15px_rgba(251,191,36,0.8)]' 
+                        : 'border-4 border-white'
+                    }`}
                   />
                 ) : (
-                  <div className="w-[120px] h-[120px] rounded-full object-cover border-4 border-white shadow-inner bg-gradient-to-br from-indigo-500 to-purple-500 flex items-center justify-center text-white text-4xl font-bold uppercase">
+                  <div className={`w-[120px] h-[120px] rounded-full object-cover shadow-inner flex items-center justify-center text-white text-4xl font-bold uppercase ${
+                    currentPlanKey?.toUpperCase() === 'ULTRA' 
+                      ? 'border-4 border-fuchsia-500 bg-gradient-to-br from-fuchsia-600 to-purple-700 shadow-[0_0_15px_rgba(217,70,239,0.8)]' 
+                      : currentPlanKey?.toUpperCase() === 'PRO' 
+                      ? 'border-4 border-amber-400 bg-gradient-to-br from-amber-500 to-orange-600 shadow-[0_0_15px_rgba(251,191,36,0.8)]' 
+                      : 'border-4 border-white bg-gradient-to-br from-indigo-500 to-purple-500'
+                  }`}>
                     {user?.fullName?.charAt(0) || 'U'}
                   </div>
                 )}
@@ -230,6 +246,15 @@ export default function ProfilePage() {
               <div className="flex flex-col gap-2">
                 <div className="flex items-center gap-3">
                   <h2 className="font-headline-lg text-headline-lg-mobile md:text-headline-lg text-gradient-animate font-extrabold lowercase">{user?.fullName || t('default_user')}</h2>
+                  {currentPlanKey && currentPlanKey.toUpperCase() !== 'FREE' && (
+                    <span className={`px-2.5 py-1 rounded-sm text-xs font-bold uppercase tracking-widest ${
+                      currentPlanKey.toUpperCase() === 'ULTRA' 
+                        ? 'bg-fuchsia-100 text-fuchsia-700 shadow-[0_0_8px_rgba(217,70,239,0.5)]' 
+                        : 'bg-amber-100 text-amber-700 shadow-[0_0_8px_rgba(251,191,36,0.5)]'
+                    }`}>
+                      {currentPlanKey.toUpperCase() === 'ULTRA' ? '👑 Ultra' : '⚡ Pro'}
+                    </span>
+                  )}
                   <span className="px-2.5 py-1 rounded-full bg-[var(--color-primary)]/10 text-[var(--color-primary)] font-label-sm-caps text-label-sm-caps shadow-sm uppercase">@{user?.username || 'user'}</span>
                 </div>
                 <p className="font-body-lg text-body-lg font-semibold text-[var(--color-on-surface)]">{t('ezproject_member')}</p>

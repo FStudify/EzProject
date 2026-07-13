@@ -281,3 +281,183 @@ export interface Activity {
   targetId?: string | null;
   timestamp: string;
 }
+
+// ── Plans / Payments / Revenue ────────────────────────────────────────
+
+export type PlanKey = 'free' | 'pro' | 'ultra' | string;
+
+export interface Plan {
+  id: string;
+  key: PlanKey;
+  name: string;
+  description: string | null;
+  priceVnd: number;
+  currency: string;
+  durationDays: number | null;
+  popular: boolean;
+  sortOrder: number;
+  isActive: boolean;
+}
+
+export interface Subscription {
+  id: string;
+  userId: string;
+  planId: string | { id: string; key: PlanKey; name: string; priceVnd: number; currency: string; durationDays: number | null };
+  planKey: PlanKey;
+  planName: string;
+  priceVnd: number;
+  status: 'ACTIVE' | 'CANCELLED' | 'EXPIRED';
+  startedAt: string;
+  expiresAt: string | null;
+  endedAt: string | null;
+  paymentId: string | null;
+}
+
+export type PaymentStatus = 'PENDING' | 'PAID' | 'CANCELLED' | 'FAILED' | 'REFUNDED';
+
+export interface Payment {
+  id: string;
+  orderCode: string;
+  userId: string;
+  planId: string;
+  planKey: PlanKey;
+  oldPlanKey: PlanKey | null;
+  action: 'NEW' | 'RENEW' | 'UPGRADE' | 'DOWNGRADE';
+  planName: string;
+  amount: number;
+  currency: string;
+  status: PaymentStatus;
+  provider: 'PAYOS' | 'MANUAL';
+  transactionId: string | null;
+  checkoutUrl: string | null;
+  expiresAt: string | null;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  failedAt: string | null;
+  createdAt: string;
+  updatedAt?: string;
+}
+
+export interface CreatePaymentResult {
+  payment: Payment;
+  checkoutUrl: string;
+  reused: boolean;
+}
+
+export interface Paginated<T> {
+  items: T[];
+  page: number;
+  limit: number;
+  total: number;
+  totalPages: number;
+}
+
+export interface RevenueOverview {
+  totalRevenue: number;
+  revenueToday: number;
+  revenueThisWeek: number;
+  revenueThisMonth: number;
+  
+  revenueYesterday: number;
+  revenueLastWeek: number;
+  revenueLastMonth: number;
+
+  pendingRevenue: number;
+  failedRevenue: number;
+  refundedRevenue: number;
+  
+  pendingPayments: number;
+  failedPayments: number;
+  
+  successfulPayments: number;
+  aov: number;
+
+  activeSubscribers: number;
+  usersFree: number;
+  usersPro: number;
+  usersUltra: number;
+  
+  newToday: number;
+  renewToday: number;
+  upgradeToday: number;
+
+  currency: string;
+  lastUpdatedAt: string;
+}
+
+export interface RevenueChartPoint {
+  date: string;
+  revenue: number;
+  payments: number;
+}
+
+export interface RevenueChart {
+  days: number;
+  series: RevenueChartPoint[];
+}
+
+export interface RevenuePlanBreakdown {
+  planKey: PlanKey;
+  planName: string;
+  priceVnd: number;
+  currency: string;
+  revenue: number;
+  payments: number;
+  activeSubscribers: number;
+}
+
+export interface RevenuePaymentRow {
+  id: string;
+  orderCode: string;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    fullName: string;
+  } | null;
+  planKey: PlanKey;
+  oldPlanKey: PlanKey | null;
+  action: 'NEW' | 'RENEW' | 'UPGRADE' | 'DOWNGRADE';
+  planName: string;
+  amount: number;
+  currency: string;
+  provider: 'PAYOS' | 'MANUAL';
+  methodLabel: string;
+  status: PaymentStatus;
+  createdAt: string;
+  paidAt: string | null;
+  cancelledAt: string | null;
+  failedAt: string | null;
+  expiresAt: string | null;
+  transactionId?: string | null;
+  rawPayload?: any;
+}
+
+export interface AdminSubscriptionRow {
+  id: string;
+  user: {
+    id: string;
+    email: string;
+    username: string;
+    fullName: string;
+  } | null;
+  planKey: string;
+  planName: string;
+  status: string;
+  startedAt: string;
+  expiresAt: string;
+  createdAt: string;
+}
+
+export interface AdminTopCustomer {
+  userId: string;
+  user: {
+    email: string;
+    username: string;
+    fullName: string;
+    avatar: string | null;
+  };
+  totalSpent: number;
+  paymentCount: number;
+}
+

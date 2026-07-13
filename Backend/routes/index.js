@@ -14,7 +14,9 @@ const activityRouter = require('./activity');
 const adminRouter = require('./admin');
 const inviteRouter = require('./invite');
 const announcementPublicRouter = require('./announcementPublic');
+const paymentsRouter = require('./payments');
 const memberController = require('../controllers/memberController');
+const paymentController = require('../controllers/paymentController');
 const { requireAuth } = require('../middlewares/auth');
 const aiController = require('../controllers/aiController');
 const { validators, validate } = require('../validators');
@@ -22,17 +24,24 @@ const { generateProjectLimiter } = require('../middlewares/rateLimit');
 
 const router = express.Router();
 
-// ── Public/Auth ────────────────────────────────────────
+// ── Public/Auth ────────────────────────────────────────────────
 router.use('/auth', authRouter);
 
-// ── Join by invite link (Gap 2) ────────────────────────
+// ── PayOS webhook (public — verify by signature on req.body).
+// Mounted directly so it bypasses the requireAuth chain + Zod validators.
+router.post('/payments/webhook/payos', paymentController.payOsWebhook);
+
+// ── Join by invite link (Gap 2) ────────────────────────────────
 // POST /api/v1/join  { token: "..." }
 router.post('/join', requireAuth, memberController.joinByInvite);
 
-// ── User ───────────────────────────────────────────────
+// ── User ───────────────────────────────────────────────────────
 router.use('/users', userRouter);
 
-// ── AI Chat ─────────────────────────────────────────────────
+// ── Payments & Plans (catalog + authenticated endpoints) ──────
+router.use('/payments', paymentsRouter);
+
+// ── AI Chat ────────────────────────────────────────────────────
 router.post('/ai/chat', requireAuth, aiController.chat);
 router.post(
   '/ai/generate-project',
@@ -42,12 +51,12 @@ router.post(
   aiController.generateProjectFromIdea,
 );
 
-// ── Admin (Gap 1) ──────────────────────────────────────
+// ── Admin (Gap 1) ──────────────────────────────────────────────
 router.use('/admin', adminRouter);
 router.use('/announcements', announcementPublicRouter);
 router.use('/', inviteRouter);
 
-// ── Projects & nested resources ────────────────────────
+// ── Projects & nested resources ────────────────────────────────
 router.use('/projects', projectRouter);
 router.use('/projects/:projectId/tasks', taskRouter);
 router.use('/projects/:projectId/documents', documentRouter);

@@ -9,17 +9,22 @@ import {
   Minus,
   RefreshCw,
   Loader2,
-  Calendar,
 } from 'lucide-react';
 import {
   getAdminStats,
   getAdminDashboardRecent,
   type AdminStats,
 } from '@/api/admin.api';
+import { fetchRevenueChart } from '@/api/payment.api';
+import type { RevenueChartPoint } from '@/api/types';
 import { useTheme } from '@/contexts/ThemeContext';
 import AdminPageHeader from './components/AdminPageHeader';
-import MiniLineChart from './components/MiniLineChart';
 import { Card, Button } from '@/components/ui';
+import {
+  ResponsiveContainer,
+  AreaChart, Area,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend
+} from 'recharts';
 
 interface RecentPayload {
   recentUsers: Array<{
@@ -120,7 +125,8 @@ export default function AdminOverviewPage() {
   const { theme } = useTheme();
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [recent, setRecent] = useState<RecentPayload | null>(null);
-  const [range, setRange] = useState<'7d' | '30d'>('7d');
+  const [revenueChartData, setRevenueChartData] = useState<RevenueChartPoint[]>([]);
+  const [range, setRange] = useState<'7d' | '30d' | '90d' | '1y'>('7d');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -128,9 +134,15 @@ export default function AdminOverviewPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const [s, r] = await Promise.all([getAdminStats(), getAdminDashboardRecent(range)]);
+      const days = range === '1y' ? 365 : range === '90d' ? 90 : range === '7d' ? 7 : 30;
+      const [s, r, rev] = await Promise.all([
+        getAdminStats(), 
+        getAdminDashboardRecent(range),
+        fetchRevenueChart(days)
+      ]);
       setStats(s);
       setRecent(r);
+      setRevenueChartData(rev.series);
     } catch {
       setError('Không thể tải dữ liệu dashboard');
     } finally {
@@ -165,38 +177,15 @@ export default function AdminOverviewPage() {
   const totals = stats?.totals;
   const growth = stats?.weeklyGrowth;
 
-  const chartLabels = recent?.growth.users.map((p) =>
-    new Date(p.date).toLocaleDateString('vi-VN', { day: 'numeric', month: 'numeric' }),
-  ) ?? [];
-
   return (
     <div className="space-y-6 p-6">
       <AdminPageHeader
         title="Tổng quan hệ thống"
         description="Cái nhìn nhanh về người dùng, dự án và hoạt động gần đây."
         actions={
-          <>
-            <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700" style={{ borderColor: '#E8D8CF' }}>
-              {(['7d', '30d'] as const).map((r) => (
-                <button
-                  key={r}
-                  type="button"
-                  onClick={() => setRange(r)}
-                  className="px-3 py-1.5 text-xs font-semibold transition-colors"
-                  style={
-                    range === r
-                      ? { backgroundColor: '#1f2937', color: 'white' }
-                      : { color: '#635648' }
-                  }
-                >
-                  {r === '7d' ? '7 ngày' : '30 ngày'}
-                </button>
-              ))}
-            </div>
-            <Button variant="secondary" size="sm" onClick={fetchData}>
-              <RefreshCw className="mr-1.5 h-4 w-4" /> Làm mới
-            </Button>
-          </>
+          <Button variant="secondary" size="sm" onClick={fetchData}>
+            <RefreshCw className="mr-1.5 h-4 w-4" /> Làm mới
+          </Button>
         }
       />
 
@@ -238,35 +227,105 @@ export default function AdminOverviewPage() {
 
       {/* Charts + recent */}
       <div className="grid grid-cols-1 gap-4 lg:grid-cols-3">
-        <div className="lg:col-span-2">
+        <div className="lg:col-span-2 space-y-4">
           <Card padding="md">
-            <div className="mb-3 flex items-center justify-between">
-              <div>
-                <h3 className="text-base font-semibold" style={{ color: '#1F1F1F' }}>
-                  Tăng trưởng người dùng &amp; dự án
-                </h3>
-                <p className="text-xs" style={{ color: '#7D6F66' }}>
-                  Khoảng thời gian {range === '7d' ? '7 ngày' : '30 ngày'} gần nhất
-                </p>
+            <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-slate-800">Tăng trưởng người dùng &amp; dự án</h3>
+                <p className="text-xs text-slate-500">Khoảng thời gian {range === '7d' ? '7 ngày' : range === '30d' ? '30 ngày' : range === '90d' ? '90 ngày' : '1 năm'} gần nhất</p>
               </div>
-              <Calendar className="h-4 w-4" style={{ color: '#7D6F66' }} />
+              <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden">
+                {(['7d', '30d', '90d', '1y'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRange(r)}
+                    className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
+                    style={
+                      range === r
+                        ? { backgroundColor: '#1f2937', color: 'white' }
+                        : { color: '#64748b' }
+                    }
+                  >
+                    {r === '7d' ? '7 ngày' : r === '30d' ? '30 ngày' : r === '90d' ? '90 ngày' : '1 năm'}
+                  </button>
+                ))}
+              </div>
             </div>
-            <MiniLineChart
-              labels={chartLabels}
-              series={[
-                {
-                  label: 'Người dùng mới',
-                  values: recent?.growth.users.map((p) => p.count) ?? [],
-                  color: '#3b82f6',
-                },
-                {
-                  label: 'Dự án mới',
-                  values: recent?.growth.projects.map((p) => p.count) ?? [],
-                  color: '#10b981',
-                },
-              ]}
-              height={200}
-            />
+            <div className="h-[250px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={recent?.growth.users.map((u, i) => ({
+                  date: u.date,
+                  users: u.count,
+                  projects: recent.growth.projects[i]?.count || 0
+                })) || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
+                    </linearGradient>
+                    <linearGradient id="colorProjects" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                  <Area type="monotone" dataKey="users" name="Người dùng mới" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
+                  <Area type="monotone" dataKey="projects" name="Dự án mới" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProjects)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
+          </Card>
+
+          <Card padding="md">
+            <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex-1">
+                <h3 className="text-base font-bold text-slate-800">Tăng trưởng doanh thu</h3>
+                <p className="text-xs text-slate-500">Khoảng thời gian {range === '7d' ? '7 ngày' : range === '30d' ? '30 ngày' : range === '90d' ? '90 ngày' : '1 năm'} gần nhất</p>
+              </div>
+              <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden">
+                {(['7d', '30d', '90d', '1y'] as const).map((r) => (
+                  <button
+                    key={r}
+                    type="button"
+                    onClick={() => setRange(r)}
+                    className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
+                    style={
+                      range === r
+                        ? { backgroundColor: '#1f2937', color: 'white' }
+                        : { color: '#64748b' }
+                    }
+                  >
+                    {r === '7d' ? '7 ngày' : r === '30d' ? '30 ngày' : r === '90d' ? '90 ngày' : '1 năm'}
+                  </button>
+                ))}
+              </div>
+            </div>
+            <div className="h-[250px] w-full mt-4">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={revenueChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
+                  <defs>
+                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
+                      <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                    </linearGradient>
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₫${(val/1000000).toFixed(1)}M`} />
+                  <Tooltip 
+                    contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                    formatter={(value: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value))}
+                  />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
+                  <Area type="monotone" dataKey="revenue" name="Doanh thu" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+                </AreaChart>
+              </ResponsiveContainer>
+            </div>
           </Card>
         </div>
 

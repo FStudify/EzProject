@@ -1,7 +1,7 @@
 import { type FormEvent, type ReactNode, useState, useEffect } from 'react';
 import { Link, useNavigate, useSearchParams } from 'react-router-dom';
 import type { LucideIcon } from 'lucide-react';
-import { AtSign, Eye, EyeOff, LockKeyhole, UserCircle2, GraduationCap, Sun, Moon, ArrowLeft, Users } from 'lucide-react';
+import { AtSign, Eye, EyeOff, LockKeyhole, UserCircle2, Sun, Moon, ArrowLeft, Users } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -250,9 +250,7 @@ export default function RegisterPage() {
           </button>
           <div className="h-5 w-px bg-white/20" />
           <div className="flex items-center gap-2.5 text-white drop-shadow">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D97853]">
-              <GraduationCap className="h-4 w-4" />
-            </div>
+            <img src="/logoEZProject.jpg" alt="EZProject" className="h-8 w-8 rounded-lg shadow-sm object-cover" />
             <span className="text-base font-bold tracking-tight">EZProject</span>
           </div>
         </div>

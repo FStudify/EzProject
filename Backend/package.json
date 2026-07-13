@@ -8,6 +8,7 @@
     "dev": "node --watch server.js",
     "seed": "node seed/seed.js",
     "seed:admin": "node seed/seedAdmin.js",
+    "seed:plans": "node seed/seedPlans.js",
     "migrate:document-size": "node scripts/migrate-document-size.js"
   },
   "dependencies": {

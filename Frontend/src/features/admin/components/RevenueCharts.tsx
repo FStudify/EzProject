@@ -1,0 +1,200 @@
+
+import { Card } from '@/components/ui';
+import {
+  ResponsiveContainer,
+  AreaChart, Area,
+  BarChart, Bar,
+  PieChart, Pie, Cell, Label,
+  XAxis, YAxis, CartesianGrid, Tooltip, Legend
+} from 'recharts';
+import type { RevenueChartPoint, RevenuePlanBreakdown } from '@/api/types';
+import type { StatusDistribution } from '@/api/payment.api';
+
+interface RevenueChartsProps {
+  trendData: RevenueChartPoint[];
+  planData: RevenuePlanBreakdown[];
+  statusData: StatusDistribution;
+  range: '7d' | '30d' | '90d' | '1y';
+  onRangeChange: (r: '7d' | '30d' | '90d' | '1y') => void;
+}
+
+const COLORS = ['#10b981', '#f59e0b', '#3b82f6', '#f43f5e', '#64748b'];
+
+function formatVnd(value: number): string {
+  return new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(value);
+}
+
+export function RevenueCharts({ trendData, planData, statusData, range, onRangeChange }: RevenueChartsProps) {
+  const statusChartData = [
+    { name: 'Thành công', value: statusData.PAID },
+    { name: 'Đang xử lý', value: statusData.PENDING },
+    { name: 'Đã huỷ', value: statusData.CANCELLED },
+    { name: 'Thất bại', value: statusData.FAILED },
+    { name: 'Hoàn tiền', value: statusData.REFUNDED },
+  ].filter(d => d.value > 0);
+
+  const subDistributionData = planData.map(p => ({
+    name: p.planName,
+    value: p.activeSubscribers
+  })).filter(d => d.value > 0);
+
+  const totalStatusCount = statusChartData.reduce((sum, item) => sum + item.value, 0);
+  const totalSubCount = subDistributionData.reduce((sum, item) => sum + item.value, 0);
+
+  return (
+    <div className="space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Revenue Trend (Area/Line) */}
+        <Card className="p-6">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-slate-800">Biểu đồ tăng trưởng doanh thu</h3>
+            <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden" style={{ borderColor: '#E8D8CF' }}>
+              {(['7d', '30d', '90d', '1y'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => onRangeChange(r)}
+                  className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
+                  style={
+                    range === r
+                      ? { backgroundColor: '#1f2937', color: 'white' }
+                      : { color: '#635648' }
+                  }
+                >
+                  {r === '7d' ? '7 ngày' : r === '30d' ? '30 ngày' : r === '90d' ? '90 ngày' : '1 năm'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
+                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₫${(val/1000000).toFixed(1)}M`} />
+                <Tooltip 
+                  formatter={(value: any) => [formatVnd(value), 'Doanh thu']}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
+              </AreaChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Revenue by Plan (Bar) */}
+        <Card className="p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-6">Doanh thu theo gói</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={planData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barSize={32}>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
+                <XAxis dataKey="planName" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₫${(val/1000000).toFixed(1)}M`} />
+                <Tooltip 
+                  formatter={(value: any) => [formatVnd(value), 'Doanh thu']}
+                  cursor={{ fill: '#f8fafc' }}
+                  contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
+                />
+                <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+              </BarChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Payment Status (Donut) */}
+        <Card className="p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-6">Tỷ lệ trạng thái thanh toán</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={80}
+                  outerRadius={110}
+                  paddingAngle={5}
+                  dataKey="value"
+                >
+                  <Label 
+                    value={totalStatusCount} 
+                    position="center" 
+                    className="text-3xl font-bold fill-slate-800" 
+                  />
+                  {statusChartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
+        {/* Subscription Distribution (Donut) */}
+        <Card className="p-6">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-slate-800">Phân bổ người đăng ký</h3>
+            <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden" style={{ borderColor: '#E8D8CF' }}>
+              {(['7d', '30d', '90d', '1y'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => onRangeChange(r)}
+                  className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
+                  style={
+                    range === r
+                      ? { backgroundColor: '#1f2937', color: 'white' }
+                      : { color: '#635648' }
+                  }
+                >
+                  {r === '7d' ? '7 ngày' : r === '30d' ? '30 ngày' : r === '90d' ? '90 ngày' : '1 năm'}
+                </button>
+              ))}
+            </div>
+          </div>
+          <div className="h-[300px] w-full flex items-center justify-center">
+            {subDistributionData.length === 0 ? (
+              <div className="text-slate-400 font-medium">Chưa có người đăng ký</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={subDistributionData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={80}
+                    outerRadius={110}
+                    paddingAngle={5}
+                    dataKey="value"
+                  >
+                    <Label 
+                      value={totalSubCount} 
+                      position="center" 
+                      className="text-3xl font-bold fill-slate-800" 
+                    />
+                    {subDistributionData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={['#64748b', '#3b82f6', '#f97316'][index % 3]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+    </div>
+  );
+}

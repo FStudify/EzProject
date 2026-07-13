@@ -12,10 +12,12 @@ import { ChatPage } from '@/features/chat';
 import { PerformancePage } from '@/features/performance';
 import { ProfilePage, SettingsPage } from '@/features/profile';
 import { ProtectedRoute, GuestRoute, LoginPage, RegisterPage, GoogleCallbackPage, ForgotPasswordPage, ResetPasswordPage } from '@/features/auth';
+import { PaymentResultPage } from '@/features/payment';
 import { ToastProvider } from '@/components/ui';
 import { ThemeProvider, LanguageProvider, AuthProvider } from '@/contexts';
 import { ChatSocketProvider } from '@/contexts/ChatSocketContext';
 import LandingPage from '@/features/landing/LandingPage';
+import { PricingPage } from '@/features/pricing';
 import JoinProjectPage from '@/features/members/JoinProjectPage';
 import InviteLandingPage from '@/features/members/InviteLandingPage';
 import {
@@ -28,6 +30,7 @@ import {
   AdminHealthPage,
   AdminAnnouncementsPage,
   AdminProfilePage,
+  AdminRevenuePage,
 } from '@/features/admin';
 
 const router = createBrowserRouter([
@@ -71,6 +74,19 @@ const router = createBrowserRouter([
     element: <LandingPage />,
   },
   {
+    path: '/pricing',
+    element: <PricingPage />,
+  },
+  {
+    // PayOS return/cancel URL — bắt buộc đăng nhập.
+    path: '/payment/result',
+    element: (
+      <ProtectedRoute>
+        <PaymentResultPage />
+      </ProtectedRoute>
+    ),
+  },
+  {
     path: '/invite/:token',
     element: <InviteLandingPage />,
   },
@@ -89,6 +105,7 @@ const router = createBrowserRouter([
       { index: true, element: <DashboardPage /> },
       { path: 'profile', element: <ProfilePage /> },
       { path: 'settings', element: <SettingsPage /> },
+
       { path: 'projects', element: <ProjectListPage /> },
       {
         path: 'projects/:projectId',
@@ -117,6 +134,7 @@ const router = createBrowserRouter([
       { index: true, element: <AdminOverviewPage /> },
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'projects', element: <AdminProjectsPage /> },
+      { path: 'revenue', element: <AdminRevenuePage /> },
       { path: 'logs', element: <AdminLogsPage /> },
       { path: 'health', element: <AdminHealthPage /> },
       { path: 'announcements', element: <AdminAnnouncementsPage /> },

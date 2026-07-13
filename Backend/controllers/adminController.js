@@ -18,6 +18,7 @@ const mongoose = require('mongoose');
 const User = require('../models/User');
 const Project = require('../models/Project');
 const Task = require('../models/Task');
+const Subscription = require('../models/Subscription');
 const { Activity } = require('../models/Activity');
 const Announcement = require('../models/Announcement');
 const bcrypt = require('bcrypt');
@@ -137,7 +138,7 @@ exports.getStats = async (req, res, next) => {
 exports.getDashboardRecent = async (req, res, next) => {
   try {
     const range = String(req.query.range || '7d');
-    const days = range === '30d' ? 30 : 7;
+    const days = range === '1y' ? 365 : range === '90d' ? 90 : range === '30d' ? 30 : 7;
     const now = new Date();
     const start = new Date(now.getTime() - days * 24 * 60 * 60 * 1000);
     start.setHours(0, 0, 0, 0);
@@ -198,7 +199,7 @@ async function bucketByDay(model, field, start, days) {
 // GET /admin/users
 exports.listUsers = async (req, res, next) => {
   try {
-    const { search, status, role, page = 1, limit = 20 } = req.query;
+    const { search, status, role, planKey, page = 1, limit = 20 } = req.query;
     const skip = (page - 1) * limit;
 
     const match = {};
@@ -213,6 +214,16 @@ exports.listUsers = async (req, res, next) => {
       ];
     }
 
+    if (planKey) {
+      if (planKey.toLowerCase() === 'free') {
+        const activeSubUserIds = await Subscription.distinct('userId', { status: 'ACTIVE' });
+        match._id = { $nin: activeSubUserIds };
+      } else {
+        const activeSubUserIds = await Subscription.distinct('userId', { status: 'ACTIVE', planKey: planKey.toLowerCase() });
+        match._id = { $in: activeSubUserIds };
+      }
+    }
+
     const [users, total] = await Promise.all([
       User.find(match)
         .select('-passwordHash')
@@ -224,6 +235,18 @@ exports.listUsers = async (req, res, next) => {
     ]);
 
     await Promise.all(users.filter((u) => u.isBlocked && u.blockedUntil).map((u) => clearExpiredBlock(u)));
+
+    const activeSubs = await Subscription.find({
+      userId: { $in: users.map(u => u._id) },
+      status: 'ACTIVE'
+    }).lean();
+    
+    const subMap = new Map(activeSubs.map(s => [s.userId.toString(), s]));
+    
+    users.forEach(u => {
+      const sub = subMap.get(u._id.toString());
+      u.currentPlan = sub ? sub.planKey.toUpperCase() : 'FREE';
+    });
 
     res.json({
       success: true,

@@ -1,6 +1,8 @@
 import type { CSSProperties } from 'react';
+import { useState, useEffect } from 'react';
 import { NavLink, useLocation } from 'react-router-dom';
 import { useAuth } from '@/contexts/AuthContext';
+import { fetchMyCurrentSubscription } from '@/api/payment.api';
 import {
   LayoutDashboard,
   FolderKanban,
@@ -13,6 +15,7 @@ import {
   Video,
   TrendingUp,
   MessageCircle,
+  Receipt,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui';
 import { useSidebar } from './SidebarContext';
@@ -95,6 +98,25 @@ export default function Sidebar() {
   const { user } = useAuth();
   const { t } = useLanguage();
 
+  const [currentPlanKey, setCurrentPlanKey] = useState<string | null>(null);
+
+  useEffect(() => {
+    let cancelled = false;
+    if (!user) return;
+    const load = async () => {
+      try {
+        const sub = await fetchMyCurrentSubscription();
+        if (!cancelled) {
+          setCurrentPlanKey(sub?.planKey ?? null);
+        }
+      } catch {
+        if (!cancelled) setCurrentPlanKey(null);
+      }
+    };
+    load();
+    return () => { cancelled = true; };
+  }, [user]);
+
   const activeProjectId = extractProjectId(pathname);
   const hasProject = !!activeProjectId;
   const basePath = hasProject ? `/app/projects/${activeProjectId}` : '';
@@ -122,9 +144,12 @@ export default function Sidebar() {
       >
         <div className={`flex flex-1 items-center ${collapsed ? 'justify-center px-0' : 'px-3'}`}>
           {collapsed ? (
-            <img src="/logo-icon.svg" alt="EZProject" className="h-10 w-10 rounded-2xl" />
+            <img src="/logoEZProject.jpg" alt="EZProject" className="h-10 w-10 rounded-xl shadow-lg object-cover" />
           ) : (
-            <img src="/logo-ezproject.svg" alt="EZProject" className="h-12 w-full rounded-sm object-contain object-left" />
+            <div className="flex items-center gap-3">
+              <img src="/logoEZProject.jpg" alt="EZProject" className="h-10 w-10 rounded-xl shadow-lg object-cover" />
+              <span className="text-xl font-extrabold tracking-tight text-white drop-shadow-md">EZProject</span>
+            </div>
           )}
         </div>
       </div>
@@ -242,6 +267,7 @@ export default function Sidebar() {
               {[
                 { to: '/app/profile', icon: User, labelKey: 'nav_profile' },
                 { to: '/app/settings', icon: Settings, labelKey: 'nav_settings' },
+                { to: '/app/payments', icon: Receipt, labelKey: 'nav_payment_history' },
               ].map(({ to, icon: Icon, labelKey }) => (
                 <li key={to}>
                   <NavLink
@@ -265,6 +291,7 @@ export default function Sidebar() {
             {[
               { to: '/app/profile', icon: User, labelKey: 'nav_profile' },
               { to: '/app/settings', icon: Settings, labelKey: 'nav_settings' },
+              { to: '/app/payments', icon: Receipt, labelKey: 'nav_payment_history' },
             ].map(({ to, icon: Icon, labelKey }) => (
               <NavLink
                 key={to}
@@ -296,7 +323,7 @@ export default function Sidebar() {
           }}
           style={({ isActive }) => footerNavItemStyle(isActive).style}
         >
-          <Avatar src={user?.avatar ?? undefined} name={user?.fullName ?? 'User'} size="sm" />
+          <Avatar src={user?.avatar ?? undefined} name={user?.fullName ?? 'User'} size="sm" planKey={currentPlanKey ?? undefined} />
           {!collapsed && (
             <div className="min-w-0">
               <p

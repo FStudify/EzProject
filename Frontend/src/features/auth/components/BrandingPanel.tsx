@@ -1,5 +1,5 @@
 import type { LucideIcon } from 'lucide-react';
-import { CalendarClock, CheckCircle2, FolderKanban, GraduationCap } from 'lucide-react';
+import { CalendarClock, CheckCircle2, FolderKanban, Crown } from 'lucide-react';
 
 interface BrandingPanelProps {
   compact?: boolean;
@@ -31,8 +31,7 @@ export default function BrandingPanel({ compact = false, t }: BrandingPanelProps
       terracotta: true,
     },
     {
-      icon: GraduationCap,
-      text: t ? t('landing_badge_progress') : 'Team progress 78%',
+      icon: Crown, text: t ? t('landing_badge_progress') : 'Team progress 78%',
       className: 'left-7 bottom-24 xl:left-12',
       delay: 1.9,
       terracotta: true,
@@ -54,7 +53,7 @@ export default function BrandingPanel({ compact = false, t }: BrandingPanelProps
     return (
       <section className="relative z-20 p-0.5">
         <div className="inline-flex items-center gap-2.5 text-white drop-shadow-[0_8px_18px_rgba(0,0,0,0.4)]">
-          <GraduationCap className="h-6 w-6" style={{ color: '#E8B185' }} aria-hidden />
+          <img src="/logoEZProject.jpg" alt="EZProject" className="h-6 w-6 rounded-md shadow-md object-cover" />
           <span className="text-[28px] font-extrabold leading-none tracking-[-0.012em]">EZProject</span>
         </div>
         <h2 className="mt-3.5 max-w-[520px] text-[26px] font-extrabold leading-[1.12] tracking-[-0.01em] text-white drop-shadow-[0_8px_18px_rgba(0,0,0,0.45)] sm:text-[31px]">
@@ -76,15 +75,15 @@ export default function BrandingPanel({ compact = false, t }: BrandingPanelProps
 
       <div className="relative z-20 max-w-[570px] space-y-4 pr-6 xl:pr-8">
         <div className="inline-flex items-center gap-3 text-white drop-shadow-[0_10px_22px_rgba(0,0,0,0.45)]">
-          <GraduationCap className="h-10 w-10" style={{ color: '#E8B185' }} aria-hidden />
+          <img src="/logoEZProject.jpg" alt="EZProject" className="h-10 w-10 rounded-xl shadow-lg object-cover" />
           <span className="text-[48px] font-extrabold leading-none tracking-[-0.02em] xl:text-[56px]">EZProject</span>
         </div>
 
-        <h2 className="whitespace-nowrap text-[26px] font-extrabold leading-[1.1] tracking-[-0.012em] text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.47)] xl:text-[29px]">
+        <h2 className="text-[26px] font-extrabold leading-[1.1] tracking-[-0.012em] text-white drop-shadow-[0_10px_20px_rgba(0,0,0,0.47)] xl:text-[29px] max-w-[500px] text-balance">
           {heroTitle}
         </h2>
 
-        <p className="whitespace-nowrap text-[16px] leading-relaxed drop-shadow-[0_5px_14px_rgba(0,0,0,0.25)]" style={{ color: '#D8C8BE' }}>
+        <p className="max-w-[500px] text-[16px] leading-relaxed drop-shadow-[0_5px_14px_rgba(0,0,0,0.25)]" style={{ color: '#D8C8BE' }}>
           {heroDesc}
         </p>
 

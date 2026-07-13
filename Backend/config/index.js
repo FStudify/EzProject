@@ -78,6 +78,21 @@ const config = {
     clientSecret: process.env.GOOGLE_CLIENT_SECRET || '',
     callbackUrl: process.env.GOOGLE_CALLBACK_URL || 'http://localhost:3000/api/v1/auth/google/callback',
   },
+
+  payos: {
+    clientId: process.env.PAYOS_CLIENT_ID || '',
+    apiKey: process.env.PAYOS_API_KEY || '',
+    checksumKey: process.env.PAYOS_CHECKSUM_KEY || '',
+    // Return/cancel URLs default to the configured FRONTEND_URL.
+    // Sandbox: leave blank to fall back to FRONTEND_URL.
+    returnUrl: process.env.PAYOS_RETURN_URL || '',
+    cancelUrl: process.env.PAYOS_CANCEL_URL || '',
+    // PayOS endpoint. Use the public sandbox by default.
+    baseUrl: process.env.PAYOS_BASE_URL || 'https://api-merchant.payos.vn',
+    configured: Boolean(
+      process.env.PAYOS_CLIENT_ID && process.env.PAYOS_API_KEY && process.env.PAYOS_CHECKSUM_KEY,
+    ),
+  },
 };
 
 module.exports = config;

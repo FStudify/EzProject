@@ -145,4 +145,23 @@ export const Endpoints = {
   ADMIN_ANNOUNCEMENTS_ACTIVE: `${BASE}/announcements/active`,
   ADMIN_PROFILE: `${BASE}/admin/profile`,
   ADMIN_PROFILE_PASSWORD: `${BASE}/admin/profile/password`,
+
+  // ── Revenue ──────────────────────────────────────────────
+  ADMIN_REVENUE_OVERVIEW: `${BASE}/admin/revenue/overview`,
+  ADMIN_REVENUE_CHART: `${BASE}/admin/revenue/chart`,
+  ADMIN_REVENUE_PLANS: `${BASE}/admin/revenue/plans`,
+  ADMIN_REVENUE_STATUS: `${BASE}/admin/revenue/status`,
+  ADMIN_REVENUE_PAYMENTS: `${BASE}/admin/revenue/payments`,
+  ADMIN_REVENUE_EXPIRING: `${BASE}/admin/revenue/expiring`,
+  ADMIN_REVENUE_EXPORT: `${BASE}/admin/revenue/export`,
+  ADMIN_REVENUE_SUBSCRIPTIONS: `${BASE}/admin/revenue/subscriptions`,
+  ADMIN_REVENUE_TOP_CUSTOMERS: `${BASE}/admin/revenue/top-customers`,
+
+  // ── Payments / Plans ─────────────────────────────────────
+  PLANS: `${BASE}/payments/plans`,
+  PAYMENT_CREATE: `${BASE}/payments/create`,
+  PAYMENT_ME_CURRENT: `${BASE}/payments/me/current`,
+  PAYMENT_ME_HISTORY: `${BASE}/payments/me/history`,
+  PAYMENT_ME_STATUS: (orderCode: string) => `${BASE}/payments/me/status/${orderCode}`,
+  PAYMENT_ME_CANCEL: (orderCode: string) => `${BASE}/payments/me/cancel/${orderCode}`,
 } as const;

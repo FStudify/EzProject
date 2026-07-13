@@ -375,6 +375,34 @@ const validators = {
     search: z.string().optional(),
   }),
 
+  // ── Plans (public list) — query only, no body ─────────────
+  listPlans: z.object({}).optional(),
+
+  // ── Payments ──────────────────────────────────────────────
+  createPayment: z
+    .object({
+      planKey: z.string().trim().toLowerCase().min(1, 'planKey is required'),
+    })
+    .strict(),
+
+  paymentListQuery: z.object({
+    status: z.enum(['PENDING', 'PAID', 'CANCELLED', 'FAILED', 'REFUNDED']).optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  }),
+
+  // ── Admin revenue ─────────────────────────────────────────
+  revenueQuery: z.object({
+    // Date range ISO yyyy-mm-dd; backend computes day/week/month buckets.
+    from: z.string().optional(),
+    to: z.string().optional(),
+    planKey: z.string().optional(),
+    status: z.enum(['PENDING', 'PAID', 'CANCELLED', 'FAILED', 'REFUNDED']).optional(),
+    search: z.string().optional(),
+    page: z.coerce.number().int().min(1).default(1),
+    limit: z.coerce.number().int().min(1).max(100).default(20),
+  }),
+
   createDocumentLink: z.object({
     title: z.string().min(1, 'Title is required').max(255),
     description: z.string().max(2000).optional().default(''),

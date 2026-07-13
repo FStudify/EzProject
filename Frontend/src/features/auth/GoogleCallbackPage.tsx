@@ -17,7 +17,7 @@
  */
 import { useEffect, useRef } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap } from 'lucide-react';
+import { } from 'lucide-react';
 import { setTokens, getAccessToken, clearTokens } from '@/api/config';
 import { getMe } from '@/api/user.api';
 
@@ -70,9 +70,7 @@ export default function GoogleCallbackPage() {
 
   return (
     <div className="flex min-h-screen flex-col items-center justify-center gap-4 bg-canvas">
-      <div className="flex h-12 w-12 items-center justify-center rounded-2xl bg-primary text-white shadow-lg">
-        <GraduationCap className="h-6 w-6" />
-      </div>
+      <img src="/logoEZProject.jpg" alt="EZProject" className="h-12 w-12 rounded-2xl shadow-lg object-cover" />
       <p className="text-sm font-medium text-ink-muted">Đang xử lý đăng nhập Google...</p>
       <div className="h-1 w-32 overflow-hidden rounded-full bg-surface-muted">
         <div className="h-full animate-[loading_1.2s_ease-in-out_infinite] rounded-full bg-primary" />

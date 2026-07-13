@@ -1,25 +1,31 @@
 import { useEffect, useRef, useState } from 'react';
-import { Link } from 'react-router-dom';
-import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon, Shield } from 'lucide-react';
+import { Link, useLocation } from 'react-router-dom';
+import { Menu, Search, Bell, LogOut, UserPen, Settings, Sun, Moon, Shield, Sparkles, Crown, Receipt } from 'lucide-react';
 import { Avatar, useToast } from '@/components/ui';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { getNotifications } from '@/api/user.api';
 import { getMyInvitations } from '@/api/invitations.api';
+import { fetchMyCurrentSubscription } from '@/api/payment.api';
 import NotificationDrawer, { NOTIFICATIONS_UPDATED_EVENT } from './NotificationDrawer';
 import { useSidebar } from './SidebarContext';
-
+import SubscriptionModal from '@/components/payment/SubscriptionModal';
+import PaymentHistoryModal from '@/components/payment/PaymentHistoryModal';
 export default function Topbar() {
   const { user, logout } = useAuth();
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLanguage();
   const { toggle, isMobile } = useSidebar();
   const { toast } = useToast();
+  const location = useLocation();
   const [isMenuOpen, setIsMenuOpen] = useState(false);
   const [isNotifOpen, setIsNotifOpen] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [invitationCount, setInvitationCount] = useState(0);
+  const [currentPlanKey, setCurrentPlanKey] = useState<string | null>(null);
+  const [isSubModalOpen, setIsSubModalOpen] = useState(false);
+  const [isHistoryModalOpen, setIsHistoryModalOpen] = useState(false);
   const menuRef = useRef<HTMLDivElement | null>(null);
 
   const fetchBadge = async () => {
@@ -117,6 +123,57 @@ export default function Topbar() {
     return () => document.removeEventListener('mousedown', onClickOutside);
   }, []);
 
+  /**
+   * Refetch current subscription mỗi khi route đổi. Điều này đảm bảo:
+   *  - Sau khi user thanh toán thành công (về từ PayOS → /payment/result → /app),
+   *    button "Nâng cấp" tự đổi thành "Quản lý gói".
+   *  - Tránh gọi thừa bằng cách skip đường dẫn public (/pricing, /payment/result).
+   */
+  useEffect(() => {
+    if (!user) {
+      setCurrentPlanKey(null);
+      return;
+    }
+    if (!location.pathname.startsWith('/app')) {
+      return;
+    }
+    let cancelled = false;
+    fetchMyCurrentSubscription()
+      .then((sub) => {
+        if (cancelled) return;
+        setCurrentPlanKey(sub?.planKey ?? null);
+      })
+      .catch(() => {
+        if (!cancelled) setCurrentPlanKey(null);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, [user, location.pathname]);
+
+  const onPaidPlan = currentPlanKey && currentPlanKey !== 'free';
+  const planBadge = onPaidPlan
+    ? ({ key: currentPlanKey, name: (currentPlanKey as string).toUpperCase() })
+    : null;
+
+  // ── Helpers: màu & icon cho plan badge ─────────────────────────
+  const PLAN_STYLES: Record<string, { bg: string; color: string; border: string; icon: string }> = {
+    pro: {
+      bg: 'linear-gradient(135deg, #a855f7 0%, #7c3aed 100%)',
+      color: '#ffffff',
+      border: 'rgba(168, 85, 247, 0.5)',
+      icon: '⚡',
+    },
+    ultra: {
+      bg: 'linear-gradient(135deg, #f59e0b 0%, #d97706 50%, #b45309 100%)',
+      color: '#ffffff',
+      border: 'rgba(245, 158, 11, 0.6)',
+      icon: '👑',
+    },
+  };
+  const planStyle = planBadge ? PLAN_STYLES[planBadge.key] ?? null : null;
+  const isAdmin = user?.role === 'ADMIN';
+
   return (
     <>
       <header
@@ -164,6 +221,54 @@ export default function Topbar() {
         </div>
 
         <div className="ml-auto flex items-center gap-1.5">
+
+          {/* Upgrade / Manage plan button — ẩn với ADMIN */}
+          {!isAdmin && (
+            <button
+              onClick={() => setIsSubModalOpen(true)}
+              className="inline-flex items-center gap-1.5 rounded-xl px-3 py-1.5 text-xs font-bold uppercase tracking-wider transition-all"
+              style={{
+                background: onPaidPlan
+                  ? 'linear-gradient(135deg, #f59e0b 0%, #d97706 100%)'
+                  : 'linear-gradient(135deg, #F97316 0%, #EA580C 100%)',
+                color: '#ffffff',
+                boxShadow: '0 6px 16px -8px rgba(249, 115, 22, 0.5)',
+              }}
+              onMouseEnter={(e) => {
+                e.currentTarget.style.transform = 'translateY(-1px)';
+                e.currentTarget.style.boxShadow = '0 10px 20px -8px rgba(249, 115, 22, 0.6)';
+              }}
+              onMouseLeave={(e) => {
+                e.currentTarget.style.transform = 'translateY(0)';
+                e.currentTarget.style.boxShadow = '0 6px 16px -8px rgba(249, 115, 22, 0.5)';
+              }}
+              title={onPaidPlan
+                ? (lang === 'en' ? 'View your subscriptions and payment history' : 'Xem gói đang dùng và lịch sử thanh toán')
+                : (lang === 'en' ? 'Upgrade to Pro or Ultra' : 'Nâng cấp lên Pro hoặc Ultra')}
+            >
+              {onPaidPlan ? (
+                <>
+                  <Crown className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">
+                    {lang === 'en' ? 'My Plan' : 'Gói của tôi'}
+                  </span>
+                  <span className="sm:hidden">
+                    {lang === 'en' ? 'Plan' : 'Gói'}
+                  </span>
+                </>
+              ) : (
+                <>
+                  <Sparkles className="h-3.5 w-3.5" aria-hidden />
+                  <span className="hidden sm:inline">
+                    {lang === 'en' ? 'Upgrade' : 'Nâng cấp'}
+                  </span>
+                  <span className="sm:hidden">
+                    {lang === 'en' ? 'Pro' : 'Pro'}
+                  </span>
+                </>
+              )}
+            </button>
+          )}
 
           {/* Language switcher */}
           <div
@@ -233,6 +338,28 @@ export default function Topbar() {
             )}
           </button>
 
+          {/* Plan badge (Pro / Ultra) */}
+          {planBadge && planStyle && (
+            <span
+              className="inline-flex h-7 items-center gap-1 rounded-full px-2.5 text-[10px] font-bold uppercase tracking-widest"
+              title={lang === 'en'
+                ? `You are on ${planBadge.name} plan`
+                : `Bạn đang dùng gói ${planBadge.name}`}
+              style={{
+                background: planStyle.bg,
+                color: planStyle.color,
+                border: `1px solid ${planStyle.border}`,
+                boxShadow: '0 4px 12px -4px rgba(0,0,0,0.25)',
+                letterSpacing: '0.12em',
+              }}
+            >
+              <span aria-hidden style={{ fontSize: '11px', lineHeight: 1 }}>
+                {planStyle.icon}
+              </span>
+              <span>{planBadge.name}</span>
+            </span>
+          )}
+
           {/* User menu */}
           <div ref={menuRef} className="relative">
             <button
@@ -244,7 +371,7 @@ export default function Topbar() {
               aria-expanded={isMenuOpen}
               aria-label="Menu"
             >
-              <Avatar src={user?.avatar ?? undefined} name={user?.fullName ?? 'User'} size="sm" />
+              <Avatar src={user?.avatar ?? undefined} name={user?.fullName ?? 'User'} size="sm" planKey={currentPlanKey ?? undefined} />
             </button>
 
             {isMenuOpen && (
@@ -298,6 +425,20 @@ export default function Topbar() {
                   <Settings className="h-4 w-4" style={{ color: theme === 'dark' ? '#9a9086' : '#635648' }} />
                   {t('nav_settings')}
                 </Link>
+                <button
+                  onClick={() => {
+                    setIsMenuOpen(false);
+                    setIsHistoryModalOpen(true);
+                  }}
+                  role="menuitem"
+                  className="flex w-full items-center gap-2 rounded-xl px-3 py-2.5 text-left text-sm font-medium transition-colors"
+                  style={{ color: theme === 'dark' ? '#f0ebe3' : '#1F1F1F' }}
+                  onMouseEnter={e => (e.currentTarget.style.backgroundColor = theme === 'dark' ? '#2d261c' : '#FFF8F3')}
+                  onMouseLeave={e => (e.currentTarget.style.backgroundColor = 'transparent')}
+                >
+                  <Receipt className="h-4 w-4" style={{ color: theme === 'dark' ? '#9a9086' : '#635648' }} />
+                  {lang === 'en' ? 'Payment History' : 'Lịch sử thanh toán'}
+                </button>
                 <div className="my-1" style={{ borderTop: `1px solid ${theme === 'dark' ? '#4a3d2e' : '#E8D8CF'}` }} />
                 <button
                   type="button"
@@ -318,6 +459,13 @@ export default function Topbar() {
       </header>
 
       <NotificationDrawer isOpen={isNotifOpen} onClose={() => setIsNotifOpen(false)} />
+      
+      {!isAdmin && (
+        <>
+          <SubscriptionModal isOpen={isSubModalOpen} onClose={() => setIsSubModalOpen(false)} />
+          <PaymentHistoryModal isOpen={isHistoryModalOpen} onClose={() => setIsHistoryModalOpen(false)} />
+        </>
+      )}
     </>
   );
 }

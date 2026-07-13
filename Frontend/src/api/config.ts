@@ -547,6 +547,10 @@ export const api = {
   getConfig(): ApiConfig {
     return { ...config };
   },
+
+  getBaseUrl(): string {
+    return config.baseUrl;
+  },
 };
 
 // ── Utilities ─────────────────────────────────────────────────

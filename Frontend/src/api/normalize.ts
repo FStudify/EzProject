@@ -49,7 +49,7 @@ function normalizeProjectMember(m: Record<string, unknown>, ownerDoc?: Record<st
   return {
     member: normalizeUser(userDoc ?? m),
     isOwner: Boolean(m.isOwner),
-    role: ((m.role as string) ?? 'member').toLowerCase() as ProjectMember['role'],
+    role: ((m.role as string) ?? 'MEMBER').toUpperCase() as ProjectMember['role'],
   };
 }
 

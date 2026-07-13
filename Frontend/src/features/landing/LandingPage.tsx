@@ -1,7 +1,6 @@
 import { useState, useEffect, useRef, useCallback } from 'react';
 import { useNavigate } from 'react-router-dom';
 import {
-  GraduationCap,
   CheckSquare,
   Users,
   TrendingUp,
@@ -30,6 +29,7 @@ import {
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui';
 
 /* ──────────────────────────────────────────────────────────────────────
@@ -103,8 +103,23 @@ export default function LandingPage() {
   const { theme, toggleTheme } = useTheme();
   const { t, lang, setLang } = useLanguage();
   const navigate = useNavigate();
+  const { user } = useAuth();
   const isVi = lang === 'vi';
   const isDark = theme === 'dark';
+
+  // Pricing CTA: từ landing đi vào flow chọn gói + thanh toán.
+  // - Chưa login → /login (sau đó PricingPage sẽ đọc planKey từ state/query
+  //   để auto-trigger handleUpgrade).
+  // - Đã login → /pricing?planKey=... để PricingPage auto-trigger handleUpgrade.
+  const handlePlanClick = (plan: { key: string }) => {
+    if (!user) {
+      navigate('/login', {
+        state: { from: { pathname: '/pricing', search: `?planKey=${encodeURIComponent(plan.key)}` }, planKey: plan.key },
+      });
+    } else {
+      navigate(`/pricing?planKey=${encodeURIComponent(plan.key)}`, { state: { planKey: plan.key } });
+    }
+  };
 
   // Mobile menu
   const [mobileOpen, setMobileOpen] = useState(false);
@@ -200,9 +215,7 @@ export default function LandingPage() {
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
           {/* Logo */}
           <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2.5 focus:outline-none">
-            <div className="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(145deg,#F97316,#C2410C)' }}>
-              <GraduationCap className="h-[18px] w-[18px]" />
-            </div>
+            <img src="/logoEZProject.jpg" alt="EZProject" className="h-9 w-9 rounded-xl shadow-lg object-cover" />
             <span className="text-lg font-extrabold tracking-tight text-ink-primary">EZProject</span>
           </button>
 
@@ -291,9 +304,13 @@ export default function LandingPage() {
               {t('landing_cta_start')}
               <ArrowRight className="h-5 w-5" />
             </Button>
-            <Button variant="secondary" size="lg" onClick={() => scrollTo('pricing-section')}
+            <Button variant="secondary" size="lg" onClick={() => navigate('/pricing')}
               className="font-bold border transition-all hover:-translate-y-1" style={{ borderColor: borderC }}>
-              {isVi ? 'Xem bảng giá' : 'View Pricing'}
+              {isVi ? 'Xem các gói & giá' : 'View Plans'}
+            </Button>
+            <Button variant="ghost" size="lg" onClick={() => scrollTo('features-section')}
+              className="font-bold transition-all hover:bg-surface-hover hover:-translate-y-1">
+              {isVi ? 'Tính năng' : 'Features'}
             </Button>
           </div>
         </div>
@@ -321,9 +338,7 @@ export default function LandingPage() {
               {/* Sidebar mock */}
               <div className="hidden md:flex flex-col w-48 shrink-0 border-r p-4 gap-3" style={{ borderColor: borderC, background: isDark ? 'rgba(31,21,16,0.6)' : 'rgba(255,245,236,0.5)' }}>
                 <div className="flex items-center gap-2 mb-3">
-                  <div className="h-7 w-7 rounded-lg bg-gradient-to-br from-orange-500 to-amber-500 flex items-center justify-center">
-                    <GraduationCap className="h-3.5 w-3.5 text-white" />
-                  </div>
+                  <img src="/logoEZProject.jpg" alt="EZProject" className="h-7 w-7 rounded-lg object-cover" />
                   <span className="text-xs font-bold text-ink-primary">EZProject</span>
                 </div>
                 {[{ icon: LayoutDashboard, label: 'Dashboard', active: true }, { icon: CheckSquare, label: 'Tasks', active: false }, { icon: MessageCircle, label: 'Chat', active: false }, { icon: FileText, label: 'Files', active: false }].map(item => (
@@ -587,7 +602,7 @@ export default function LandingPage() {
                   </div>
                 </div>
 
-                <Button variant={plan.accent ? 'accent' : 'secondary'} size="lg" onClick={() => navigate('/register')}
+                <Button variant={plan.accent ? 'accent' : 'secondary'} size="lg" onClick={() => handlePlanClick(plan)}
                   className="w-full font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 rounded-xl">
                   {t('pricing_get_started')}
                 </Button>
@@ -687,9 +702,7 @@ export default function LandingPage() {
             {/* Brand */}
             <div className="lg:col-span-2">
               <div className="flex items-center gap-2.5 mb-5">
-                <div className="flex h-9 w-9 items-center justify-center rounded-xl text-white shadow-md" style={{ background: 'linear-gradient(145deg,#F97316,#C2410C)' }}>
-                  <GraduationCap className="h-[18px] w-[18px]" />
-                </div>
+                <img src="/logoEZProject.jpg" alt="EZProject" className="h-9 w-9 rounded-xl shadow-lg object-cover" />
                 <span className="text-lg font-black text-ink-primary">EZProject</span>
               </div>
               <p className="text-sm font-medium text-ink-muted max-w-sm leading-relaxed">{t('landing_footer')}</p>

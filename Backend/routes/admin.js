@@ -2,6 +2,7 @@
 
 const express = require('express');
 const adminController = require('../controllers/adminController');
+const adminRevenueController = require('../controllers/adminRevenueController');
 const { requireAuth, requireAdmin } = require('../middlewares/auth');
 const { validate, validators } = require('../validators');
 
@@ -75,6 +76,46 @@ router.post(
   '/email/test',
   validate(validators.sendTestEmail),
   adminController.sendTestEmail,
+);
+
+// ── 9. Revenue Dashboard ──────────────────────────────────────
+router.get(
+  '/revenue/overview',
+  adminRevenueController.getOverview,
+);
+router.get(
+  '/revenue/chart',
+  adminRevenueController.getChart,
+);
+router.get(
+  '/revenue/plans',
+  adminRevenueController.getPlanBreakdown,
+);
+router.get(
+  '/revenue/status',
+  adminRevenueController.getStatusDistribution,
+);
+router.get(
+  '/revenue/payments',
+  validate(validators.revenueQuery, 'query'),
+  adminRevenueController.listPayments,
+);
+router.get(
+  '/revenue/expiring',
+  adminRevenueController.getExpiringSubscriptions,
+);
+router.get(
+  '/revenue/export',
+  adminRevenueController.exportPaymentsCsv,
+);
+router.get(
+  '/revenue/subscriptions',
+  validate(validators.revenueQuery, 'query'),
+  adminRevenueController.listSubscriptions,
+);
+router.get(
+  '/revenue/top-customers',
+  adminRevenueController.getTopCustomers,
 );
 
 module.exports = router;

@@ -9,6 +9,9 @@ const Meeting = require('./Meeting');
 const { ChatRoom, ChatMessage } = require('./Chat');
 const { Activity, Notification, MemberEvaluation } = require('./Activity');
 const InviteLink = require('./InviteLink');
+const Plan = require('./Plan');
+const Subscription = require('./Subscription');
+const Payment = require('./Payment');
 
 module.exports = {
   User,
@@ -24,4 +27,7 @@ module.exports = {
   Notification,
   MemberEvaluation,
   InviteLink,
+  Plan,
+  Subscription,
+  Payment,
 };

@@ -200,6 +200,18 @@ export default function AdminUsersPage() {
             );
           })}
         </div>
+        <div className="flex items-center rounded-lg border bg-white" style={{ borderColor: '#E8D8CF' }}>
+          <select
+            value={filters.planKey || ''}
+            onChange={(e) => setFilters(prev => ({ ...prev, planKey: e.target.value || undefined, page: 1 }))}
+            className="h-8 px-2 text-xs font-semibold text-slate-700 bg-transparent outline-none cursor-pointer"
+          >
+            <option value="">Tất cả gói</option>
+            <option value="free">Gói Free</option>
+            <option value="pro">Gói Pro</option>
+            <option value="ultra">Gói Ultra</option>
+          </select>
+        </div>
         <span className="ml-auto text-xs text-slate-500">{totalBadge}</span>
       </div>
 
@@ -247,9 +259,16 @@ export default function AdminUsersPage() {
                       onClick={() => void openDetail(u.id)}
                       className="flex items-center gap-3 text-left"
                     >
-                      <Avatar src={u.avatar ?? undefined} name={u.fullName} size="sm" />
+                      <Avatar src={u.avatar ?? undefined} name={u.fullName} size="sm" planKey={u.currentPlan} />
                       <div>
-                        <p className="font-semibold text-slate-800">{u.fullName}</p>
+                        <div className="flex items-center gap-1.5">
+                          <p className="font-semibold text-slate-800">{u.fullName}</p>
+                          {u.currentPlan && u.currentPlan !== 'FREE' && (
+                            <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-sm ${u.currentPlan === 'ULTRA' ? 'bg-fuchsia-100 text-fuchsia-700' : 'bg-amber-100 text-amber-700'}`}>
+                              {u.currentPlan}
+                            </span>
+                          )}
+                        </div>
                         <p className="text-xs text-slate-500">@{u.username}</p>
                       </div>
                     </button>

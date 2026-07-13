@@ -1,8 +1,8 @@
 export type Lang = 'vi' | 'en';
 
 export type DictKey =
-  | 'app_name' | 'nav_overview' | 'nav_tasks' | 'nav_documents' | 'nav_members' | 'nav_meetings' | 'nav_chat' | 'nav_performance' | 'nav_health' | 'nav_projects' | 'nav_dashboard' | 'nav_profile' | 'nav_settings'
-  | 'login_title' | 'login_subtitle' | 'register_title' | 'register_subtitle' | 'username' | 'password' | 'email' | 'full_name' | 'confirm_password' | 'remember_me' | 'forgot_password' | 'no_account' | 'have_account' | 'sign_up' | 'sign_in' | 'sign_out'
+  | 'app_name' | 'nav_overview' | 'nav_tasks' | 'nav_documents' | 'nav_members' | 'nav_meetings' | 'nav_chat' | 'nav_performance' | 'nav_health' | 'nav_projects' | 'nav_dashboard' | 'nav_profile' | 'nav_settings' | 'nav_payment_history'
+  | 'login_title' | 'login_subtitle' | 'register_title' | 'register_subtitle' | 'username' | 'password' | 'email' | 'full_name' | 'confirm_password' | 'remember_me' | 'forgot_password' | 'no_account' | 'have_account' | 'sign_up' | 'sign_in' | 'sign_out' | 'back_to_landing'
   | 'notifications' | 'mark_all_read' | 'no_notifications' | 'search_placeholder'
   | 'projects' | 'recent_projects' | 'all_projects' | 'members'
   | 'welcome_back' | 'project_overview' | 'my_tasks' | 'upcoming_meetings' | 'recent_activity' | 'no_projects' | 'create_project' | 'view_all'
@@ -49,6 +49,15 @@ export type DictKey =
   | 'theme' | 'theme_light' | 'theme_dark' | 'language' | 'account' | 'security' | 'notifications_settings' | 'appearance' | 'general'
   | 'profile' | 'edit_profile' | 'department' | 'position' | 'phone' | 'bio' | 'save_changes' | 'locked' | 'email_locked_notice'
   | 'loading' | 'error' | 'success' | 'confirm' | 'yes' | 'no' | 'ok' | 'close' | 'back' | 'next' | 'previous' | 'total' | 'name' | 'date' | 'description' | 'created_at' | 'updated_at' | 'due_date' | 'priority' | 'assignee' | 'role' | 'all' | 'active' | 'inactive' | 'today' | 'yesterday' | 'this_week' | 'this_month'
+  | 'back_to_home' | 'status_filter_all'
+  | 'payment' | 'payment_history' | 'payment_method' | 'payment_amount' | 'payment_status' | 'payment_status_paid' | 'payment_status_pending' | 'payment_status_cancelled' | 'payment_status_failed' | 'payment_status_refunded'
+  | 'payment_plan' | 'payment_order' | 'payment_paid_at' | 'payment_created_at'
+  | 'payment_success' | 'payment_failed' | 'payment_cancelled' | 'payment_pending'
+  | 'payment_upgrade' | 'payment_redirecting' | 'payment_current_plan' | 'payment_already_active'
+  | 'admin_revenue_title' | 'admin_revenue_overview' | 'admin_revenue_chart' | 'admin_revenue_payments' | 'admin_revenue_status'
+  | 'admin_revenue_total' | 'admin_revenue_today' | 'admin_revenue_this_week' | 'admin_revenue_this_month' | 'admin_revenue_subscribers' | 'admin_revenue_search'
+  | 'admin_revenue_export_csv' | 'admin_revenue_refresh'
+  | 'admin_nav_revenue' | 'admin_revenue_plan_breakdown'
   | 'new_task_assigned' | 'task_due_soon' | 'meeting_reminder' | 'document_shared' | 'member_joined'
   | 'demo_account' | 'demo_account_desc'
   | 'ezproject_member' | 'phone_not_updated' | 'email_not_updated' | 'on_time_rate' | 'outstanding_achievements' | 'no_recent_activity' | 'avatar_update_success' | 'avatar_update_error' | 'profile_update_success' | 'profile_update_error'
@@ -69,6 +78,7 @@ export const vi = {
   nav_dashboard: 'Bảng điều khiển',
   nav_profile: 'Hồ sơ',
   nav_settings: 'Cài đặt',
+  nav_payment_history: 'Lịch sử thanh toán',
 
   // Auth
   login_title: 'Đăng nhập',
@@ -87,6 +97,7 @@ export const vi = {
   sign_up: 'Đăng ký',
   sign_in: 'Đăng nhập',
   sign_out: 'Đăng xuất',
+  back_to_landing: 'Về trang chủ',
 
   // Topbar
   notifications: 'Thông báo',
@@ -853,6 +864,49 @@ export const vi = {
   footer_email_label: 'Email liên hệ:',
   footer_location_label: 'Địa chỉ:',
   footer_social_label: 'Kết nối với chúng tôi:',
+
+  // Payments & Pricing actions
+  back_to_home: 'Về trang chủ',
+  status_filter_all: 'Tất cả',
+  payment: 'Thanh toán',
+  payment_history: 'Lịch sử thanh toán',
+  payment_method: 'Phương thức',
+  payment_amount: 'Số tiền',
+  payment_status: 'Trạng thái',
+  payment_status_paid: 'Đã thanh toán',
+  payment_status_pending: 'Đang chờ',
+  payment_status_cancelled: 'Đã huỷ',
+  payment_status_failed: 'Thất bại',
+  payment_status_refunded: 'Hoàn tiền',
+  payment_plan: 'Gói',
+  payment_order: 'Mã đơn',
+  payment_paid_at: 'Thanh toán lúc',
+  payment_created_at: 'Tạo lúc',
+  payment_success: 'Thanh toán thành công',
+  payment_failed: 'Thanh toán thất bại',
+  payment_cancelled: 'Đã huỷ thanh toán',
+  payment_pending: 'Đang chờ xác nhận',
+  payment_upgrade: 'Nâng cấp gói',
+  payment_redirecting: 'Đang chuyển...',
+  payment_current_plan: 'Gói hiện tại',
+  payment_already_active: 'Gói đang dùng rồi',
+
+  // Admin revenue
+  admin_revenue_title: 'Bảng điều khiển doanh thu',
+  admin_revenue_overview: 'Tổng quan',
+  admin_revenue_chart: 'Doanh thu theo ngày',
+  admin_revenue_payments: 'Thanh toán gần đây',
+  admin_revenue_status: 'Phân bố trạng thái',
+  admin_revenue_total: 'Tổng doanh thu',
+  admin_revenue_today: 'Doanh thu hôm nay',
+  admin_revenue_this_week: 'Doanh thu tuần này',
+  admin_revenue_this_month: 'Doanh thu tháng này',
+  admin_revenue_subscribers: 'Subscriber đang hoạt động',
+  admin_revenue_search: 'Tìm theo tên, email, gói...',
+  admin_revenue_export_csv: 'Xuất CSV (trang này)',
+  admin_revenue_refresh: 'Làm mới',
+  admin_nav_revenue: 'Doanh thu',
+  admin_revenue_plan_breakdown: 'Doanh thu theo gói',
 } as const;
 
 export const en = {
@@ -870,6 +924,7 @@ export const en = {
   nav_dashboard: 'Dashboard',
   nav_profile: 'Profile',
   nav_settings: 'Settings',
+  nav_payment_history: 'Payment history',
 
   // Auth
   login_title: 'Sign In',
@@ -888,6 +943,7 @@ export const en = {
   sign_up: 'Sign Up',
   sign_in: 'Sign In',
   sign_out: 'Sign Out',
+  back_to_landing: 'Back to Landing',
 
   // Topbar
   notifications: 'Notifications',
@@ -1655,6 +1711,49 @@ export const en = {
   footer_email_label: 'Contact Email:',
   footer_location_label: 'Location:',
   footer_social_label: 'Connect with us:',
+
+  // Payments & Pricing actions
+  back_to_home: 'Back to home',
+  status_filter_all: 'All',
+  payment: 'Payment',
+  payment_history: 'Payment history',
+  payment_method: 'Method',
+  payment_amount: 'Amount',
+  payment_status: 'Status',
+  payment_status_paid: 'Paid',
+  payment_status_pending: 'Pending',
+  payment_status_cancelled: 'Cancelled',
+  payment_status_failed: 'Failed',
+  payment_status_refunded: 'Refunded',
+  payment_plan: 'Plan',
+  payment_order: 'Order code',
+  payment_paid_at: 'Paid at',
+  payment_created_at: 'Created at',
+  payment_success: 'Payment successful',
+  payment_failed: 'Payment failed',
+  payment_cancelled: 'Payment cancelled',
+  payment_pending: 'Awaiting confirmation',
+  payment_upgrade: 'Upgrade plan',
+  payment_redirecting: 'Redirecting...',
+  payment_current_plan: 'Current plan',
+  payment_already_active: 'You already have this plan',
+
+  // Admin revenue
+  admin_revenue_title: 'Revenue Dashboard',
+  admin_revenue_overview: 'Overview',
+  admin_revenue_chart: 'Revenue by day',
+  admin_revenue_payments: 'Recent payments',
+  admin_revenue_status: 'Payment status distribution',
+  admin_revenue_total: 'Total Revenue',
+  admin_revenue_today: "Revenue Today",
+  admin_revenue_this_week: "Revenue This Week",
+  admin_revenue_this_month: 'Revenue This Month',
+  admin_revenue_subscribers: 'Active Subscribers',
+  admin_revenue_search: 'Search by name, email, plan…',
+  admin_revenue_export_csv: 'CSV (this page)',
+  admin_revenue_refresh: 'Refresh',
+  admin_nav_revenue: 'Revenue',
+  admin_revenue_plan_breakdown: 'Revenue by plan',
 } as const;
 
 export type Dict = Record<keyof typeof vi, string>;

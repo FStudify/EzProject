@@ -2,7 +2,6 @@ import { useState } from 'react';
 import { Link } from 'react-router-dom';
 import {
   ArrowLeft,
-  GraduationCap,
   Mail,
   KeyRound,
   CheckCircle2,
@@ -77,9 +76,7 @@ export default function ForgotPasswordPage() {
             <span>Quay lại đăng nhập</span>
           </Link>
           <div className="flex items-center gap-2 text-white drop-shadow">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D97853]">
-              <GraduationCap className="h-4 w-4" />
-            </div>
+            <img src="/logoEZProject.jpg" alt="EZProject" className="h-8 w-8 rounded-lg shadow-sm object-cover" />
             <span className="text-base font-bold tracking-tight">EZProject</span>
           </div>
         </div>

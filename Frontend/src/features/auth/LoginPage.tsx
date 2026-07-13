@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useLocation, useNavigate, useSearchParams } from 'react-router-dom';
-import { GraduationCap, Sun, Moon, ArrowLeft } from 'lucide-react';
+import { Sun, Moon, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
@@ -69,8 +69,10 @@ export default function LoginPage() {
     try {
       const result = await login(trimmedUsername, password);
       if (result.ok) {
-        const attempted = (location.state as { from?: { pathname: string } })?.from?.pathname;
-        const target = attempted || homePathForRole(result.user?.role);
+        const from = (location.state as { from?: { pathname?: string; search?: string } } | null)?.from;
+        const pathname = from?.pathname;
+        const search = from?.search || '';
+        const target = pathname ? `${pathname}${search}` : searchParams.get('next') || homePathForRole(result.user?.role);
         navigate(target, { replace: true });
       }
     } catch (err) {
@@ -97,9 +99,7 @@ export default function LoginPage() {
           </button>
           <div className="h-5 w-px bg-white/20" />
           <div className="flex items-center gap-2.5 text-white drop-shadow">
-            <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-[#D97853]">
-              <GraduationCap className="h-4 w-4" />
-            </div>
+            <img src="/logoEZProject.jpg" alt="EZProject" className="h-8 w-8 rounded-lg shadow-sm object-cover" />
             <span className="text-base font-bold tracking-tight">EZProject</span>
           </div>
         </div>

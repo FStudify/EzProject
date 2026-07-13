@@ -7,6 +7,8 @@ interface AvatarProps {
   size?: 'sm' | 'md' | 'lg';
   showCrown?: boolean;
   online?: boolean;
+  planKey?: string;
+  className?: string;
 }
 
 const sizeStyles = {
@@ -65,20 +67,32 @@ export default function Avatar({
   size = 'md',
   showCrown = false,
   online,
+  planKey,
+  className = '',
 }: AvatarProps) {
   const [imgError, setImgError] = useState(false);
   const sizeClass = sizeStyles[size];
-  const ringClass =
-    online === undefined
-      ? 'ring-0'
-      : online
-        ? 'ring-2 ring-primary'
-        : 'ring-2 ring-slate-300';
+  const plan = planKey?.toUpperCase();
+
+  let specialRing = '';
+  if (plan === 'ULTRA') {
+    specialRing = 'ring-[3px] ring-fuchsia-500 ring-offset-2 ring-offset-white shadow-[0_0_10px_rgba(217,70,239,0.7)]';
+  } else if (plan === 'PRO') {
+    specialRing = 'ring-[3px] ring-amber-400 ring-offset-2 ring-offset-white shadow-[0_0_8px_rgba(251,191,36,0.6)]';
+  } else {
+    specialRing =
+      online === undefined
+        ? 'ring-0'
+        : online
+          ? 'ring-2 ring-primary ring-offset-1'
+          : 'ring-2 ring-slate-300 ring-offset-1';
+  }
+
   const { bg, text } = getAvatarColors(name);
 
   const content = (
     <div
-      className={`relative shrink-0 overflow-hidden rounded-full ${sizeClass} ${ringClass}`}
+      className={`relative shrink-0 overflow-hidden rounded-full ${sizeClass} ${specialRing} ${className}`}
     >
       {src && !imgError ? (
         <img
