@@ -1,13 +1,14 @@
-import { useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Modal, Button } from '@/components/ui';
+import { Modal, Button, useToast } from '@/components/ui';
 import type { Plan, Subscription } from '@/api/types';
-import { AlertCircle, CheckCircle2, Clock } from 'lucide-react';
+import { AlertCircle, CheckCircle2, Clock, Loader2, Tag, Check, X } from 'lucide-react';
+import { validateVoucher } from '@/api/payment.api';
 
 interface ConfirmationDialogProps {
   isOpen: boolean;
   onClose: () => void;
-  onConfirm: () => void;
+  onConfirm: (voucherCode?: string) => void;
   currentSubscription: Subscription | null;
   targetPlan: Plan | null;
   isCreating: boolean;
@@ -22,6 +23,11 @@ export default function ConfirmationDialog({
   isCreating,
 }: ConfirmationDialogProps) {
   const { lang } = useLanguage();
+  const { toast } = useToast();
+  
+  const [voucherCode, setVoucherCode] = useState('');
+  const [isValidatingVoucher, setIsValidatingVoucher] = useState(false);
+  const [validatedVoucher, setValidatedVoucher] = useState<{ code: string; discount: number } | null>(null);
 
   const details = useMemo(() => {
     if (!targetPlan) return null;
@@ -40,6 +46,14 @@ export default function ConfirmationDialog({
 
     return { oldPlanKey, newPlanKey, remainingDays, action };
   }, [currentSubscription, targetPlan]);
+
+  // Reset state on open
+  useMemo(() => {
+    if (isOpen) {
+      setVoucherCode('');
+      setValidatedVoucher(null);
+    }
+  }, [isOpen]);
 
   if (!isOpen || !targetPlan || !details) return null;
 
@@ -126,8 +140,27 @@ export default function ConfirmationDialog({
     );
   };
 
+  const handleValidateVoucher = async () => {
+    if (!voucherCode.trim()) return;
+    try {
+      setIsValidatingVoucher(true);
+      const res = await validateVoucher(targetPlan.key, voucherCode.trim());
+      if (res.isValid) {
+        setValidatedVoucher({ code: voucherCode.trim().toUpperCase(), discount: res.discount });
+        toast(lang === 'en' ? 'Voucher applied successfully' : 'Áp dụng mã giảm giá thành công', 'success');
+      }
+    } catch (err: any) {
+      toast(err.message, 'error');
+      setValidatedVoucher(null);
+    } finally {
+      setIsValidatingVoucher(false);
+    }
+  };
+
   const isUpgrading = action === 'UPGRADE';
   const title = lang === 'en' ? 'Confirm Payment' : 'Xác nhận thanh toán';
+  const basePrice = targetPlan.currentPrice ?? targetPlan.priceVnd;
+  const finalPrice = Math.max(0, basePrice - (validatedVoucher?.discount || 0));
 
   return (
     <Modal isOpen={isOpen} onClose={onClose} title={title} size="sm">
@@ -140,8 +173,53 @@ export default function ConfirmationDialog({
             {targetPlan.name}
           </span>
           <span className="text-lg font-bold mt-1 text-gray-800">
-            {targetPlan.priceVnd.toLocaleString('vi-VN')} đ
+            {targetPlan.currentPrice !== undefined && targetPlan.currentPrice < targetPlan.priceVnd ? (
+              <span className="flex items-center gap-2">
+                <span className="line-through text-gray-400 text-base">{targetPlan.priceVnd.toLocaleString('vi-VN')} đ</span>
+                <span className="text-orange-600">{targetPlan.currentPrice.toLocaleString('vi-VN')} đ</span>
+              </span>
+            ) : (
+              `${targetPlan.priceVnd.toLocaleString('vi-VN')} đ`
+            )}
           </span>
+        </div>
+
+        {/* Voucher section */}
+        <div className="flex flex-col gap-2">
+          <label className="text-sm font-semibold flex items-center gap-2">
+            <Tag className="w-4 h-4 text-gray-500" />
+            {lang === 'en' ? 'Promo Code / Voucher' : 'Mã giảm giá'}
+          </label>
+          <div className="flex gap-2">
+            <input 
+              value={voucherCode}
+              onChange={e => setVoucherCode(e.target.value)}
+              placeholder={lang === 'en' ? 'Enter code...' : 'Nhập mã...'}
+              disabled={!!validatedVoucher || isValidatingVoucher}
+              className="uppercase flex-1 border rounded-md px-3 py-2 text-sm focus:outline-none focus:ring-2 focus:ring-orange-500"
+            />
+            {validatedVoucher ? (
+              <Button variant="ghost" onClick={() => { setValidatedVoucher(null); setVoucherCode(''); }} className="text-red-500">
+                <X className="w-4 h-4" />
+              </Button>
+            ) : (
+              <Button variant="secondary" onClick={handleValidateVoucher} disabled={!voucherCode.trim() || isValidatingVoucher}>
+                {isValidatingVoucher ? <Loader2 className="w-4 h-4 animate-spin" /> : (lang === 'en' ? 'Apply' : 'Áp dụng')}
+              </Button>
+            )}
+          </div>
+          {validatedVoucher && (
+            <div className="text-sm text-green-600 flex justify-between items-center bg-green-50 px-3 py-2 rounded-lg border border-green-100">
+              <span className="flex items-center gap-1"><Check className="w-4 h-4" /> {validatedVoucher.code}</span>
+              <span className="font-bold">-{validatedVoucher.discount.toLocaleString('vi-VN')} đ</span>
+            </div>
+          )}
+          {validatedVoucher && (
+            <div className="flex justify-between items-center text-lg font-bold border-t pt-3 mt-1">
+              <span>{lang === 'en' ? 'Total to Pay' : 'Tổng thanh toán'}</span>
+              <span className="text-orange-600">{finalPrice.toLocaleString('vi-VN')} đ</span>
+            </div>
+          )}
         </div>
 
         {renderContent()}
@@ -158,7 +236,7 @@ export default function ConfirmationDialog({
           <Button variant="secondary" className="flex-1" onClick={onClose} disabled={isCreating}>
             {lang === 'en' ? 'Cancel' : 'Hủy'}
           </Button>
-          <Button variant="primary" className="flex-1" onClick={onConfirm} disabled={isCreating}>
+          <Button variant="primary" className="flex-1" onClick={() => onConfirm(validatedVoucher?.code)} disabled={isCreating}>
             {isUpgrading
               ? (lang === 'en' ? 'Upgrade' : 'Nâng cấp')
               : (lang === 'en' ? 'Proceed to Pay' : 'Thanh toán')}

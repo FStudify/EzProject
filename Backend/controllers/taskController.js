@@ -473,7 +473,7 @@ exports.create = async (req, res, next) => {
     // If trying to assign someone, only leader/vice-leader can
     if (assigneeId) {
       if (!isLeaderOrViceLeader(member)) {
-        throw errors.Forbidden('Only leaders can assign tasks');
+        throw errors.Forbidden('Only leaders or vice leaders can assign tasks');
       }
       // Cannot assign to supervisor
       const assigneeMember = await Project.findOne({
@@ -693,7 +693,7 @@ exports.update = async (req, res, next) => {
           throw errors.Forbidden('Only the assignee can update task status via drag');
         }
         if (RESTRICTED_STATUSES.has(requestedStatus)) {
-          throw errors.Forbidden('Only leaders can move tasks to Hoàn thành or Tạm hoãn');
+          throw errors.Forbidden('Only leaders or vice leaders can move tasks to Hoàn thành or Tạm hoãn');
         }
       }
     }

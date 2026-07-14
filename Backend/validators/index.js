@@ -382,6 +382,7 @@ const validators = {
   createPayment: z
     .object({
       planKey: z.string().trim().toLowerCase().min(1, 'planKey is required'),
+      voucherCode: z.string().trim().toUpperCase().optional(),
     })
     .strict(),
 

@@ -6,50 +6,68 @@ import {
   Sparkles,
   X as XIcon,
   ArrowLeft,
+  X,
+  Crown,
+  Zap,
+  Star,
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useToast } from '@/components/ui';
 import {
-  createPayment,
   fetchMyCurrentSubscription,
   fetchPlans,
 } from '@/api/payment.api';
-import type { Plan, PlanKey, Subscription } from '@/api/types';
+import type { Plan, Subscription } from '@/api/types';
 
-const PLAN_FEATURES: Record<PlanKey, { included: string[]; excluded: string[] }> = {
-  free: {
-    included: ['pricing_limit_projects_free', 'pricing_limit_tasks_free', 'pricing_limit_members_free', 'pricing_feature_kanban'],
-    excluded: ['pricing_feature_timeline', 'pricing_feature_perf', 'pricing_feature_ai_pro', 'pricing_feature_eval_leader'],
-  },
-  pro: {
-    included: [
-      'pricing_limit_projects_pro',
-      'pricing_limit_tasks_pro',
-      'pricing_limit_members_pro',
-      'pricing_feature_kanban',
-      'pricing_feature_timeline',
-      'pricing_feature_perf',
-      'pricing_feature_eval_leader',
-    ],
-    excluded: ['pricing_feature_ai_premium', 'pricing_feature_export', 'pricing_feature_support'],
-  },
-  ultra: {
-    included: [
-      'pricing_limit_projects_premium',
-      'pricing_limit_tasks_premium',
-      'pricing_limit_members_premium',
-      'pricing_feature_kanban',
-      'pricing_feature_timeline',
-      'pricing_feature_perf',
-      'pricing_feature_eval_leader',
-      'pricing_feature_eval_supervisor',
-      'pricing_feature_ai_premium',
-      'pricing_feature_export',
-      'pricing_feature_support',
-    ],
-    excluded: [],
-  },
+import SubscriptionModal from '@/components/payment/SubscriptionModal';
+
+const HARDCODED_FEATURES = {
+  free: [
+    { textVi: "1 dự án hoạt động", textEn: "1 active project", included: true },
+    { textVi: "Tối đa 5 thành viên/dự án", textEn: "Up to 5 members/project", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 2 dự án/tháng", textEn: "AI Generate: 2 projects/month", included: true },
+    { textVi: "AI Chat Assistant: 10 tin/ngày", textEn: "AI Chat Assistant: 10 msgs/day", included: true },
+    { textVi: "AI Generate Task: 5 lần/tháng", textEn: "AI Generate Task: 5 times/month", included: true },
+    { textVi: "Direct Message (Giới hạn)", textEn: "Direct Message (Limited)", included: true },
+    { textVi: "Họp Video: 2 cuộc họp/tháng", textEn: "Video Meeting: 2 meetings/month", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: false },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: false },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: false },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: false },
+  ],
+  pro: [
+    { textVi: "5 dự án hoạt động", textEn: "5 active projects", included: true },
+    { textVi: "Tối đa 20 thành viên/dự án", textEn: "Up to 20 members/project", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 15 dự án/tháng", textEn: "AI Generate: 15 projects/month", included: true },
+    { textVi: "AI Chat Assistant: 100 tin/ngày", textEn: "AI Chat Assistant: 100 msgs/day", included: true },
+    { textVi: "AI Generate Task: 50 lần/ngày", textEn: "AI Generate Task: 50 times/day", included: true },
+    { textVi: "Direct Message (Không giới hạn)", textEn: "Direct Message (Unlimited)", included: true },
+    { textVi: "Họp Video (Không giới hạn)", textEn: "Video Meeting (Unlimited)", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: true },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: false },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: false },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: true },
+  ],
+  ultra: [
+    { textVi: "Không giới hạn dự án", textEn: "Unlimited projects", included: true },
+    { textVi: "Không giới hạn thành viên", textEn: "Unlimited members", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 50 dự án/tháng", textEn: "AI Generate: 50 projects/month", included: true },
+    { textVi: "AI Chat Assistant: Không giới hạn", textEn: "AI Chat Assistant: Unlimited", included: true },
+    { textVi: "AI Generate Task: Không giới hạn", textEn: "AI Generate Task: Unlimited", included: true },
+    { textVi: "Direct Message (Không giới hạn)", textEn: "Direct Message (Unlimited)", included: true },
+    { textVi: "Họp Video (Không giới hạn)", textEn: "Video Meeting (Unlimited)", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: true },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: true },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: true },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: true },
+  ],
 };
 
 export default function PricingPage() {
@@ -65,6 +83,7 @@ export default function PricingPage() {
   const [processingPlanKey, setProcessingPlanKey] = useState<string | null>(null);
   const [currentSub, setCurrentSub] = useState<Subscription | null>(null);
   const pendingPlanKeyRef = useRef<string | null>(null);
+  const [isModalOpen, setIsModalOpen] = useState(false);
 
   useEffect(() => {
     let mounted = true;
@@ -81,9 +100,6 @@ export default function PricingPage() {
     };
   }, []);
 
-  // Sau khi user vừa login thành công và được redirect về /pricing,
-  // location.state.planKey (hoặc ?planKey=... nếu qua deep-link) chứa gói
-  // đã chọn → tự trigger handleUpgrade để user không phải click lại.
   useEffect(() => {
     if (!user) return;
     const statePlanKey = (location.state as { planKey?: string } | null)?.planKey;
@@ -95,7 +111,6 @@ export default function PricingPage() {
     if (!plan) return;
     pendingPlanKeyRef.current = planKey;
     handleUpgrade(plan);
-    // Clear state/query để không re-trigger khi deps khác thay đổi.
     navigate(location.pathname, { replace: true, state: null });
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [user, plans, location.state, searchParams]);
@@ -125,16 +140,8 @@ export default function PricingPage() {
     }
 
     setProcessingPlanKey(plan.key);
-    try {
-      const result = await createPayment(plan.key);
-      // Redirect to PayOS hosted checkout.
-      window.location.href = result.checkoutUrl;
-    } catch (err) {
-      const msg = err instanceof Error ? err.message : 'Failed to create payment';
-      toast(msg, 'error');
-      setProcessingPlanKey(null);
-      pendingPlanKeyRef.current = null;
-    }
+    setIsModalOpen(true);
+    setProcessingPlanKey(null);
   };
 
   return (
@@ -197,9 +204,9 @@ export default function PricingPage() {
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
             {plans.map((plan) => {
               const isPopular = plan.popular;
-              const features = PLAN_FEATURES[plan.key] ?? { included: [], excluded: [] };
               const isProcessing = processingPlanKey === plan.key;
               const isCurrent = currentSub?.planKey === plan.key;
+
 
               return (
                 <div
@@ -210,16 +217,15 @@ export default function PricingPage() {
                       : 'border-[#E8D8CF] bg-white dark:border-slate-700 dark:bg-slate-900'
                   }`}
                 >
-                  {isPopular && (
-                    <span className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-gradient-to-r from-orange-500 to-amber-500 px-4 py-1 text-xs font-extrabold uppercase tracking-wider text-white shadow-lg shadow-orange-500/30">
-                      {t('pricing_popular')}
-                    </span>
-                  )}
+
 
                   <div className="mb-6">
-                    <h3 className="text-xl font-black uppercase tracking-widest text-[#1F1F1F] dark:text-slate-100">
-                      {plan.name}
-                    </h3>
+                    <div className="flex items-center gap-2 mb-2">
+                      {plan.key === 'ultra' ? <Crown className="w-6 h-6 text-orange-500" /> : plan.key === 'pro' ? <Zap className="w-6 h-6 text-purple-500" /> : <Star className="w-6 h-6 text-gray-400" />}
+                      <h3 className="text-xl font-black uppercase tracking-widest text-[#1F1F1F] dark:text-slate-100 m-0">
+                        {plan.name}
+                      </h3>
+                    </div>
                     {plan.description && (
                       <p className="mt-2 min-h-[44px] text-sm font-medium text-[#5C514A] dark:text-slate-400">
                         {plan.description}
@@ -228,11 +234,32 @@ export default function PricingPage() {
 
                     {/* Price */}
                     <div className="mt-5 flex items-baseline gap-1.5">
-                      <span className="text-4xl font-black tracking-tight text-[#1F1F1F] dark:text-slate-100">
-                        {plan.priceVnd > 0
-                          ? new Intl.NumberFormat('vi-VN').format(plan.priceVnd)
-                          : '0'}
-                      </span>
+                      {plan.currentPrice !== undefined && plan.currentPrice < plan.priceVnd ? (
+                        <div className="flex flex-col">
+                          <span className="text-4xl font-black tracking-tight text-orange-600 dark:text-orange-500">
+                            {new Intl.NumberFormat('vi-VN').format(plan.currentPrice)}
+                          </span>
+                          <div className="flex items-center gap-1 mt-1">
+                            <span className="text-sm font-semibold line-through text-gray-400">
+                              {new Intl.NumberFormat('vi-VN').format(plan.priceVnd)}
+                            </span>
+                            {plan.packageSaleActive ? (
+                              <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                                {plan.saleType === 'percent' ? `-${plan.saleValue}%` : `-${new Intl.NumberFormat('vi-VN').format(plan.saleValue!)} đ`}
+                              </span>
+                            ) : plan.promotion ? (
+                              <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                                {plan.promotion.discountType === 'PERCENT' ? `-${plan.promotion.discountValue}%` : `-${new Intl.NumberFormat('vi-VN').format(plan.promotion.discountValue)} đ`}
+                              </span>
+                            ) : null}
+                          </div>
+                        </div>
+                      ) : (
+                        <span className="text-4xl font-black tracking-tight text-[#1F1F1F] dark:text-slate-100">
+                          {plan.priceVnd > 0 ? new Intl.NumberFormat('vi-VN').format(plan.priceVnd) : '0'}
+                        </span>
+                      )}
+
                       {plan.currency && (
                         <span className="text-base font-bold text-[#5C514A] dark:text-slate-400">
                           {plan.currency}
@@ -257,7 +284,7 @@ export default function PricingPage() {
                     {isProcessing ? (
                       <>
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        {lang === 'en' ? 'Redirecting...' : 'Đang chuyển...'}
+                        {lang === 'en' ? 'Loading...' : 'Đang xử lý...'}
                       </>
                     ) : isCurrent ? (
                       <>
@@ -278,21 +305,39 @@ export default function PricingPage() {
                     <p className="text-[11px] font-black uppercase tracking-widest text-[#5C514A] dark:text-slate-400">
                       {t('pricing_features_title')}
                     </p>
-                    <ul className="space-y-3 text-sm font-medium">
-                      {features.included.map((fk) => (
-                        <li key={fk} className="flex items-start gap-2.5 text-[#1F1F1F] dark:text-slate-100">
-                          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-emerald-100 dark:bg-emerald-900/30">
-                            <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-300" />
+                    <ul className="space-y-4">
+                      {(HARDCODED_FEATURES[plan.key as keyof typeof HARDCODED_FEATURES] || []).map((feature, i) => (
+                        <li key={i} className="flex items-start gap-3">
+                          <div
+                            className={`mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full ${
+                              feature.included
+                                ? isPopular
+                                  ? 'bg-amber-100 dark:bg-amber-900/40'
+                                  : 'bg-emerald-100 dark:bg-emerald-900/30'
+                                : 'bg-gray-100 dark:bg-gray-800'
+                            }`}
+                          >
+                            {feature.included ? (
+                              <Check
+                                className={`h-3.5 w-3.5 ${
+                                  isPopular
+                                    ? 'text-orange-600 dark:text-orange-400'
+                                    : 'text-emerald-600 dark:text-emerald-400'
+                                }`}
+                              />
+                            ) : (
+                              <X className="h-3.5 w-3.5 text-gray-400" />
+                            )}
+                          </div>
+                          <span
+                            className={`text-sm font-medium leading-relaxed ${
+                              feature.included
+                                ? 'text-[#3E2A20] dark:text-slate-300'
+                                : 'text-gray-400 line-through'
+                            }`}
+                          >
+                            {lang === 'en' ? feature.textEn : feature.textVi}
                           </span>
-                          <span>{t(fk as any)}</span>
-                        </li>
-                      ))}
-                      {features.excluded.map((fk) => (
-                        <li key={fk} className="flex items-start gap-2.5 text-[#9C8F86] line-through dark:text-slate-500">
-                          <span className="mt-0.5 inline-flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-slate-100 dark:bg-slate-700">
-                            <XIcon className="h-3 w-3 text-slate-400" />
-                          </span>
-                          <span>{t(fk as any)}</span>
                         </li>
                       ))}
                     </ul>
@@ -303,6 +348,8 @@ export default function PricingPage() {
           </div>
         )}
       </section>
+      
+      <SubscriptionModal isOpen={isModalOpen} onClose={() => setIsModalOpen(false)} />
     </div>
   );
 }

@@ -166,7 +166,7 @@ export default function AdminUsersPage() {
       />
 
       {/* Filters */}
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3" style={{ borderColor: '#E8D8CF' }}>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white shadow-sm p-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -177,10 +177,10 @@ export default function AdminUsersPage() {
             }}
             placeholder="Tìm theo tên, username hoặc email..."
             className="h-9 w-full rounded-lg border bg-white pl-9 pr-3 text-sm focus:outline-none"
-            style={{ borderColor: '#E8D8CF' }}
+           
           />
         </div>
-        <div className="flex items-center rounded-lg border bg-white" style={{ borderColor: '#E8D8CF' }}>
+        <div className="flex items-center rounded-lg border bg-white">
           {[
             { value: undefined, label: 'Tất cả' },
             { value: 'active', label: 'Đang hoạt động' },
@@ -192,15 +192,14 @@ export default function AdminUsersPage() {
                 key={s.label}
                 type="button"
                 onClick={() => onStatusFilter(s.value as 'active' | 'blocked' | undefined)}
-                className="px-3 py-1.5 text-xs font-semibold transition-colors"
-                style={active ? { backgroundColor: '#1f2937', color: 'white' } : { color: '#635648' }}
+                className={`px-3 py-1.5 text-xs font-semibold transition-all rounded-md ${active ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"}`}
               >
                 {s.label}
               </button>
             );
           })}
         </div>
-        <div className="flex items-center rounded-lg border bg-white" style={{ borderColor: '#E8D8CF' }}>
+        <div className="flex items-center rounded-lg border bg-white">
           <select
             value={filters.planKey || ''}
             onChange={(e) => setFilters(prev => ({ ...prev, planKey: e.target.value || undefined, page: 1 }))}
@@ -216,9 +215,9 @@ export default function AdminUsersPage() {
       </div>
 
       {/* Table */}
-      <div className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: '#E8D8CF' }}>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead style={{ backgroundColor: '#FAF6F1' }}>
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               <th className="px-4 py-3">Người dùng</th>
               <th className="px-4 py-3">Email</th>
@@ -252,7 +251,7 @@ export default function AdminUsersPage() {
               </tr>
             ) : (
               users.map((u) => (
-                <tr key={u.id} className="border-t hover:bg-slate-50" style={{ borderColor: '#F0E5DA' }}>
+                <tr key={u.id} className="border-t hover:bg-slate-50">
                   <td className="px-4 py-3">
                     <button
                       type="button"
@@ -340,7 +339,7 @@ export default function AdminUsersPage() {
 
         {/* Pagination */}
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500" style={{ borderColor: '#F0E5DA' }}>
+          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500">
             <span>
               Trang {pagination.page}/{pagination.totalPages}
             </span>
@@ -436,7 +435,7 @@ export default function AdminUsersPage() {
                     }
                   }}
                   className="w-24 rounded-md border bg-white px-2 py-1 text-sm focus:outline-none"
-                  style={{ borderColor: '#E8D8CF' }}
+                 
                 />
                 <span className="text-xs text-slate-400">giờ (tối đa 8760 = 1 năm)</span>
               </div>
@@ -461,7 +460,7 @@ export default function AdminUsersPage() {
                 maxLength={500}
                 placeholder="Nhập lý do khóa tài khoản..."
                 className="mt-1 w-full rounded-lg border bg-white p-2.5 text-sm focus:outline-none"
-                style={{ borderColor: '#E8D8CF' }}
+               
               />
             </div>
 
@@ -526,7 +525,7 @@ function DetailBody({ detail }: { detail: AdminUserDetail }) {
         {detail.projects.length === 0 ? (
           <p className="text-xs text-slate-500">Chưa tham gia dự án nào.</p>
         ) : (
-          <ul className="divide-y" style={{ borderColor: '#F0E5DA' }}>
+          <ul className="divide-y">
             {detail.projects.slice(0, 5).map((p) => (
               <li key={p.id} className="flex items-center justify-between py-2 text-sm">
                 <span className="truncate font-medium text-slate-700">{p.name}</span>
@@ -573,7 +572,7 @@ function Section({ title, children }: { title: string; children: React.ReactNode
   return (
     <div>
       <h4 className="mb-2 text-xs font-semibold uppercase tracking-wider text-slate-500">{title}</h4>
-      <div className="rounded-lg border bg-white p-3" style={{ borderColor: '#E8D8CF' }}>
+      <div className="rounded-lg border bg-white p-3">
         {children}
       </div>
     </div>

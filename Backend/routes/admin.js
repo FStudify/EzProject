@@ -3,6 +3,7 @@
 const express = require('express');
 const adminController = require('../controllers/adminController');
 const adminRevenueController = require('../controllers/adminRevenueController');
+const adminPricingController = require('../controllers/adminPricingController');
 const { requireAuth, requireAdmin } = require('../middlewares/auth');
 const { validate, validators } = require('../validators');
 
@@ -117,5 +118,19 @@ router.get(
   '/revenue/top-customers',
   adminRevenueController.getTopCustomers,
 );
+
+// ── 10. Pricing Management ────────────────────────────────────
+router.get('/pricing', adminPricingController.getPricingData);
+router.post('/pricing/plans', adminPricingController.createPlan);
+router.put('/pricing/plans/:planKey', adminPricingController.updatePlan);
+router.delete('/pricing/plans/:planKey', adminPricingController.deletePlan);
+
+router.post('/pricing/promotions', adminPricingController.createPromotion);
+router.put('/pricing/promotions/:id', adminPricingController.updatePromotion);
+router.delete('/pricing/promotions/:id', adminPricingController.deletePromotion);
+
+router.post('/pricing/vouchers', adminPricingController.createVoucher);
+router.put('/pricing/vouchers/:id', adminPricingController.updateVoucher);
+router.delete('/pricing/vouchers/:id', adminPricingController.deleteVoucher);
 
 module.exports = router;

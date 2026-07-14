@@ -48,6 +48,10 @@ const paymentSchema = new mongoose.Schema({
   },
   planName: { type: String, required: true },
   amount: { type: Number, required: true, min: 0 },
+  originalPrice: { type: Number, required: true, min: 0, default: 0 },
+  discountAmount: { type: Number, default: 0, min: 0 },
+  voucherCode: { type: String, default: null },
+  promotionId: { type: mongoose.Schema.Types.ObjectId, ref: 'Promotion', default: null },
   currency: { type: String, default: 'VND' },
   status: {
     type: String,

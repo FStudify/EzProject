@@ -297,6 +297,71 @@ export interface Plan {
   popular: boolean;
   sortOrder: number;
   isActive: boolean;
+  features?: { text: string; included: boolean }[];
+  badge?: string;
+  originalPrice?: number;
+  currentPrice?: number;
+  promotion?: Promotion | null;
+
+  // Package-level sale fields
+  saleType?: 'percent' | 'fixed_price' | null;
+  saleValue?: number | null;
+  salePrice?: number | null;
+  saleStartAt?: string | null;
+  saleEndAt?: string | null;
+  saleUsageLimit?: number | null;
+  saleUsedCount?: number;
+  saleIsActive?: boolean;
+  packageSaleActive?: boolean;
+  packageSaleDiscount?: number;
+  promoDiscount?: number;
+}
+
+export interface Promotion {
+  _id?: string;
+  id: string;
+  name: string;
+  applicablePlans: string[];
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  startDate: string;
+  endDate: string;
+  usageLimit?: number;
+  usagePerUser?: number;
+  usedCount?: number;
+  isActive: boolean;
+}
+
+export interface Voucher {
+  _id?: string;
+  id: string;
+  code: string;
+  description: string;
+  discountType: 'PERCENT' | 'FIXED';
+  discountValue: number;
+  startDate: string;
+  endDate: string;
+  maxUsage: number;
+  currentUsage: number;
+  usagePerUser?: number;
+  minAmount: number;
+  applicablePlans: string[];
+  stackableWithSale?: boolean;
+  isActive: boolean;
+  createdAt?: string;
+}
+
+export interface VoucherValidationResult {
+  isValid: boolean;
+  discount: number;
+  finalPrice: number;
+  voucher: Voucher;
+}
+
+export interface AdminPricingData {
+  plans: Plan[];
+  promotions: Promotion[];
+  vouchers: Voucher[];
 }
 
 export interface Subscription {
@@ -325,6 +390,10 @@ export interface Payment {
   action: 'NEW' | 'RENEW' | 'UPGRADE' | 'DOWNGRADE';
   planName: string;
   amount: number;
+  originalPrice?: number;
+  discountAmount?: number;
+  voucherCode?: string;
+  promotionId?: string;
   currency: string;
   status: PaymentStatus;
   provider: 'PAYOS' | 'MANUAL';

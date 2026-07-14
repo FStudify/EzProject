@@ -5,6 +5,55 @@ import { fetchPlans, fetchMyCurrentSubscription, createPayment } from '@/api/pay
 import type { Plan, Subscription } from '@/api/types';
 import { CheckCircle2, Star, Zap, Crown } from 'lucide-react';
 import ConfirmationDialog from './ConfirmationDialog';
+import { X } from 'lucide-react';
+
+const HARDCODED_FEATURES = {
+  free: [
+    { textVi: "1 dự án hoạt động", textEn: "1 active project", included: true },
+    { textVi: "Tối đa 5 thành viên/dự án", textEn: "Up to 5 members/project", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 2 dự án/tháng", textEn: "AI Generate: 2 projects/month", included: true },
+    { textVi: "AI Chat Assistant: 10 tin/ngày", textEn: "AI Chat Assistant: 10 msgs/day", included: true },
+    { textVi: "AI Generate Task: 5 lần/tháng", textEn: "AI Generate Task: 5 times/month", included: true },
+    { textVi: "Direct Message (Giới hạn)", textEn: "Direct Message (Limited)", included: true },
+    { textVi: "Họp Video: 2 cuộc họp/tháng", textEn: "Video Meeting: 2 meetings/month", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: false },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: false },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: false },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: false },
+  ],
+  pro: [
+    { textVi: "5 dự án hoạt động", textEn: "5 active projects", included: true },
+    { textVi: "Tối đa 20 thành viên/dự án", textEn: "Up to 20 members/project", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 15 dự án/tháng", textEn: "AI Generate: 15 projects/month", included: true },
+    { textVi: "AI Chat Assistant: 100 tin/ngày", textEn: "AI Chat Assistant: 100 msgs/day", included: true },
+    { textVi: "AI Generate Task: 50 lần/ngày", textEn: "AI Generate Task: 50 times/day", included: true },
+    { textVi: "Direct Message (Không giới hạn)", textEn: "Direct Message (Unlimited)", included: true },
+    { textVi: "Họp Video (Không giới hạn)", textEn: "Video Meeting (Unlimited)", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: true },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: false },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: false },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: true },
+  ],
+  ultra: [
+    { textVi: "Không giới hạn dự án", textEn: "Unlimited projects", included: true },
+    { textVi: "Không giới hạn thành viên", textEn: "Unlimited members", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 50 dự án/tháng", textEn: "AI Generate: 50 projects/month", included: true },
+    { textVi: "AI Chat Assistant: Không giới hạn", textEn: "AI Chat Assistant: Unlimited", included: true },
+    { textVi: "AI Generate Task: Không giới hạn", textEn: "AI Generate Task: Unlimited", included: true },
+    { textVi: "Direct Message (Không giới hạn)", textEn: "Direct Message (Unlimited)", included: true },
+    { textVi: "Họp Video (Không giới hạn)", textEn: "Video Meeting (Unlimited)", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: true },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: true },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: true },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: true },
+  ],
+};
 
 interface SubscriptionModalProps {
   isOpen: boolean;
@@ -75,11 +124,11 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
     }
   };
 
-  const handleConfirmPayment = async () => {
+  const handleConfirmPayment = async (voucherCode?: string) => {
     if (!selectedPlan) return;
     try {
       setIsCreatingPayment(true);
-      const result = await createPayment(selectedPlan.key);
+      const result = await createPayment(selectedPlan.key, voucherCode);
       if (result.checkoutUrl) {
         window.location.href = result.checkoutUrl;
       } else {
@@ -123,12 +172,7 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
 
     // If it's a paid plan that isn't returned by the backend yet, just don't show it (handled by mapping `plans` below).
     // Let's find some dummy features to show since the API `Plan` doesn't include a `features` array.
-    const features = 
-      plan.key === 'ultra' 
-        ? ['Unlimited projects', 'Unlimited tasks', 'Advanced AI Features', 'Priority Support']
-        : plan.key === 'pro'
-        ? ['Up to 10 projects', 'Up to 1000 tasks', 'Basic AI Features', 'Email Support']
-        : ['Up to 2 projects', 'Up to 100 tasks', 'Community Support'];
+    const features = HARDCODED_FEATURES[plan.key as keyof typeof HARDCODED_FEATURES] || [];
 
     const getIcon = () => {
       if (plan.key === 'ultra') return <Crown className="w-5 h-5 text-orange-500" />;
@@ -143,11 +187,8 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
           plan.popular ? 'border-orange-500 bg-orange-50/30' : 'border-gray-200 bg-white'
         } ${!isDisabled && 'hover:shadow-lg hover:-translate-y-1'}`}
       >
-        {plan.popular && (
-          <div className="absolute top-0 left-1/2 -translate-x-1/2 -translate-y-1/2 bg-orange-500 text-white text-xs font-bold uppercase tracking-widest py-1 px-3 rounded-full">
-            {lang === 'en' ? 'Most Popular' : 'Phổ biến nhất'}
-          </div>
-        )}
+
+
         
         <div className="flex items-center gap-2 mb-4">
           {getIcon()}
@@ -155,19 +196,41 @@ export default function SubscriptionModal({ isOpen, onClose }: SubscriptionModal
         </div>
 
         <div className="mb-6">
-          <span className="text-3xl font-extrabold text-gray-900">
-            {plan.priceVnd.toLocaleString('vi-VN')} đ
-          </span>
-          <span className="text-gray-500 text-sm ml-1">
+          {plan.currentPrice !== undefined && plan.currentPrice < plan.priceVnd ? (
+            <div className="flex flex-col">
+              <span className="text-3xl font-extrabold text-orange-600">
+                {plan.currentPrice.toLocaleString('vi-VN')} đ
+              </span>
+              <div className="flex items-center gap-1">
+                <span className="text-sm font-semibold line-through text-gray-400">
+                  {plan.priceVnd.toLocaleString('vi-VN')} đ
+                </span>
+                <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                  {plan.packageSaleActive 
+                    ? (plan.saleType === 'percent' ? `-${plan.saleValue}%` : `-${plan.saleValue?.toLocaleString('vi-VN')} đ`) 
+                    : (plan.promotion?.discountType === 'PERCENT' ? `-${plan.promotion.discountValue}%` : `-${plan.promotion?.discountValue.toLocaleString('vi-VN')} đ`)}
+                </span>
+              </div>
+            </div>
+          ) : (
+            <span className="text-3xl font-extrabold text-gray-900">
+              {plan.priceVnd.toLocaleString('vi-VN')} đ
+            </span>
+          )}
+          <span className="text-gray-500 text-sm">
             / {plan.durationDays ? `${plan.durationDays} ${lang === 'en' ? 'days' : 'ngày'}` : (lang === 'en' ? 'forever' : 'vĩnh viễn')}
           </span>
         </div>
 
         <ul className="flex-1 space-y-3 mb-6">
           {features.map((f, i) => (
-            <li key={i} className="flex items-start gap-2 text-sm text-gray-700">
-              <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
-              <span>{f}</span>
+            <li key={i} className={`flex items-start gap-2 text-sm ${f.included ? 'text-gray-700' : 'text-gray-400 line-through'}`}>
+              {f.included ? (
+                <CheckCircle2 className="w-4 h-4 text-green-500 shrink-0 mt-0.5" />
+              ) : (
+                <X className="w-4 h-4 text-gray-400 shrink-0 mt-0.5" />
+              )}
+              <span>{lang === 'en' ? f.textEn : f.textVi}</span>
             </li>
           ))}
         </ul>

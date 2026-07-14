@@ -90,7 +90,26 @@ export function RevenueCharts({ trendData, planData, statusData, range, onRangeC
 
         {/* Revenue by Plan (Bar) */}
         <Card className="p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-6">Doanh thu theo gói</h3>
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-slate-800">Doanh thu theo gói</h3>
+            <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden" style={{ borderColor: '#E8D8CF' }}>
+              {(['7d', '30d', '90d', '1y'] as const).map((r) => (
+                <button
+                  key={r}
+                  type="button"
+                  onClick={() => onRangeChange(r)}
+                  className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
+                  style={
+                    range === r
+                      ? { backgroundColor: '#1f2937', color: 'white' }
+                      : { color: '#635648' }
+                  }
+                >
+                  {r === '7d' ? '7 ngày' : r === '30d' ? '30 ngày' : r === '90d' ? '90 ngày' : '1 năm'}
+                </button>
+              ))}
+            </div>
+          </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
               <BarChart data={planData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barSize={32}>

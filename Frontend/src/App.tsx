@@ -32,6 +32,7 @@ import {
   AdminAnnouncementsPage,
   AdminProfilePage,
   AdminRevenuePage,
+  AdminPricingPage,
 } from '@/features/admin';
 
 const router = createBrowserRouter([
@@ -149,6 +150,7 @@ const router = createBrowserRouter([
       { path: 'users', element: <AdminUsersPage /> },
       { path: 'projects', element: <AdminProjectsPage /> },
       { path: 'revenue', element: <AdminRevenuePage /> },
+      { path: 'pricing', element: <AdminPricingPage /> },
       { path: 'logs', element: <AdminLogsPage /> },
       { path: 'health', element: <AdminHealthPage /> },
       { path: 'announcements', element: <AdminAnnouncementsPage /> },

@@ -160,8 +160,18 @@ export const Endpoints = {
   // ── Payments / Plans ─────────────────────────────────────
   PLANS: `${BASE}/payments/plans`,
   PAYMENT_CREATE: `${BASE}/payments/create`,
+  PAYMENT_VOUCHER_VALIDATE: `${BASE}/payments/voucher/validate`,
   PAYMENT_ME_CURRENT: `${BASE}/payments/me/current`,
   PAYMENT_ME_HISTORY: `${BASE}/payments/me/history`,
   PAYMENT_ME_STATUS: (orderCode: string) => `${BASE}/payments/me/status/${orderCode}`,
   PAYMENT_ME_CANCEL: (orderCode: string) => `${BASE}/payments/me/cancel/${orderCode}`,
+
+  // ── Admin Pricing ─────────────────────────────────────────
+  ADMIN_PRICING: `${BASE}/admin/pricing`,
+  ADMIN_PRICING_PLANS: `${BASE}/admin/pricing/plans`,
+  ADMIN_PRICING_PLAN: (planKey: string) => `${BASE}/admin/pricing/plans/${planKey}`,
+  ADMIN_PRICING_PROMOTIONS: `${BASE}/admin/pricing/promotions`,
+  ADMIN_PRICING_PROMOTION_DETAIL: (id: string) => `${BASE}/admin/pricing/promotions/${id}`,
+  ADMIN_PRICING_VOUCHERS: `${BASE}/admin/pricing/vouchers`,
+  ADMIN_PRICING_VOUCHER_DETAIL: (id: string) => `${BASE}/admin/pricing/vouchers/${id}`,
 } as const;

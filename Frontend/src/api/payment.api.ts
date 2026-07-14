@@ -32,8 +32,13 @@ export async function fetchMyCurrentSubscription(): Promise<Subscription | null>
 }
 
 // ── Create payment ────────────────────────────────────────────
-export async function createPayment(planKey: string): Promise<CreatePaymentResult> {
-  return api.post<CreatePaymentResult>(Endpoints.PAYMENT_CREATE, { planKey });
+export async function createPayment(planKey: string, voucherCode?: string): Promise<CreatePaymentResult> {
+  return api.post<CreatePaymentResult>(Endpoints.PAYMENT_CREATE, { planKey, voucherCode });
+}
+
+// ── Validate Voucher ─────────────────────────────────────────
+export async function validateVoucher(planKey: string, code: string): Promise<import('./types').VoucherValidationResult> {
+  return api.post<import('./types').VoucherValidationResult>(Endpoints.PAYMENT_VOUCHER_VALIDATE, { planKey, code });
 }
 
 // ── Payment history ───────────────────────────────────────────
@@ -168,4 +173,45 @@ export async function fetchAdminSubscriptions(
 
 export async function fetchAdminTopCustomers(): Promise<import('./types').AdminTopCustomer[]> {
   return api.get<import('./types').AdminTopCustomer[]>(Endpoints.ADMIN_REVENUE_TOP_CUSTOMERS);
+}
+
+// ── Admin Pricing Management ──────────────────────────────
+export async function fetchAdminPricingData(): Promise<import('./types').AdminPricingData> {
+  return api.get<import('./types').AdminPricingData>(Endpoints.ADMIN_PRICING);
+}
+
+export async function createAdminPlan(data: any): Promise<{ plan: Plan }> {
+  return api.post<{ plan: Plan }>(Endpoints.ADMIN_PRICING_PLANS, data);
+}
+
+export async function updateAdminPlan(planKey: string, data: any): Promise<{ plan: Plan }> {
+  return api.put<{ plan: Plan }>(Endpoints.ADMIN_PRICING_PLAN(planKey), data);
+}
+
+export async function deleteAdminPlan(planKey: string): Promise<void> {
+  await api.delete(Endpoints.ADMIN_PRICING_PLAN(planKey));
+}
+
+export async function createAdminPromotion(data: any): Promise<{ promotion: import('./types').Promotion }> {
+  return api.post<{ promotion: import('./types').Promotion }>(Endpoints.ADMIN_PRICING_PROMOTIONS, data);
+}
+
+export async function updateAdminPromotion(id: string, data: any): Promise<{ promotion: import('./types').Promotion }> {
+  return api.put<{ promotion: import('./types').Promotion }>(Endpoints.ADMIN_PRICING_PROMOTION_DETAIL(id), data);
+}
+
+export async function deleteAdminPromotion(id: string): Promise<void> {
+  await api.delete(Endpoints.ADMIN_PRICING_PROMOTION_DETAIL(id));
+}
+
+export async function createAdminVoucher(data: any): Promise<{ voucher: import('./types').Voucher }> {
+  return api.post<{ voucher: import('./types').Voucher }>(Endpoints.ADMIN_PRICING_VOUCHERS, data);
+}
+
+export async function updateAdminVoucher(id: string, data: any): Promise<{ voucher: import('./types').Voucher }> {
+  return api.put<{ voucher: import('./types').Voucher }>(Endpoints.ADMIN_PRICING_VOUCHER_DETAIL(id), data);
+}
+
+export async function deleteAdminVoucher(id: string): Promise<void> {
+  await api.delete(Endpoints.ADMIN_PRICING_VOUCHER_DETAIL(id));
 }

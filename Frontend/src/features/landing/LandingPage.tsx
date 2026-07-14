@@ -26,11 +26,70 @@ import {
   Quote,
   Menu,
   X,
+  Crown,
 } from 'lucide-react';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { useAuth } from '@/contexts/AuthContext';
 import { Button } from '@/components/ui';
+import { fetchPlans } from '@/api/payment.api';
+import type { Plan } from '@/api/types';
+
+const navLinks = [
+  { key: 'landing_nav_about',    target: 'about-section' },
+  { key: 'landing_nav_features', target: 'features-section' },
+  { key: 'landing_nav_mission',  target: 'mission-section' },
+  { key: 'landing_nav_pricing',  target: 'pricing-section' },
+  { key: 'landing_nav_reviews',  target: 'reviews-section' },
+];
+
+const HARDCODED_FEATURES = {
+  free: [
+    { textVi: "1 dự án hoạt động", textEn: "1 active project", included: true },
+    { textVi: "Tối đa 5 thành viên/dự án", textEn: "Up to 5 members/project", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 2 dự án/tháng", textEn: "AI Generate: 2 projects/month", included: true },
+    { textVi: "AI Chat Assistant: 10 tin/ngày", textEn: "AI Chat Assistant: 10 msgs/day", included: true },
+    { textVi: "AI Generate Task: 5 lần/tháng", textEn: "AI Generate Task: 5 times/month", included: true },
+    { textVi: "Direct Message (Giới hạn)", textEn: "Direct Message (Limited)", included: true },
+    { textVi: "Họp Video: 2 cuộc họp/tháng", textEn: "Video Meeting: 2 meetings/month", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: false },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: false },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: false },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: false },
+  ],
+  pro: [
+    { textVi: "5 dự án hoạt động", textEn: "5 active projects", included: true },
+    { textVi: "Tối đa 20 thành viên/dự án", textEn: "Up to 20 members/project", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 15 dự án/tháng", textEn: "AI Generate: 15 projects/month", included: true },
+    { textVi: "AI Chat Assistant: 100 tin/ngày", textEn: "AI Chat Assistant: 100 msgs/day", included: true },
+    { textVi: "AI Generate Task: 50 lần/ngày", textEn: "AI Generate Task: 50 times/day", included: true },
+    { textVi: "Direct Message (Không giới hạn)", textEn: "Direct Message (Unlimited)", included: true },
+    { textVi: "Họp Video (Không giới hạn)", textEn: "Video Meeting (Unlimited)", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: true },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: false },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: false },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: true },
+  ],
+  ultra: [
+    { textVi: "Không giới hạn dự án", textEn: "Unlimited projects", included: true },
+    { textVi: "Không giới hạn thành viên", textEn: "Unlimited members", included: true },
+    { textVi: "Bảng Kanban, Task, Comment", textEn: "Kanban board, Task, Comment", included: true },
+    { textVi: "Chat nhóm dự án (Group & General)", textEn: "Project group chat (Group & General)", included: true },
+    { textVi: "AI Generate: 50 dự án/tháng", textEn: "AI Generate: 50 projects/month", included: true },
+    { textVi: "AI Chat Assistant: Không giới hạn", textEn: "AI Chat Assistant: Unlimited", included: true },
+    { textVi: "AI Generate Task: Không giới hạn", textEn: "AI Generate Task: Unlimited", included: true },
+    { textVi: "Direct Message (Không giới hạn)", textEn: "Direct Message (Unlimited)", included: true },
+    { textVi: "Họp Video (Không giới hạn)", textEn: "Video Meeting (Unlimited)", included: true },
+    { textVi: "Đánh giá chéo thành viên", textEn: "Cross-evaluate members", included: true },
+    { textVi: "Thống kê chi tiết & Xuất báo cáo", textEn: "Detailed statistics & Report export", included: true },
+    { textVi: "Lưu trữ Meeting Summary vĩnh viễn", textEn: "Permanent Meeting Summary storage", included: true },
+    { textVi: "Mời qua Email & Custom Link", textEn: "Invite via Email & Custom Link", included: true },
+  ],
+};
 
 /* ──────────────────────────────────────────────────────────────────────
    HOOKS
@@ -87,13 +146,7 @@ const features = [
   { icon: MessageCircle,  titleKey: 'landing_feature_chat_title', descKey: 'landing_feature_chat_desc',      gradient: 'from-pink-500 to-rose-500' },
 ];
 
-const navLinks = [
-  { key: 'landing_nav_about',    target: 'about-section' },
-  { key: 'landing_nav_features', target: 'features-section' },
-  { key: 'landing_nav_mission',  target: 'mission-section' },
-  { key: 'landing_nav_pricing',  target: 'pricing-section' },
-  { key: 'landing_nav_reviews',  target: 'reviews-section' },
-];
+
 
 /* ──────────────────────────────────────────────────────────────────────
    COMPONENT
@@ -106,6 +159,25 @@ export default function LandingPage() {
   const { user } = useAuth();
   const isVi = lang === 'vi';
   const isDark = theme === 'dark';
+
+  const [plans, setPlans] = useState<Plan[]>([]);
+  const [isLoadingPlans, setIsLoadingPlans] = useState(true);
+
+  useEffect(() => {
+    let mounted = true;
+    setIsLoadingPlans(true);
+    fetchPlans()
+      .then((list) => {
+        if (mounted) setPlans(list);
+      })
+      .catch(() => {})
+      .finally(() => {
+        if (mounted) setIsLoadingPlans(false);
+      });
+    return () => {
+      mounted = false;
+    };
+  }, []);
 
   // Pricing CTA: từ landing đi vào flow chọn gói + thanh toán.
   // - Chưa login → /login (sau đó PricingPage sẽ đọc planKey từ state/query
@@ -152,45 +224,7 @@ export default function LandingPage() {
   const borderC = isDark ? '#3E2A20' : '#E8D8CF';
   const cardBg = isDark ? 'rgba(37,32,24,0.85)' : 'rgba(255,255,255,0.92)';
 
-  /* ── Pricing Data ── */
-  const pricingPlans = [
-    {
-      name: 'Free', key: 'free',
-      price: isVi ? '0đ' : '$0',
-      descKey: 'pricing_free_desc',
-      accent: false,
-      features: [
-        'pricing_limit_projects_free', 'pricing_limit_tasks_free', 'pricing_limit_members_free',
-        'pricing_limit_ai_free', 'pricing_feature_kanban',
-      ],
-      excluded: ['pricing_feature_timeline', 'pricing_feature_perf', 'pricing_feature_eval_leader', 'pricing_feature_eval_supervisor'],
-    },
-    {
-      name: 'Pro', key: 'pro',
-      price: isVi ? '99.000đ' : '$4.99',
-      descKey: 'pricing_pro_desc',
-      accent: true,
-      features: [
-        'pricing_limit_projects_pro', 'pricing_limit_tasks_pro', 'pricing_limit_members_pro',
-        'pricing_limit_ai_pro', 'pricing_feature_kanban', 'pricing_feature_timeline',
-        'pricing_feature_perf', 'pricing_feature_eval_leader',
-      ],
-      excluded: ['pricing_feature_eval_supervisor', 'pricing_feature_export'],
-    },
-    {
-      name: 'Premium', key: 'premium',
-      price: isVi ? '219.000đ' : '$9.99',
-      descKey: 'pricing_premium_desc',
-      accent: false,
-      features: [
-        'pricing_limit_projects_premium', 'pricing_limit_tasks_premium', 'pricing_limit_members_premium',
-        'pricing_limit_ai_premium', 'pricing_feature_kanban', 'pricing_feature_timeline',
-        'pricing_feature_perf', 'pricing_feature_eval_leader', 'pricing_feature_eval_supervisor',
-        'pricing_feature_export', 'pricing_feature_support',
-      ],
-      excluded: [],
-    },
-  ];
+
 
   /* ── Reveal class helper ── */
   const rc = (v: boolean) =>
@@ -211,7 +245,7 @@ export default function LandingPage() {
       </div>
 
       {/* ═══ NAVBAR ═══ */}
-      <header className="sticky top-0 z-50 border-b backdrop-blur-xl transition-all" style={{ background: glass, borderColor: borderC }}>
+      <header className="fixed top-0 left-0 right-0 z-50 border-b backdrop-blur-xl transition-all" style={{ background: glass, borderColor: borderC }}>
         <div className="mx-auto flex h-16 max-w-7xl items-center justify-between px-5">
           {/* Logo */}
           <button type="button" onClick={() => window.scrollTo({ top: 0, behavior: 'smooth' })} className="flex items-center gap-2.5 focus:outline-none">
@@ -276,6 +310,8 @@ export default function LandingPage() {
           </div>
         )}
       </header>
+      {/* Spacer for fixed header */}
+      <div className="h-16" />
 
       {/* ═══ HERO SECTION ═══ */}
       <section ref={heroReveal.ref} className="relative z-10 mx-auto max-w-7xl px-5 pt-20 pb-10 lg:pt-28 lg:pb-16">
@@ -570,66 +606,99 @@ export default function LandingPage() {
           </div>
 
           <div className="grid gap-6 lg:grid-cols-3 items-stretch max-w-5xl mx-auto">
-            {pricingPlans.map((plan) => (
-              <div key={plan.key}
-                className={`relative flex flex-col rounded-3xl border p-7 lg:p-8 transition-all duration-500 ${plan.accent ? 'z-10 lg:scale-105' : 'z-0'}`}
-                style={{
-                  background: plan.accent ? (isDark ? 'linear-gradient(180deg,#3B261D,#1F1510)' : 'linear-gradient(180deg,#FFF5EC,#FFFDFB)') : cardBg,
-                  borderColor: plan.accent ? '#F97316' : borderC,
-                  boxShadow: plan.accent ? '0 24px 48px -12px rgba(249,115,22,0.25)' : '0 8px 24px -12px rgba(0,0,0,0.08)',
-                }}
-                onMouseEnter={e => {
-                  if (!plan.accent) { e.currentTarget.style.borderColor = '#F97316'; e.currentTarget.style.transform = 'translateY(-6px)'; }
-                  else { e.currentTarget.style.transform = 'scale(1.07)'; e.currentTarget.style.boxShadow = '0 32px 64px -12px rgba(249,115,22,0.35)'; }
-                }}
-                onMouseLeave={e => {
-                  if (!plan.accent) { e.currentTarget.style.borderColor = borderC; e.currentTarget.style.transform = 'none'; }
-                  else { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 24px 48px -12px rgba(249,115,22,0.25)'; }
-                }}
-              >
-                {plan.accent && (
-                  <span className="absolute -top-3.5 left-1/2 -translate-x-1/2 rounded-full px-4 py-1 text-xs font-black text-white bg-gradient-to-r from-orange-500 to-amber-500 shadow-lg shadow-orange-500/30">
-                    {t('pricing_popular')}
-                  </span>
-                )}
-
-                <div className="mb-6">
-                  <h3 className="text-lg font-black text-ink-primary uppercase tracking-widest">{plan.name}</h3>
-                  <p className="mt-2 text-sm font-medium text-ink-muted min-h-[40px]">{t(plan.descKey)}</p>
-                  <div className="mt-5 flex items-baseline gap-1 text-ink-primary">
-                    <span className="text-4xl sm:text-5xl font-black tracking-tight">{plan.price}</span>
-                    <span className="text-sm font-bold text-ink-muted">{t('pricing_per_month')}</span>
-                  </div>
-                </div>
-
-                <Button variant={plan.accent ? 'accent' : 'secondary'} size="lg" onClick={() => handlePlanClick(plan)}
-                  className="w-full font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 rounded-xl">
-                  {t('pricing_get_started')}
-                </Button>
-
-                <hr className="my-6 border-dashed opacity-40" style={{ borderColor: isDark ? '#634737' : '#D8C9BD' }} />
-
-                <div className="space-y-4 flex-1">
-                  <p className="text-[11px] font-black text-ink-secondary uppercase tracking-widest">{t('pricing_features_title')}</p>
-                  <ul className="space-y-3 text-sm font-medium">
-                    {plan.features.map(fk => (
-                      <li key={fk} className="flex items-start gap-2.5 text-ink-primary">
-                        <div className="mt-0.5 rounded-full bg-emerald-100 p-0.5 dark:bg-emerald-900/30 shrink-0">
-                          <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
-                        </div>
-                        <span className="leading-snug">{t(fk)}</span>
-                      </li>
-                    ))}
-                    {plan.excluded.map(fk => (
-                      <li key={fk} className="flex items-start gap-2.5 text-ink-muted/40 line-through">
-                        <span className="text-red-400 font-bold text-xs shrink-0 w-4 text-center mt-0.5">×</span>
-                        <span className="leading-snug">{t(fk)}</span>
-                      </li>
-                    ))}
-                  </ul>
-                </div>
+            {isLoadingPlans ? (
+              <div className="flex w-full items-center justify-center py-10 col-span-full">
+                <span className="text-ink-muted font-medium">{t('loading')}</span>
               </div>
-            ))}
+            ) : (
+              plans.map((plan) => {
+                const isPopular = plan.popular;
+                
+                return (
+                  <div key={plan.id}
+                    className={`relative flex flex-col rounded-3xl border p-7 lg:p-8 transition-all duration-500 ${isPopular ? 'z-10 lg:scale-105' : 'z-0'}`}
+                    style={{
+                      background: isPopular ? (isDark ? 'linear-gradient(180deg,#3B261D,#1F1510)' : 'linear-gradient(180deg,#FFF5EC,#FFFDFB)') : cardBg,
+                      borderColor: isPopular ? '#F97316' : borderC,
+                      boxShadow: isPopular ? '0 24px 48px -12px rgba(249,115,22,0.25)' : '0 8px 24px -12px rgba(0,0,0,0.08)',
+                    }}
+                    onMouseEnter={e => {
+                      if (!isPopular) { e.currentTarget.style.borderColor = '#F97316'; e.currentTarget.style.transform = 'translateY(-6px)'; }
+                      else { e.currentTarget.style.transform = 'scale(1.07)'; e.currentTarget.style.boxShadow = '0 32px 64px -12px rgba(249,115,22,0.35)'; }
+                    }}
+                    onMouseLeave={e => {
+                      if (!isPopular) { e.currentTarget.style.borderColor = borderC; e.currentTarget.style.transform = 'none'; }
+                      else { e.currentTarget.style.transform = 'scale(1.05)'; e.currentTarget.style.boxShadow = '0 24px 48px -12px rgba(249,115,22,0.25)'; }
+                    }}
+                  >
+
+
+                    <div className="mb-6">
+                      <div className="flex items-center gap-2">
+                        {plan.key === 'ultra' ? <Crown className="w-6 h-6 text-orange-500" /> : plan.key === 'pro' ? <Zap className="w-6 h-6 text-purple-500" /> : <Star className="w-6 h-6 text-gray-400" />}
+                        <h3 className="text-lg font-black text-ink-primary uppercase tracking-widest m-0">{plan.name}</h3>
+                      </div>
+                      <p className="mt-2 text-sm font-medium text-ink-muted min-h-[40px]">{plan.description}</p>
+                      
+                      <div className="mt-5 flex items-baseline gap-1 text-ink-primary">
+                        {plan.currentPrice !== undefined && plan.currentPrice < plan.priceVnd ? (
+                          <div className="flex flex-col">
+                            <span className="text-4xl sm:text-5xl font-black tracking-tight text-orange-600">
+                              {new Intl.NumberFormat('vi-VN').format(plan.currentPrice)}
+                            </span>
+                            <div className="flex items-center gap-1 mt-1">
+                              <span className="text-sm font-semibold line-through text-gray-400">
+                                {new Intl.NumberFormat('vi-VN').format(plan.priceVnd)}
+                              </span>
+                              {plan.packageSaleActive ? (
+                                <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                                  {plan.saleType === 'percent' ? `-${plan.saleValue}%` : `-${new Intl.NumberFormat('vi-VN').format(plan.saleValue!)} đ`}
+                                </span>
+                              ) : plan.promotion ? (
+                                <span className="text-xs bg-orange-100 text-orange-700 px-1.5 py-0.5 rounded font-bold">
+                                  {plan.promotion.discountType === 'PERCENT' ? `-${plan.promotion.discountValue}%` : `-${new Intl.NumberFormat('vi-VN').format(plan.promotion.discountValue)} đ`}
+                                </span>
+                              ) : null}
+                            </div>
+                          </div>
+                        ) : (
+                          <span className="text-4xl sm:text-5xl font-black tracking-tight">
+                            {plan.priceVnd > 0 ? new Intl.NumberFormat('vi-VN').format(plan.priceVnd) : '0'}
+                          </span>
+                        )}
+                        {plan.currency && <span className="ml-1 text-base font-bold text-ink-muted">{plan.currency}</span>}
+                        <span className="ml-1 text-sm font-bold text-ink-muted">{t('pricing_per_month')}</span>
+                      </div>
+                    </div>
+
+                    <Button variant={isPopular ? 'accent' : 'secondary'} size="lg" onClick={() => handlePlanClick(plan)}
+                      className="w-full font-bold shadow-md hover:shadow-lg transition-all hover:-translate-y-0.5 active:translate-y-0 rounded-xl">
+                      {t('pricing_get_started')}
+                    </Button>
+
+                    <hr className="my-6 border-dashed opacity-40" style={{ borderColor: isDark ? '#634737' : '#D8C9BD' }} />
+
+                    <div className="space-y-4 flex-1">
+                      <p className="text-[11px] font-black text-ink-secondary uppercase tracking-widest">{t('pricing_features_title')}</p>
+                      <ul className="space-y-3 text-sm font-medium">
+                        {(HARDCODED_FEATURES[plan.key as keyof typeof HARDCODED_FEATURES] || []).map((f, i) => (
+                          <li key={i} className={`flex items-start gap-2.5 ${f.included ? 'text-ink-primary' : 'text-ink-muted/40 line-through'}`}>
+                            {f.included ? (
+                              <div className="mt-0.5 rounded-full bg-emerald-100 p-0.5 dark:bg-emerald-900/30 shrink-0">
+                                <Check className="h-3 w-3 text-emerald-600 dark:text-emerald-400" />
+                              </div>
+                            ) : (
+                              <span className="text-red-400 font-bold text-xs shrink-0 w-4 text-center mt-0.5">×</span>
+                            )}
+                            <span className="leading-snug">{lang === 'en' ? f.textEn : f.textVi}</span>
+                          </li>
+                        ))}
+                      </ul>
+                    </div>
+                  </div>
+                );
+              })
+            )}
           </div>
         </div>
       </section>

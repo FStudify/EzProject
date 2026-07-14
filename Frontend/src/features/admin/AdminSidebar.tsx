@@ -10,6 +10,7 @@ import {
   Shield,
   LogOut,
   Banknote,
+  Tags,
 } from 'lucide-react';
 import { Avatar } from '@/components/ui';
 import { useAdminSidebar } from './AdminSidebarContext';
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/admin/users', label: 'Người dùng', icon: Users },
   { to: '/admin/projects', label: 'Dự án', icon: FolderKanban },
   { to: '/admin/revenue', label: 'Doanh thu', icon: Banknote },
+  { to: '/admin/pricing', label: 'Quản lý Bảng giá', icon: Tags },
   { to: '/admin/logs', label: 'Nhật ký', icon: ScrollText },
   { to: '/admin/health', label: 'Sức khỏe hệ thống', icon: HeartPulse },
   { to: '/admin/announcements', label: 'Thông báo', icon: Megaphone },

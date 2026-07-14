@@ -32,6 +32,26 @@ const planSchema = new mongoose.Schema({
   sortOrder: { type: Number, default: 0 },
   /** Có đang active cho phép subscribe hay không. */
   isActive: { type: Boolean, default: true, index: true },
+  /** Các quyền lợi nổi bật */
+  features: {
+    type: [{
+      text: { type: String, required: true },
+      included: { type: Boolean, default: true },
+    }],
+    default: [],
+  },
+  /** Badge hiển thị trên giao diện (vd: "SALE", "HOT", "Best Value") */
+  badge: { type: String, default: null },
+
+  // ── Package-level Sale ─────────────────────────────────
+  saleType: { type: String, enum: ['percent', 'fixed_price'], default: null },
+  saleValue: { type: Number, default: null },
+  salePrice: { type: Number, default: null },
+  saleStartAt: { type: Date, default: null },
+  saleEndAt: { type: Date, default: null },
+  saleUsageLimit: { type: Number, default: null },
+  saleUsedCount: { type: Number, default: 0 },
+  saleIsActive: { type: Boolean, default: false },
 }, { timestamps: true });
 
 planSchema.plugin(idVirtual);

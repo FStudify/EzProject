@@ -9,6 +9,8 @@ export default function ErrorBoundary() {
   let is404 = false;
   let errorMessage = lang === 'en' ? 'Unexpected Application Error!' : 'Đã có lỗi hệ thống xảy ra!';
   let errorDetails = '';
+  
+  const homeLink = typeof window !== 'undefined' && window.location.pathname.startsWith('/admin') ? '/admin' : '/app';
 
   if (isRouteErrorResponse(error)) {
     if (error.status === 404) {
@@ -60,7 +62,7 @@ export default function ErrorBoundary() {
             {lang === 'en' ? 'Try Again' : 'Thử lại'}
           </button>
           <Link
-            to="/app"
+            to={homeLink}
             className="inline-flex items-center justify-center gap-2 rounded-xl bg-primary px-5 py-2.5 text-sm font-semibold text-white shadow-md shadow-primary/20 transition-all hover:-translate-y-0.5 hover:shadow-primary/30"
           >
             <Home className="h-4 w-4" />

@@ -35,8 +35,8 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
       title: 'Tổng doanh thu',
       value: formatVnd(data.totalRevenue),
       icon: DollarSign,
-      color: 'text-orange-500',
-      bg: 'bg-orange-100',
+      color: 'text-orange-600',
+      bg: 'bg-orange-50 ring-1 ring-orange-100/50',
       growth: <GrowthBadge current={data.revenueThisMonth} previous={data.revenueLastMonth} />,
       subtext: 'so với tháng trước'
     },
@@ -44,8 +44,8 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
       title: 'Doanh thu hôm nay',
       value: formatVnd(data.revenueToday),
       icon: Activity,
-      color: 'text-emerald-500',
-      bg: 'bg-emerald-100',
+      color: 'text-orange-600',
+      bg: 'bg-orange-50 ring-1 ring-orange-100/50',
       growth: <GrowthBadge current={data.revenueToday} previous={data.revenueYesterday} />,
       subtext: 'so với hôm qua'
     },
@@ -53,8 +53,8 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
       title: 'Tuần này',
       value: formatVnd(data.revenueThisWeek),
       icon: CreditCard,
-      color: 'text-blue-500',
-      bg: 'bg-blue-100',
+      color: 'text-orange-600',
+      bg: 'bg-orange-50 ring-1 ring-orange-100/50',
       growth: <GrowthBadge current={data.revenueThisWeek} previous={data.revenueLastWeek} />,
       subtext: 'so với tuần trước'
     },
@@ -62,8 +62,8 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
       title: 'Tháng này',
       value: formatVnd(data.revenueThisMonth),
       icon: DollarSign,
-      color: 'text-violet-500',
-      bg: 'bg-violet-100',
+      color: 'text-orange-600',
+      bg: 'bg-orange-50 ring-1 ring-orange-100/50',
       growth: <GrowthBadge current={data.revenueThisMonth} previous={data.revenueLastMonth} />,
       subtext: 'so với tháng trước'
     },
@@ -71,23 +71,23 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
       title: 'GTHĐ Trung bình',
       value: formatVnd(data.aov),
       icon: CheckCircle,
-      color: 'text-amber-500',
-      bg: 'bg-amber-100',
+      color: 'text-orange-600',
+      bg: 'bg-orange-50 ring-1 ring-orange-100/50',
     }
   ];
 
   const paymentStats = [
-    { title: 'Thanh toán thành công', value: data.successfulPayments, icon: CheckCircle, color: 'text-emerald-500', bg: 'bg-emerald-50' },
-    { title: 'Chờ thanh toán', value: data.pendingPayments, icon: Clock, color: 'text-amber-500', bg: 'bg-amber-50' },
-    { title: 'Thanh toán thất bại', value: data.failedPayments, icon: AlertTriangle, color: 'text-rose-500', bg: 'bg-rose-50' },
-    { title: 'Tiền hoàn trả', value: formatVnd(data.refundedRevenue), icon: RotateCcw, color: 'text-slate-500', bg: 'bg-slate-100' },
+    { title: 'Thanh toán thành công', value: data.successfulPayments, icon: CheckCircle, color: 'text-emerald-600', iconBg: 'bg-emerald-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all' },
+    { title: 'Chờ thanh toán', value: data.pendingPayments, icon: Clock, color: 'text-amber-600', iconBg: 'bg-amber-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-amber-200 hover:shadow-md transition-all' },
+    { title: 'Thanh toán thất bại', value: data.failedPayments, icon: AlertTriangle, color: 'text-rose-600', iconBg: 'bg-rose-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-rose-200 hover:shadow-md transition-all' },
+    { title: 'Tiền hoàn trả', value: formatVnd(data.refundedRevenue), icon: RotateCcw, color: 'text-slate-600', iconBg: 'bg-slate-100', bg: 'bg-white border border-slate-200 shadow-sm hover:border-slate-300 hover:shadow-md transition-all' },
   ];
 
   const subStats = [
-    { title: 'Đang đăng ký', value: data.activeSubscribers, icon: Users, color: 'text-blue-600', bg: 'bg-blue-50' },
-    { title: 'Mua mới hôm nay', value: data.newToday, icon: TrendingUp, color: 'text-emerald-600', bg: 'bg-emerald-50' },
-    { title: 'Gia hạn hôm nay', value: data.renewToday, icon: RotateCcw, color: 'text-indigo-600', bg: 'bg-indigo-50' },
-    { title: 'Nâng cấp hôm nay', value: data.upgradeToday, icon: TrendingUp, color: 'text-orange-600', bg: 'bg-orange-50' },
+    { title: 'Đang đăng ký', value: data.activeSubscribers, icon: Users, color: 'text-blue-600', iconBg: 'bg-blue-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-blue-200 hover:shadow-md transition-all' },
+    { title: 'Mua mới hôm nay', value: data.newToday, icon: TrendingUp, color: 'text-emerald-600', iconBg: 'bg-emerald-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-emerald-200 hover:shadow-md transition-all' },
+    { title: 'Gia hạn hôm nay', value: data.renewToday, icon: RotateCcw, color: 'text-indigo-600', iconBg: 'bg-indigo-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-indigo-200 hover:shadow-md transition-all' },
+    { title: 'Nâng cấp hôm nay', value: data.upgradeToday, icon: TrendingUp, color: 'text-orange-600', iconBg: 'bg-orange-50', bg: 'bg-white border border-slate-200 shadow-sm hover:border-orange-200 hover:shadow-md transition-all' },
   ];
 
   return (
@@ -115,14 +115,16 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Payment Status KPIs */}
-        <Card className="p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4">Payment Status Overview</h3>
+        <Card className="p-6 border-slate-200 shadow-sm">
+          <h3 className="text-base font-bold text-slate-800 mb-4">Tổng quan Trạng thái Thanh toán</h3>
           <div className="grid grid-cols-2 gap-4">
             {paymentStats.map((p, i) => (
-              <div key={i} className={`p-4 rounded-xl border flex items-center gap-4 ${p.bg} border-transparent hover:border-slate-200 transition-colors`}>
-                <p.icon className={`w-8 h-8 ${p.color}`} />
+              <div key={i} className={`p-4 rounded-xl flex items-center gap-4 cursor-default ${p.bg}`}>
+                <div className={`p-2.5 rounded-lg ${p.iconBg}`}>
+                  <p.icon className={`w-6 h-6 ${p.color}`} />
+                </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-600">{p.title}</p>
+                  <p className="text-sm font-medium text-slate-500">{p.title}</p>
                   <p className="text-xl font-bold text-slate-800">{p.value}</p>
                 </div>
               </div>
@@ -131,14 +133,16 @@ export function RevenueKPIWidgets({ data }: RevenueKPIWidgetsProps) {
         </Card>
 
         {/* Subscription KPIs */}
-        <Card className="p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-4">Subscription Activity</h3>
+        <Card className="p-6 border-slate-200 shadow-sm">
+          <h3 className="text-base font-bold text-slate-800 mb-4">Hoạt động Đăng ký gói</h3>
           <div className="grid grid-cols-2 gap-4">
             {subStats.map((s, i) => (
-              <div key={i} className={`p-4 rounded-xl border flex items-center gap-4 ${s.bg} border-transparent hover:border-slate-200 transition-colors`}>
-                <s.icon className={`w-8 h-8 ${s.color}`} />
+              <div key={i} className={`p-4 rounded-xl flex items-center gap-4 cursor-default ${s.bg}`}>
+                <div className={`p-2.5 rounded-lg ${s.iconBg}`}>
+                  <s.icon className={`w-6 h-6 ${s.color}`} />
+                </div>
                 <div>
-                  <p className="text-sm font-semibold text-slate-600">{s.title}</p>
+                  <p className="text-sm font-medium text-slate-500">{s.title}</p>
                   <p className="text-xl font-bold text-slate-800">{s.value}</p>
                 </div>
               </div>

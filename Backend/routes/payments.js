@@ -24,6 +24,12 @@ router.get(
 );
 
 router.post(
+  '/voucher/validate',
+  requireAuth,
+  paymentController.validateVoucher,
+);
+
+router.post(
   '/create',
   requireAuth,
   validate(validators.createPayment),

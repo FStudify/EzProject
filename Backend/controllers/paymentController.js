@@ -1,6 +1,6 @@
 'use strict';
 
-const { Plan, Payment, Subscription, User } = require('../models');
+const { Plan, Payment, Subscription, User, Promotion, Voucher } = require('../models');
 const payosService = require('../services/payos.service');
 const config = require('../config');
 const { errors } = require('../middlewares/errorHandler');
@@ -81,13 +81,102 @@ function sanitizePayment(doc) {
   return obj;
 }
 
+// ── Helper: Get active promotions for plans ────────────────────
+async function getActivePromotions() {
+  const now = new Date();
+  return Promotion.find({
+    isActive: true,
+    startDate: { $lte: now },
+    endDate: { $gte: now },
+  }).lean();
+}
+
+async function calculateEffectivePrice(plan, user) {
+  const now = new Date();
+  let basePrice = plan.priceVnd;
+  let packageSaleDiscount = 0;
+  let packageSaleActive = false;
+
+  // 1. Check Package-level Sale
+  if (
+    plan.saleIsActive &&
+    (!plan.saleStartAt || plan.saleStartAt <= now) &&
+    (!plan.saleEndAt || plan.saleEndAt >= now) &&
+    (!plan.saleUsageLimit || plan.saleUsedCount < plan.saleUsageLimit)
+  ) {
+    packageSaleActive = true;
+    if (plan.saleType === 'percent') {
+      packageSaleDiscount = Math.floor(basePrice * (plan.saleValue / 100));
+    } else if (plan.saleType === 'fixed_price') {
+      packageSaleDiscount = Math.max(0, basePrice - plan.saleValue);
+    }
+  }
+
+  let priceAfterPackageSale = Math.max(0, basePrice - packageSaleDiscount);
+
+  // 2. Check Promotion
+  const promotions = await getActivePromotions();
+  let bestPromoDiscount = 0;
+  let bestPromo = null;
+
+  for (const promo of promotions) {
+    if (promo.applicablePlans && promo.applicablePlans.length > 0 && !promo.applicablePlans.includes(plan.key)) {
+      continue;
+    }
+    // Check usage limits
+    if (promo.usageLimit > 0 && promo.usedCount >= promo.usageLimit) {
+      continue;
+    }
+    if (user && promo.usagePerUser > 0) {
+      const { PromotionUsage } = require('../models');
+      const userUsage = await PromotionUsage.countDocuments({ promotionId: promo._id, userId: user._id });
+      if (userUsage >= promo.usagePerUser) continue;
+    }
+
+    let discount = 0;
+    if (promo.discountType === 'PERCENT') {
+      discount = Math.floor(priceAfterPackageSale * (promo.discountValue / 100));
+    } else {
+      discount = promo.discountValue;
+    }
+
+    if (discount > bestPromoDiscount) {
+      bestPromoDiscount = discount;
+      bestPromo = promo;
+    }
+  }
+
+  let finalDiscount = packageSaleDiscount + bestPromoDiscount;
+  let currentPrice = Math.max(0, basePrice - finalDiscount);
+
+  return {
+    originalPrice: basePrice,
+    currentPrice,
+    packageSaleActive,
+    packageSaleDiscount,
+    promoDiscount: bestPromoDiscount,
+    promotion: bestPromo,
+  };
+}
+
 // ── GET /plans — public list of active plans ─────────────────
 exports.listPlans = async (req, res, next) => {
   try {
     const plans = await Plan.find({ isActive: true })
       .sort({ sortOrder: 1, priceVnd: 1 })
       .lean();
-    res.json({ success: true, data: { plans } });
+
+    const user = req.user ? await User.findById(req.user.id).lean() : null;
+
+    const plansWithPricing = await Promise.all(plans.map(async plan => {
+      const pricing = await calculateEffectivePrice(plan, user);
+      return {
+        ...plan,
+        ...pricing,
+      };
+    }));
+
+    res.json({ success: true, data: { plans: plansWithPricing } });
   } catch (err) {
     next(err);
   }
@@ -109,10 +198,78 @@ exports.getMyCurrentSubscription = async (req, res, next) => {
   }
 };
 
+// ── POST /payments/voucher/validate ───────────────────────────
+exports.validateVoucher = async (req, res, next) => {
+  try {
+    const { planKey, code } = req.body;
+    if (!planKey || !code) throw errors.BadRequest('Thiếu planKey hoặc code');
+
+    const plan = await Plan.findOne({ key: planKey.toLowerCase(), isActive: true }).lean();
+    if (!plan) throw errors.NotFound('Plan không hợp lệ');
+
+    const voucher = await Voucher.findOne({ code: code.toUpperCase(), isActive: true }).lean();
+    if (!voucher) throw errors.BadRequest('Voucher không tồn tại hoặc đã bị khóa');
+
+    const now = new Date();
+    if (now < voucher.startDate || now > voucher.endDate) {
+      throw errors.BadRequest('Voucher không trong thời gian sử dụng');
+    }
+    if (voucher.maxUsage > 0 && voucher.currentUsage >= voucher.maxUsage) {
+      throw errors.BadRequest('Voucher đã hết lượt sử dụng');
+    }
+    if (voucher.applicablePlans && voucher.applicablePlans.length > 0 && !voucher.applicablePlans.includes(plan.key)) {
+      throw errors.BadRequest('Voucher không áp dụng cho gói này');
+    }
+
+    const user = req.user ? await User.findById(req.user.id).lean() : null;
+
+    if (user && voucher.usagePerUser > 0) {
+      const { VoucherUsage } = require('../models');
+      const userUsageCount = await VoucherUsage.countDocuments({ voucherId: voucher._id, userId: user._id });
+      if (userUsageCount >= voucher.usagePerUser) {
+        throw errors.BadRequest(`Bạn chỉ được sử dụng voucher này tối đa ${voucher.usagePerUser} lần`);
+      }
+    }
+
+    // Tính giá sau khuyến mãi tự động trước (nếu có)
+    const pricing = await calculateEffectivePrice(plan, user);
+    let priceAfterPromo = pricing.currentPrice;
+
+    const hasOtherDiscounts = pricing.packageSaleDiscount > 0 || pricing.promoDiscount > 0;
+    if (hasOtherDiscounts && voucher.stackableWithSale === false) {
+      throw errors.BadRequest('Voucher này không được sử dụng cùng với các chương trình khuyến mãi khác');
+    }
+
+    if (voucher.minAmount > 0 && priceAfterPromo < voucher.minAmount) {
+      throw errors.BadRequest(`Voucher chỉ áp dụng cho đơn từ ${voucher.minAmount.toLocaleString('vi-VN')}đ`);
+    }
+
+    let voucherDiscount = 0;
+    if (voucher.discountType === 'PERCENT') {
+      voucherDiscount = Math.floor(priceAfterPromo * (voucher.discountValue / 100));
+    } else {
+      voucherDiscount = voucher.discountValue;
+    }
+    voucherDiscount = Math.min(voucherDiscount, priceAfterPromo);
+
+    res.json({
+      success: true,
+      data: {
+        isValid: true,
+        discount: voucherDiscount,
+        finalPrice: priceAfterPromo - voucherDiscount,
+        voucher,
+      },
+    });
+  } catch (err) {
+    next(err);
+  }
+};
+
 // ── POST /payments/create ─────────────────────────────────────
 exports.createPayment = async (req, res, next) => {
   try {
-    const { planKey } = req.body;
+    const { planKey, voucherCode } = req.body;
     const plan = await Plan.findOne({ key: planKey.toLowerCase(), isActive: true }).lean();
     if (!plan) throw errors.NotFound('Plan');
     if (plan.priceVnd <= 0) {
@@ -173,7 +330,61 @@ exports.createPayment = async (req, res, next) => {
       }
     }
 
+    // 4. Calculate Final Price with Promotion and Voucher
+    const pricing = await calculateEffectivePrice(plan, user);
+    const basePrice = pricing.originalPrice;
+    let promoDiscount = pricing.packageSaleDiscount + pricing.promoDiscount;
+    let usedPromoId = pricing.promotion ? pricing.promotion._id : null;
+    let voucherDiscount = 0;
+    let finalVoucherCode = null;
+
+    let currentAmount = pricing.currentPrice;
+
+    // Apply Voucher
+    if (voucherCode && currentAmount > 0) {
+      const voucher = await Voucher.findOne({ code: voucherCode.toUpperCase(), isActive: true });
+      if (voucher) {
+        const now = new Date();
+        const isValidDate = now >= voucher.startDate && now <= voucher.endDate;
+        const isValidUsage = voucher.maxUsage === 0 || voucher.currentUsage < voucher.maxUsage;
+        const isValidPlan = !voucher.applicablePlans.length || voucher.applicablePlans.includes(plan.key);
+        const isValidMinAmount = currentAmount >= voucher.minAmount;
+
+        let isValidUserLimit = true;
+        if (voucher.usagePerUser > 0) {
+          const { VoucherUsage } = require('../models');
+          const userUsageCount = await VoucherUsage.countDocuments({ voucherId: voucher._id, userId: user._id });
+          if (userUsageCount >= voucher.usagePerUser) isValidUserLimit = false;
+        }
+
+        const hasOtherDiscounts = promoDiscount > 0;
+        const isValidStacking = !hasOtherDiscounts || voucher.stackableWithSale;
+
+        if (isValidDate && isValidUsage && isValidPlan && isValidMinAmount && isValidUserLimit && isValidStacking) {
+          if (voucher.discountType === 'PERCENT') {
+            voucherDiscount = Math.floor(currentAmount * (voucher.discountValue / 100));
+          } else {
+            voucherDiscount = voucher.discountValue;
+          }
+          voucherDiscount = Math.min(voucherDiscount, currentAmount);
+          finalVoucherCode = voucher.code;
+        } else {
+          throw errors.BadRequest('Voucher không hợp lệ hoặc không thể áp dụng');
+        }
+      }
+    }
+
+    const finalAmount = Math.max(0, currentAmount - voucherDiscount);
+
+    if (finalAmount <= 0) {
+      throw errors.BadRequest('Sau khi giảm giá, tổng tiền bằng 0. Hệ thống hiện chưa hỗ trợ nâng cấp miễn phí qua PayOS.');
+    }
+
     const orderCode = await freshOrderCode();
+
+    // Note: Voucher and Promotion usages will be recorded in payosWebhook when payment is PAID.
+    const totalDiscountAmount = basePrice - finalAmount;
+
     const expiresAt = new Date(Date.now() + 15 * 60 * 1000);
     const returnUrl = resolveRedirectUrl(
       'return',
@@ -190,7 +401,7 @@ exports.createPayment = async (req, res, next) => {
 
     const payosResult = await payosService.createPaymentLink({
       orderCode,
-      amount: plan.priceVnd,
+      amount: finalAmount,
       description,
       returnUrl,
       cancelUrl,
@@ -213,7 +424,11 @@ exports.createPayment = async (req, res, next) => {
       oldPlanKey,
       action,
       planName: plan.name,
-      amount: plan.priceVnd,
+      amount: finalAmount,
+      originalPrice: basePrice,
+      discountAmount: totalDiscountAmount,
+      voucherCode: finalVoucherCode,
+      promotionId: usedPromoId,
       currency: plan.currency || 'VND',
       status: 'PENDING',
       provider: 'PAYOS',
@@ -226,7 +441,7 @@ exports.createPayment = async (req, res, next) => {
       orderCode: paymentDoc.orderCode,
       userId: req.user.id,
       planKey: plan.key,
-      amount: plan.priceVnd,
+      amount: finalAmount,
     });
 
     res.json({
@@ -393,6 +608,37 @@ exports.payOsWebhook = async (req, res) => {
       payment.transactionId = data.reference || data.transactionId || payment.transactionId;
       payment.rawPayload = data;
       await payment.save();
+      
+      // Record usages for voucher and promotion now that payment is PAID
+      if (payment.voucherCode) {
+        const Voucher = require('../models/Voucher');
+        const { VoucherUsage } = require('../models');
+        const voucher = await Voucher.findOne({ code: payment.voucherCode });
+        if (voucher) {
+          await VoucherUsage.create({
+            voucherId: voucher._id,
+            userId: payment.userId,
+            orderCode: payment.orderCode
+          });
+          voucher.currentUsage += 1;
+          await voucher.save();
+        }
+      }
+      if (payment.promotionId) {
+        const Promotion = require('../models/Promotion');
+        const { PromotionUsage } = require('../models');
+        const promo = await Promotion.findById(payment.promotionId);
+        if (promo) {
+          await PromotionUsage.create({
+            promotionId: promo._id,
+            userId: payment.userId,
+            orderCode: payment.orderCode
+          });
+          promo.usedCount += 1;
+          await promo.save();
+        }
+      }
+
       await applySubscription(payment);
       console.info('[Payment] PAID via webhook', { orderCode, paymentId: payment._id });
     } else if (/hủy|cancel|cancelled/i.test(payosStatus)) {

@@ -12,6 +12,10 @@ const InviteLink = require('./InviteLink');
 const Plan = require('./Plan');
 const Subscription = require('./Subscription');
 const Payment = require('./Payment');
+const Promotion = require('./Promotion');
+const Voucher = require('./Voucher');
+const VoucherUsage = require('./VoucherUsage');
+const PromotionUsage = require('./PromotionUsage');
 
 module.exports = {
   User,
@@ -30,4 +34,8 @@ module.exports = {
   Plan,
   Subscription,
   Payment,
+  Promotion,
+  Voucher,
+  VoucherUsage,
+  PromotionUsage,
 };

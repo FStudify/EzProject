@@ -83,7 +83,7 @@ export default function AdminLogsPage() {
               type="button"
               onClick={resetFilters}
               className="inline-flex items-center gap-1.5 rounded-xl border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              style={{ borderColor: '#E8D8CF' }}
+             
             >
               Đặt lại
             </button>
@@ -91,7 +91,7 @@ export default function AdminLogsPage() {
               type="button"
               onClick={() => void fetchLogs()}
               className="inline-flex items-center gap-1.5 rounded-xl border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-              style={{ borderColor: '#E8D8CF' }}
+             
             >
               <RefreshCw className="h-4 w-4" /> Làm mới
             </button>
@@ -99,7 +99,7 @@ export default function AdminLogsPage() {
         }
       />
 
-      <div className="grid grid-cols-1 gap-3 rounded-2xl border bg-white p-3 md:grid-cols-4" style={{ borderColor: '#E8D8CF' }}>
+      <div className="grid grid-cols-1 gap-3 rounded-xl border border-slate-200 bg-white shadow-sm p-3 md:grid-cols-4">
         <div className="relative">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -108,7 +108,7 @@ export default function AdminLogsPage() {
             onKeyDown={(e) => e.key === 'Enter' && applyFilters()}
             placeholder="Lọc theo hành động (VD: created, blocked...)"
             className="h-9 w-full rounded-lg border bg-white pl-9 pr-3 text-sm focus:outline-none"
-            style={{ borderColor: '#E8D8CF' }}
+           
           />
         </div>
         <div>
@@ -117,7 +117,7 @@ export default function AdminLogsPage() {
             value={from}
             onChange={(e) => setFrom(e.target.value)}
             className="h-9 w-full rounded-lg border bg-white px-3 text-sm focus:outline-none"
-            style={{ borderColor: '#E8D8CF' }}
+           
             placeholder="Từ ngày"
           />
         </div>
@@ -127,7 +127,7 @@ export default function AdminLogsPage() {
             value={to}
             onChange={(e) => setTo(e.target.value)}
             className="h-9 w-full rounded-lg border bg-white px-3 text-sm focus:outline-none"
-            style={{ borderColor: '#E8D8CF' }}
+           
             placeholder="Đến ngày"
           />
         </div>
@@ -140,7 +140,7 @@ export default function AdminLogsPage() {
         </button>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: '#E8D8CF' }}>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         {isLoading ? (
           <div className="flex h-40 items-center justify-center">
             <Loader2 className="h-6 w-6 animate-spin text-slate-400" />
@@ -159,7 +159,7 @@ export default function AdminLogsPage() {
         ) : logs.length === 0 ? (
           <p className="px-4 py-12 text-center text-sm text-slate-500">Không có log nào.</p>
         ) : (
-          <ul className="divide-y" style={{ borderColor: '#F0E5DA' }}>
+          <ul className="divide-y">
             {logs.map((log) => (
               <li key={log.id} className="flex items-start gap-3 px-4 py-3">
                 <div
@@ -191,7 +191,7 @@ export default function AdminLogsPage() {
         )}
 
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500" style={{ borderColor: '#F0E5DA' }}>
+          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500">
             <span>Trang {pagination.page}/{pagination.totalPages} · {pagination.total} log</span>
             <div className="flex items-center gap-1">
               <button

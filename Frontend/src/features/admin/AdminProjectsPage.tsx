@@ -65,14 +65,14 @@ export default function AdminProjectsPage() {
             type="button"
             onClick={() => void fetchProjects()}
             className="inline-flex items-center gap-1.5 rounded-xl border bg-white px-3 py-1.5 text-xs font-semibold text-slate-700 hover:bg-slate-50"
-            style={{ borderColor: '#E8D8CF' }}
+           
           >
             <RefreshCw className="h-4 w-4" /> Làm mới
           </button>
         }
       />
 
-      <div className="flex flex-wrap items-center gap-3 rounded-2xl border bg-white p-3" style={{ borderColor: '#E8D8CF' }}>
+      <div className="flex flex-wrap items-center gap-3 rounded-xl border border-slate-200 bg-white shadow-sm p-3">
         <div className="relative flex-1 min-w-[220px]">
           <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-slate-400" />
           <input
@@ -85,10 +85,10 @@ export default function AdminProjectsPage() {
             }}
             placeholder="Tìm theo tên dự án..."
             className="h-9 w-full rounded-lg border bg-white pl-9 pr-3 text-sm focus:outline-none"
-            style={{ borderColor: '#E8D8CF' }}
+           
           />
         </div>
-        <div className="flex items-center rounded-lg border bg-white" style={{ borderColor: '#E8D8CF' }}>
+        <div className="flex items-center rounded-lg border bg-white">
           {[
             { v: undefined, l: 'Tất cả' },
             { v: 'ACTIVE', l: STATUS_STYLE.ACTIVE.label },
@@ -107,8 +107,7 @@ export default function AdminProjectsPage() {
                     page: 1,
                   }))
                 }
-                className="px-3 py-1.5 text-xs font-semibold transition-colors"
-                style={active ? { backgroundColor: '#1f2937', color: 'white' } : { color: '#635648' }}
+                className={`px-3 py-1.5 text-xs font-semibold transition-all rounded-md ${active ? "bg-slate-800 text-white shadow-sm" : "text-slate-500 hover:bg-slate-100"}`}
               >
                 {s.l}
               </button>
@@ -118,9 +117,9 @@ export default function AdminProjectsPage() {
         <span className="ml-auto text-xs text-slate-500">{pagination.total} dự án</span>
       </div>
 
-      <div className="overflow-hidden rounded-2xl border bg-white" style={{ borderColor: '#E8D8CF' }}>
+      <div className="overflow-hidden rounded-xl border border-slate-200 bg-white shadow-sm">
         <table className="w-full text-sm">
-          <thead style={{ backgroundColor: '#FAF6F1' }}>
+          <thead className="bg-slate-50 border-b border-slate-200">
             <tr className="text-left text-xs font-semibold uppercase tracking-wider text-slate-500">
               <th className="px-4 py-3">Tên dự án</th>
               <th className="px-4 py-3">Chủ sở hữu</th>
@@ -160,7 +159,7 @@ export default function AdminProjectsPage() {
               projects.map((p) => {
                 const st = STATUS_STYLE[p.status] ?? STATUS_STYLE.ACTIVE;
                 return (
-                  <tr key={p.id} className="border-t hover:bg-slate-50" style={{ borderColor: '#F0E5DA' }}>
+                  <tr key={p.id} className="border-t hover:bg-slate-50">
                     <td className="px-4 py-3">
                       <p className="font-semibold text-slate-800">{p.name}</p>
                       {p.description && (
@@ -207,7 +206,7 @@ export default function AdminProjectsPage() {
         </table>
 
         {pagination.totalPages > 1 && (
-          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500" style={{ borderColor: '#F0E5DA' }}>
+          <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500">
             <span>Trang {pagination.page}/{pagination.totalPages}</span>
             <div className="flex items-center gap-1">
               <button
