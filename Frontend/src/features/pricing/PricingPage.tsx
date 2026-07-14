@@ -4,7 +4,6 @@ import {
   Check,
   Loader2,
   Sparkles,
-  X as XIcon,
   ArrowLeft,
   X,
   Crown,
