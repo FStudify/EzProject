@@ -2,12 +2,15 @@ import { useState } from 'react';
 import { Card, Badge, Avatar, Button } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { format } from 'date-fns';
-import { Eye, Clock } from 'lucide-react';
+import { Eye, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { AdminSubscriptionRow } from '@/api/types';
 
 interface SubscriptionListTableProps {
   data: AdminSubscriptionRow[];
   isLoading: boolean;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 function getStatusBadge(status: string) {
@@ -23,7 +26,7 @@ function getStatusBadge(status: string) {
   }
 }
 
-export function SubscriptionListTable({ data, isLoading }: SubscriptionListTableProps) {
+export function SubscriptionListTable({ data, isLoading, page, totalPages, onPageChange }: SubscriptionListTableProps) {
   const [selectedSub, setSelectedSub] = useState<AdminSubscriptionRow | null>(null);
 
   return (
@@ -87,6 +90,33 @@ export function SubscriptionListTable({ data, isLoading }: SubscriptionListTable
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages && totalPages > 1 && page && onPageChange && (
+        <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500 bg-white rounded-b-xl">
+          <span>
+            Trang {page}/{totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+              className="rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+              className="rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-40"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <Drawer
         isOpen={!!selectedSub}

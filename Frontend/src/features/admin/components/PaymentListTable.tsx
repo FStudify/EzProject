@@ -2,13 +2,16 @@ import { useState } from 'react';
 import { Card, Badge, Avatar, Button } from '@/components/ui';
 import Drawer from '@/components/ui/Drawer';
 import { format } from 'date-fns';
-import { Download, Clock } from 'lucide-react';
+import { Download, Clock, ChevronLeft, ChevronRight } from 'lucide-react';
 import type { RevenuePaymentRow } from '@/api/types';
 import { getExportCsvUrl } from '@/api/payment.api';
 
 interface PaymentListTableProps {
   data: RevenuePaymentRow[];
   isLoading: boolean;
+  page?: number;
+  totalPages?: number;
+  onPageChange?: (page: number) => void;
 }
 
 function formatVnd(value: number): string {
@@ -45,7 +48,7 @@ function getActionBadge(action: string) {
   }
 }
 
-export function PaymentListTable({ data, isLoading }: PaymentListTableProps) {
+export function PaymentListTable({ data, isLoading, page, totalPages, onPageChange }: PaymentListTableProps) {
   const [selectedPayment, setSelectedPayment] = useState<RevenuePaymentRow | null>(null);
 
   return (
@@ -118,6 +121,33 @@ export function PaymentListTable({ data, isLoading }: PaymentListTableProps) {
           </tbody>
         </table>
       </div>
+
+      {/* Pagination */}
+      {totalPages && totalPages > 1 && page && onPageChange && (
+        <div className="flex items-center justify-between border-t px-4 py-3 text-xs text-slate-500 bg-white rounded-b-xl">
+          <span>
+            Trang {page}/{totalPages}
+          </span>
+          <div className="flex items-center gap-1">
+            <button
+              type="button"
+              disabled={page <= 1}
+              onClick={() => onPageChange(page - 1)}
+              className="rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-40"
+            >
+              <ChevronLeft className="h-4 w-4" />
+            </button>
+            <button
+              type="button"
+              disabled={page >= totalPages}
+              onClick={() => onPageChange(page + 1)}
+              className="rounded-md p-1.5 hover:bg-slate-100 disabled:opacity-40"
+            >
+              <ChevronRight className="h-4 w-4" />
+            </button>
+          </div>
+        </div>
+      )}
 
       <Drawer
         isOpen={!!selectedPayment}

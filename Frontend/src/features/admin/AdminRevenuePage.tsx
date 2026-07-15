@@ -229,33 +229,23 @@ export default function AdminRevenuePage() {
         )}
 
         {activeTab === 'subscriptions' && (
-          <div className="space-y-4">
-            <SubscriptionListTable data={subs} isLoading={isSubsLoading} />
-            {subTotalPages > 1 && (
-              <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
-                <span className="text-sm font-medium text-slate-500">Trang {subPage} / {subTotalPages}</span>
-                <div className="flex gap-2">
-                  <button disabled={subPage === 1} onClick={() => loadSubscriptions(subPage - 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                  <button disabled={subPage === subTotalPages} onClick={() => loadSubscriptions(subPage + 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Sau</button>
-                </div>
-              </div>
-            )}
-          </div>
+          <SubscriptionListTable 
+            data={subs} 
+            isLoading={isSubsLoading} 
+            page={subPage}
+            totalPages={subTotalPages}
+            onPageChange={loadSubscriptions}
+          />
         )}
 
         {activeTab === 'payments' && (
-          <div className="space-y-4">
-            <PaymentListTable data={payments} isLoading={isPaymentsLoading} />
-            {paymentTotalPages > 1 && (
-              <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
-                <span className="text-sm font-medium text-slate-500">Trang {paymentPage} / {paymentTotalPages}</span>
-                <div className="flex gap-2">
-                  <button disabled={paymentPage === 1} onClick={() => loadPayments(paymentPage - 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Trước</button>
-                  <button disabled={paymentPage === paymentTotalPages} onClick={() => loadPayments(paymentPage + 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Sau</button>
-                </div>
-              </div>
-            )}
-          </div>
+          <PaymentListTable 
+            data={payments} 
+            isLoading={isPaymentsLoading} 
+            page={paymentPage}
+            totalPages={paymentTotalPages}
+            onPageChange={loadPayments}
+          />
         )}
 
         {isLoading && activeTab === 'overview' && !overview && (
