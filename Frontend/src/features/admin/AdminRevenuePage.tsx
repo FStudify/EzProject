@@ -79,7 +79,7 @@ export default function AdminRevenuePage() {
   const loadSubscriptions = async () => {
     setIsSubsLoading(true);
     try {
-      const res = await fetchAdminSubscriptions({ limit: 500 });
+      const res = await fetchAdminSubscriptions({ limit: 100 });
       setSubs(res.items);
     } catch (err: any) {
       toast(err.message, 'error');
@@ -91,7 +91,7 @@ export default function AdminRevenuePage() {
   const loadPayments = async () => {
     setIsPaymentsLoading(true);
     try {
-      const res = await fetchRevenuePayments({ limit: 500 });
+      const res = await fetchRevenuePayments({ limit: 100 });
       setPayments(res.items);
     } catch (err: any) {
       toast(err.message, 'error');
