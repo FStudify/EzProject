@@ -231,13 +231,9 @@ exports.update = async (req, res, next) => {
     const alreadyStarted = meeting.startTime <= now;
     const alreadyEnded = meeting.endTime <= now;
 
-    // OWNER: edit everything
-    // SUPERVISOR: only meetings they created
-    if (membership.role === 'MEMBER') {
-      throw errors.Forbidden('Members cannot edit meetings');
-    }
-    if (membership.role === 'SUPERVISOR' && meeting.organizerId.toString() !== req.user.id) {
-      throw errors.Forbidden('Supervisors can only edit meetings they organized');
+    // Only organizer can edit meeting
+    if (meeting.organizerId.toString() !== req.user.id) {
+      throw errors.Forbidden('Only the organizer can edit this meeting');
     }
 
     // If meeting already started, prevent changing startTime
@@ -262,9 +258,7 @@ exports.update = async (req, res, next) => {
       allowedFields.push('startTime', 'endTime');
     }
     // Status can always be changed by owner/supervisor
-    if (membership.role === 'OWNER' || meeting.organizerId.toString() === req.user.id) {
-      allowedFields.push('status');
-    }
+    allowedFields.push('status');
 
     const updates = {};
     for (const field of allowedFields) {
@@ -313,20 +307,16 @@ exports.update = async (req, res, next) => {
 // ── DELETE /projects/:projectId/meetings/:meetingId ───────────────────────────
 exports.delete = async (req, res, next) => {
   try {
-    const membership = await checkMember(req.params.projectId, req.user.id);
+    await checkMember(req.params.projectId, req.user.id);
     const meeting = await Meeting.findOne({
       _id: new ObjectId(req.params.meetingId),
       projectId: new ObjectId(req.params.projectId),
     });
     if (!meeting) throw errors.NotFound('Meeting');
 
-    // OWNER: delete any meeting
-    // SUPERVISOR: only meetings they organized
-    if (membership.role === 'MEMBER') {
-      throw errors.Forbidden('Members cannot delete meetings');
-    }
-    if (membership.role === 'SUPERVISOR' && meeting.organizerId.toString() !== req.user.id) {
-      throw errors.Forbidden('Supervisors can only delete meetings they organized');
+    // Only organizer can delete meeting
+    if (meeting.organizerId.toString() !== req.user.id) {
+      throw errors.Forbidden('Only the organizer can delete this meeting');
     }
 
     await Meeting.findByIdAndDelete(req.params.meetingId);

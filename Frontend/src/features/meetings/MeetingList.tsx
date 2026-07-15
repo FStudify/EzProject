@@ -473,6 +473,7 @@ export default function MeetingList() {
           isOpen={!!detailMeeting}
           onClose={() => setDetailMeeting(null)}
           onEdit={() => { setDetailMeeting(null); setEditingMeeting(detailMeeting); }}
+          onDelete={() => { setDetailMeeting(null); setDeleteTarget(detailMeeting); }}
           onAddAttendees={async (attendeeIds) => {
             if (!projectId) return;
             const updated = await addMeetingAttendees(projectId, detailMeeting.id, attendeeIds);

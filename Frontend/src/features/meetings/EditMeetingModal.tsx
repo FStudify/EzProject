@@ -32,8 +32,9 @@ export default function EditMeetingModal({ meeting, isOpen, onClose, onSave, mem
   const [description, setDescription] = useState(meeting.description ?? '');
   const [startDate, setStartDate] = useState(toDate(meeting.startTime));
   const [startTimeInput, setStartTimeInput] = useState(toTime(meeting.startTime));
-  const [endDate, setEndDate] = useState(toDate(meeting.endTime));
-  const [endTimeInput, setEndTimeInput] = useState(toTime(meeting.endTime));
+  
+  const initialDuration = Math.round((new Date(meeting.endTime).getTime() - new Date(meeting.startTime).getTime()) / 60000);
+  const [durationMinutes, setDurationMinutes] = useState(initialDuration > 0 ? initialDuration : 60);
   const [meetingType, setMeetingType] = useState<'online' | 'offline'>(meeting.type);
   const [location, setLocation] = useState(meeting.location ?? '');
   const [meetingLink, setMeetingLink] = useState(meeting.meetingLink ?? '');
@@ -49,8 +50,8 @@ export default function EditMeetingModal({ meeting, isOpen, onClose, onSave, mem
     setDescription(meeting.description ?? '');
     setStartDate(toDate(meeting.startTime));
     setStartTimeInput(toTime(meeting.startTime));
-    setEndDate(toDate(meeting.endTime));
-    setEndTimeInput(toTime(meeting.endTime));
+    const dur = Math.round((new Date(meeting.endTime).getTime() - new Date(meeting.startTime).getTime()) / 60000);
+    setDurationMinutes(dur > 0 ? dur : 60);
     setMeetingType(meeting.type);
     setLocation(meeting.location ?? '');
     setMeetingLink(meeting.meetingLink ?? '');
@@ -61,16 +62,12 @@ export default function EditMeetingModal({ meeting, isOpen, onClose, onSave, mem
   const validate = () => {
     if (!title.trim()) { setErrorMsg(t('title') + ' ' + t('required')); return false; }
     if (!startDate || !startTimeInput) { setErrorMsg(t('start') + ' ' + t('required')); return false; }
-    if (!endDate || !endTimeInput) { setErrorMsg(t('end') + ' ' + t('required')); return false; }
 
     const start = new Date(`${startDate}T${startTimeInput}`);
-    const end = new Date(`${endDate}T${endTimeInput}`);
     const now = new Date();
 
     if (Number.isNaN(start.getTime())) { setErrorMsg(t('invalid_date')); return false; }
-    if (Number.isNaN(end.getTime())) { setErrorMsg(t('invalid_date')); return false; }
     if (!alreadyStarted && start <= now) { setErrorMsg(t('start_must_be_future')); return false; }
-    if (end <= start) { setErrorMsg(t('end_after_start')); return false; }
 
     if (meetingType === 'online' && !meetingLink.trim()) {
       setErrorMsg(t('meeting_link') + ' ' + t('required')); return false;
@@ -93,7 +90,7 @@ export default function EditMeetingModal({ meeting, isOpen, onClose, onSave, mem
         description: description.trim() || undefined,
         type: meetingType.toUpperCase() as 'ONLINE' | 'OFFLINE',
         startTime: alreadyStarted ? undefined : new Date(`${startDate}T${startTimeInput}`).toISOString(),
-        endTime: new Date(`${endDate}T${endTimeInput}`).toISOString(),
+        endTime: new Date(new Date(`${startDate}T${startTimeInput}`).getTime() + durationMinutes * 60000).toISOString(),
         location: meetingType === 'offline' ? location.trim() : undefined,
         meetingLink: meetingType === 'online' ? meetingLink.trim() : undefined,
         status: apiStatus,
@@ -136,19 +133,19 @@ export default function EditMeetingModal({ meeting, isOpen, onClose, onSave, mem
           </div>
         </div>
 
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>{t('end')} *</label>
-            <input type="date" value={endDate}
-              onChange={(e) => { setEndDate(e.target.value); setErrorMsg(''); }}
-              className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>{t('meeting_time')} *</label>
-            <input type="time" value={endTimeInput}
-              onChange={(e) => { setEndTimeInput(e.target.value); setErrorMsg(''); }}
-              className={inputClass} />
-          </div>
+        {/* Duration */}
+        <div>
+          <label className={labelClass}>{t('duration')}</label>
+          <select value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className={inputClass}>
+            <option value={15}>15 {t('minutes')}</option>
+            <option value={30}>30 {t('minutes')}</option>
+            <option value={45}>45 {t('minutes')}</option>
+            <option value={60}>60 {t('minutes')} (1h)</option>
+            <option value={90}>90 {t('minutes')} (1.5h)</option>
+            <option value={120}>120 {t('minutes')} (2h)</option>
+            <option value={180}>180 {t('minutes')} (3h)</option>
+            <option value={240}>240 {t('minutes')} (4h)</option>
+          </select>
         </div>
 
         <div>

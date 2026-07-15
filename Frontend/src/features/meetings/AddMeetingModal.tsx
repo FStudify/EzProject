@@ -27,8 +27,7 @@ export default function AddMeetingModal({ isOpen, onClose, onAdd, projectId, mem
   const [description, setDescription] = useState('');
   const [startDate, setStartDate] = useState('');
   const [startTimeInput, setStartTimeInput] = useState('');
-  const [endDate, setEndDate] = useState('');
-  const [endTimeInput, setEndTimeInput] = useState('');
+  const [durationMinutes, setDurationMinutes] = useState(60);
   const [meetingType, setMeetingType] = useState<'online' | 'offline'>('online');
   const [location, setLocation] = useState('');
   const [meetingLink, setMeetingLink] = useState('');
@@ -42,8 +41,7 @@ export default function AddMeetingModal({ isOpen, onClose, onAdd, projectId, mem
       setDescription('');
       setStartDate('');
       setStartTimeInput('');
-      setEndDate('');
-      setEndTimeInput('');
+      setDurationMinutes(60);
       setMeetingType('online');
       setLocation('');
       setMeetingLink('');
@@ -62,16 +60,12 @@ export default function AddMeetingModal({ isOpen, onClose, onAdd, projectId, mem
   const validate = () => {
     if (!title.trim()) { setErrorMsg(t('title') + ' ' + t('required')); return false; }
     if (!startDate || !startTimeInput) { setErrorMsg(t('start') + ' ' + t('required')); return false; }
-    if (!endDate || !endTimeInput) { setErrorMsg(t('end') + ' ' + t('required')); return false; }
 
     const start = new Date(`${startDate}T${startTimeInput}`);
-    const end = new Date(`${endDate}T${endTimeInput}`);
     const now = new Date();
 
     if (Number.isNaN(start.getTime())) { setErrorMsg(t('invalid_date')); return false; }
-    if (Number.isNaN(end.getTime())) { setErrorMsg(t('invalid_date')); return false; }
     if (start <= now) { setErrorMsg(t('start_must_be_future')); return false; }
-    if (end <= start) { setErrorMsg(t('end_after_start')); return false; }
 
     if (meetingType === 'online' && !meetingLink.trim()) {
       setErrorMsg(t('meeting_link') + ' ' + t('required')); return false;
@@ -89,8 +83,9 @@ export default function AddMeetingModal({ isOpen, onClose, onAdd, projectId, mem
     if (!validate()) return;
 
     setIsSubmitting(true);
-    const startIso = new Date(`${startDate}T${startTimeInput}`).toISOString();
-    const endIso = new Date(`${endDate}T${endTimeInput}`).toISOString();
+    const startObj = new Date(`${startDate}T${startTimeInput}`);
+    const startIso = startObj.toISOString();
+    const endIso = new Date(startObj.getTime() + durationMinutes * 60000).toISOString();
 
     try {
       const created = await apiCreateMeeting(projectId, {
@@ -144,20 +139,19 @@ export default function AddMeetingModal({ isOpen, onClose, onAdd, projectId, mem
           </div>
         </div>
 
-        {/* End datetime */}
-        <div className="grid grid-cols-2 gap-3">
-          <div>
-            <label className={labelClass}>{t('end')} *</label>
-            <input type="date" required value={endDate} min={startDate || today}
-              onChange={(e) => { setEndDate(e.target.value); setErrorMsg(''); }}
-              className={inputClass} />
-          </div>
-          <div>
-            <label className={labelClass}>{t('meeting_time')} *</label>
-            <input type="time" required value={endTimeInput}
-              onChange={(e) => { setEndTimeInput(e.target.value); setErrorMsg(''); }}
-              className={inputClass} />
-          </div>
+        {/* Duration */}
+        <div>
+          <label className={labelClass}>{t('duration')}</label>
+          <select value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className={inputClass}>
+            <option value={15}>15 {t('minutes')}</option>
+            <option value={30}>30 {t('minutes')}</option>
+            <option value={45}>45 {t('minutes')}</option>
+            <option value={60}>60 {t('minutes')} (1h)</option>
+            <option value={90}>90 {t('minutes')} (1.5h)</option>
+            <option value={120}>120 {t('minutes')} (2h)</option>
+            <option value={180}>180 {t('minutes')} (3h)</option>
+            <option value={240}>240 {t('minutes')} (4h)</option>
+          </select>
         </div>
 
         {/* Type */}

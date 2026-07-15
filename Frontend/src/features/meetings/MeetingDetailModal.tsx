@@ -3,8 +3,8 @@
  * Owner/supervisor can also add/remove attendees, edit or join.
  */
 import { useState } from 'react';
-import { MapPin, Link, Lock, Plus, CheckCircle, XCircle, Pencil, Share2 } from 'lucide-react';
-import { classifyMeeting, isMeetingJoinable, joinMeeting } from '@/api/meeting.api';
+import { MapPin, Link, Plus, CheckCircle, XCircle, Pencil, Share2, Trash2 } from 'lucide-react';
+import { classifyMeeting, joinMeeting } from '@/api/meeting.api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Button, Modal, ProjectMemberAvatar, useToast } from '@/components/ui';
 import type { Meeting, ProjectMember } from '@/types';
@@ -16,6 +16,7 @@ interface MeetingDetailModalProps {
   isOpen: boolean;
   onClose: () => void;
   onEdit: () => void;
+  onDelete: () => void;
   onAddAttendees: (attendeeIds: string[]) => Promise<void>;
   onRemoveAttendee: (userId: string) => Promise<void>;
   projectMembers: ProjectMember[];
@@ -25,7 +26,7 @@ interface MeetingDetailModalProps {
 }
 
 export default function MeetingDetailModal({
-  meeting, isOpen, onClose, onEdit,
+  meeting, isOpen, onClose, onEdit, onDelete,
   onAddAttendees, onRemoveAttendee,
   projectMembers, currentUserRole, currentUserIsOwner, authUserId,
 }: MeetingDetailModalProps) {
@@ -43,11 +44,12 @@ export default function MeetingDetailModal({
   const isOwner = currentUserIsOwner || currentUserRole === 'OWNER';
   const isOrganizer = meeting.organizer.id === authUserId;
   const canManageAttendees = isOwner || (currentUserRole === 'SUPERVISOR' && isOrganizer);
+  const canEdit = isOrganizer;
+  const canDelete = isOrganizer;
 
   // Tính phase hiện tại (now được cập nhật mỗi 30s ở component cha) để
   // hiển thị đúng trạng thái ngay cả khi modal vẫn đang mở và meeting vừa kết thúc.
   const phase = classifyMeeting(meeting);
-  const joinable = isMeetingJoinable(meeting);
   const isEnded = phase === 'ENDED';
 
   const notInMeeting = projectMembers
@@ -97,8 +99,7 @@ export default function MeetingDetailModal({
           <div>
             <h4 className="mb-1 text-sm font-semibold text-slate-700">{t('time')}</h4>
             <p className="text-sm text-slate-600">
-              {formatDateTime(meeting.startTime)} –{' '}
-              {new Date(meeting.endTime).toLocaleTimeString(undefined, { hour: '2-digit', minute: '2-digit' })}
+              {formatDateTime(meeting.startTime)}
             </p>
           </div>
           <div>
@@ -116,7 +117,7 @@ export default function MeetingDetailModal({
           {meeting.type === 'online' && meeting.meetingLink && (
             <div>
               <h4 className="mb-1 text-sm font-semibold text-slate-700">{t('meeting_link_label')}</h4>
-              {joinable ? (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={() => {
@@ -129,15 +130,12 @@ export default function MeetingDetailModal({
                   <Link className="h-4 w-4 shrink-0" />
                   {meeting.meetingLink}
                 </button>
-              ) : (
-                <span
-                  className="flex items-center gap-1.5 text-sm text-slate-400 cursor-not-allowed"
-                  title={isEnded ? t('meeting_ended_cant_join') : t('meeting_not_started')}
-                >
-                  {isEnded ? <Lock className="h-4 w-4 shrink-0" /> : <Link className="h-4 w-4 shrink-0" />}
-                  <span className="line-through">{meeting.meetingLink}</span>
-                </span>
-              )}
+                {isEnded && (
+                  <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    Meeting Ended
+                  </span>
+                )}
+              </div>
             </div>
           )}
         </div>
@@ -270,9 +268,14 @@ export default function MeetingDetailModal({
             <Share2 className="mr-1 h-4 w-4" /> Share
           </Button>
           <Button variant="ghost" onClick={onClose}>{t('close')}</Button>
-          {canManageAttendees && (
+          {canEdit && (
             <Button variant="primary" size="sm" onClick={onEdit}>
               <Pencil className="mr-1 h-4 w-4" />{t('edit_meeting')}
+            </Button>
+          )}
+          {canDelete && (
+            <Button variant="danger" size="sm" onClick={onDelete}>
+              <Trash2 className="mr-1 h-4 w-4" />Delete
             </Button>
           )}
         </div>
