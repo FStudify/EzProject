@@ -126,19 +126,36 @@ export default function AdminOverviewPage() {
   const [stats, setStats] = useState<AdminStats | null>(null);
   const [recent, setRecent] = useState<RecentPayload | null>(null);
   const [revenueChartData, setRevenueChartData] = useState<RevenueChartPoint[]>([]);
-  const [range, setRange] = useState<'7d' | '30d' | '90d' | '1y'>('7d');
+  const [growthRange, setGrowthRange] = useState<'7d' | '30d' | '90d' | '1y'>('7d');
+  const [revenueRange, setRevenueRange] = useState<'7d' | '30d' | '90d' | '1y'>('7d');
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+
+  const fetchGrowth = useCallback(async (r: string = growthRange) => {
+    try {
+      const data = await getAdminDashboardRecent(r);
+      setRecent(data);
+    } catch { /* handled by initial load */ }
+  }, []);
+
+  const fetchRevenue = useCallback(async (r: string = revenueRange) => {
+    try {
+      const days = r === '1y' ? 365 : r === '90d' ? 90 : r === '7d' ? 7 : 30;
+      const rev = await fetchRevenueChart(days);
+      setRevenueChartData(rev.series);
+    } catch { /* handled by initial load */ }
+  }, []);
 
   const fetchData = useCallback(async () => {
     setIsLoading(true);
     setError(null);
     try {
-      const days = range === '1y' ? 365 : range === '90d' ? 90 : range === '7d' ? 7 : 30;
+      const days = growthRange === '1y' ? 365 : growthRange === '90d' ? 90 : growthRange === '7d' ? 7 : 30;
+      const revDays = revenueRange === '1y' ? 365 : revenueRange === '90d' ? 90 : revenueRange === '7d' ? 7 : 30;
       const [s, r, rev] = await Promise.all([
         getAdminStats(), 
-        getAdminDashboardRecent(range),
-        fetchRevenueChart(days)
+        getAdminDashboardRecent(growthRange),
+        fetchRevenueChart(revDays)
       ]);
       setStats(s);
       setRecent(r);
@@ -148,11 +165,21 @@ export default function AdminOverviewPage() {
     } finally {
       setIsLoading(false);
     }
-  }, [range]);
+  }, []);
 
   useEffect(() => {
     void fetchData();
   }, [fetchData]);
+
+  const handleGrowthRangeChange = (r: '7d' | '30d' | '90d' | '1y') => {
+    setGrowthRange(r);
+    void fetchGrowth(r);
+  };
+
+  const handleRevenueRangeChange = (r: '7d' | '30d' | '90d' | '1y') => {
+    setRevenueRange(r);
+    void fetchRevenue(r);
+  };
 
   if (isLoading) {
     return (
@@ -232,17 +259,17 @@ export default function AdminOverviewPage() {
             <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex-1">
                 <h3 className="text-base font-bold text-slate-800">Tăng trưởng người dùng &amp; dự án</h3>
-                <p className="text-xs text-slate-500">Khoảng thời gian {range === '7d' ? '7 ngày' : range === '30d' ? '30 ngày' : range === '90d' ? '90 ngày' : '1 năm'} gần nhất</p>
+                <p className="text-xs text-slate-500">Khoảng thời gian {growthRange === '7d' ? '7 ngày' : growthRange === '30d' ? '30 ngày' : growthRange === '90d' ? '90 ngày' : '1 năm'} gần nhất</p>
               </div>
               <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden">
                 {(['7d', '30d', '90d', '1y'] as const).map((r) => (
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRange(r)}
+                    onClick={() => handleGrowthRangeChange(r)}
                     className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
                     style={
-                      range === r
+                      growthRange === r
                         ? { backgroundColor: '#1f2937', color: 'white' }
                         : { color: '#64748b' }
                     }
@@ -260,7 +287,7 @@ export default function AdminOverviewPage() {
                   projects: recent.growth.projects[i]?.count || 0
                 })) || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={20} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} tickFormatter={(v) => { const p = v.split('-'); return `${p[2]}/${p[1]}`; }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                   <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
@@ -275,17 +302,17 @@ export default function AdminOverviewPage() {
             <div className="mb-3 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
               <div className="flex-1">
                 <h3 className="text-base font-bold text-slate-800">Tăng trưởng doanh thu</h3>
-                <p className="text-xs text-slate-500">Khoảng thời gian {range === '7d' ? '7 ngày' : range === '30d' ? '30 ngày' : range === '90d' ? '90 ngày' : '1 năm'} gần nhất</p>
+                <p className="text-xs text-slate-500">Khoảng thời gian {revenueRange === '7d' ? '7 ngày' : revenueRange === '30d' ? '30 ngày' : revenueRange === '90d' ? '90 ngày' : '1 năm'} gần nhất</p>
               </div>
               <div className="flex items-center rounded-xl border bg-white dark:bg-slate-800 dark:border-slate-700 shrink-0 overflow-hidden">
                 {(['7d', '30d', '90d', '1y'] as const).map((r) => (
                   <button
                     key={r}
                     type="button"
-                    onClick={() => setRange(r)}
+                    onClick={() => handleRevenueRangeChange(r)}
                     className="px-2 sm:px-3 py-1.5 text-[10px] sm:text-xs font-semibold transition-colors"
                     style={
-                      range === r
+                      revenueRange === r
                         ? { backgroundColor: '#1f2937', color: 'white' }
                         : { color: '#64748b' }
                     }
@@ -299,7 +326,7 @@ export default function AdminOverviewPage() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={revenueChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={20}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
-                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
+                  <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 11, fill: '#64748b' }} dy={10} tickFormatter={(v) => { const p = v.split('-'); return `${p[2]}/${p[1]}`; }} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₫${(val/1000000).toFixed(1)}M`} />
                   <Tooltip 
                     contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
