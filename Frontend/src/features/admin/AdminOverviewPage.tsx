@@ -131,7 +131,7 @@ export default function AdminOverviewPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  const fetchGrowth = useCallback(async (r: string = growthRange) => {
+  const fetchGrowth = useCallback(async (r: '7d' | '30d' | '90d' | '1y' = growthRange) => {
     try {
       const data = await getAdminDashboardRecent(r);
       setRecent(data);
@@ -150,7 +150,6 @@ export default function AdminOverviewPage() {
     setIsLoading(true);
     setError(null);
     try {
-      const days = growthRange === '1y' ? 365 : growthRange === '90d' ? 90 : growthRange === '7d' ? 7 : 30;
       const revDays = revenueRange === '1y' ? 365 : revenueRange === '90d' ? 90 : revenueRange === '7d' ? 7 : 30;
       const [s, r, rev] = await Promise.all([
         getAdminStats(), 

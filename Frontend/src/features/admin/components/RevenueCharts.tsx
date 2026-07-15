@@ -38,7 +38,7 @@ function renderCustomizedLabel({ cx, cy, midAngle, innerRadius, outerRadius, val
   );
 }
 
-export function RevenueCharts({ trendData: initialTrendData, planData: initialPlanData, statusData, range: initialRange, onRangeChange }: RevenueChartsProps) {
+export function RevenueCharts({ trendData: initialTrendData, planData: initialPlanData, statusData, range: initialRange }: RevenueChartsProps) {
   // Independent range states
   const [trendRange, setTrendRange] = useState(initialRange);
   const [planRange, setPlanRange] = useState(initialRange);
