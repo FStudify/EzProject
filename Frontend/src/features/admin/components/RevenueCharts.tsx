@@ -2,7 +2,6 @@
 import { Card } from '@/components/ui';
 import {
   ResponsiveContainer,
-  AreaChart, Area,
   BarChart, Bar,
   PieChart, Pie, Cell, Label,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
@@ -68,13 +67,7 @@ export function RevenueCharts({ trendData, planData, statusData, range, onRangeC
           </div>
           <div className="h-[300px] w-full">
             <ResponsiveContainer width="100%" height="100%">
-              <AreaChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }}>
-                <defs>
-                  <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
-                    <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
-                  </linearGradient>
-                </defs>
+              <BarChart data={trendData} margin={{ top: 10, right: 30, left: 0, bottom: 0 }} barSize={20}>
                 <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                 <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                 <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₫${(val/1000000).toFixed(1)}M`} />
@@ -82,8 +75,8 @@ export function RevenueCharts({ trendData, planData, statusData, range, onRangeC
                   formatter={(value: any) => [formatVnd(value), 'Doanh thu']}
                   contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }}
                 />
-                <Area type="monotone" dataKey="revenue" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-              </AreaChart>
+                <Bar dataKey="revenue" fill="#f97316" radius={[4, 4, 0, 0]} />
+              </BarChart>
             </ResponsiveContainer>
           </div>
         </Card>

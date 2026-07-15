@@ -22,7 +22,7 @@ import AdminPageHeader from './components/AdminPageHeader';
 import { Card, Button } from '@/components/ui';
 import {
   ResponsiveContainer,
-  AreaChart, Area,
+  BarChart, Bar,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
 
@@ -254,29 +254,19 @@ export default function AdminOverviewPage() {
             </div>
             <div className="h-[250px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={recent?.growth.users.map((u, i) => ({
+                <BarChart data={recent?.growth.users.map((u, i) => ({
                   date: u.date,
                   users: u.count,
                   projects: recent.growth.projects[i]?.count || 0
-                })) || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorUsers" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#3b82f6" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#3b82f6" stopOpacity={0}/>
-                    </linearGradient>
-                    <linearGradient id="colorProjects" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#10b981" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#10b981" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                })) || []} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={20} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} />
                   <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Area type="monotone" dataKey="users" name="Người dùng mới" stroke="#3b82f6" strokeWidth={3} fillOpacity={1} fill="url(#colorUsers)" />
-                  <Area type="monotone" dataKey="projects" name="Dự án mới" stroke="#10b981" strokeWidth={3} fillOpacity={1} fill="url(#colorProjects)" />
-                </AreaChart>
+                  <Bar dataKey="users" name="Người dùng mới" fill="#3b82f6" radius={[4, 4, 0, 0]} />
+                  <Bar dataKey="projects" name="Dự án mới" fill="#10b981" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
@@ -307,13 +297,7 @@ export default function AdminOverviewPage() {
             </div>
             <div className="h-[250px] w-full mt-4">
               <ResponsiveContainer width="100%" height="100%">
-                <AreaChart data={revenueChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }}>
-                  <defs>
-                    <linearGradient id="colorRevenue" x1="0" y1="0" x2="0" y2="1">
-                      <stop offset="5%" stopColor="#f97316" stopOpacity={0.8}/>
-                      <stop offset="95%" stopColor="#f97316" stopOpacity={0}/>
-                    </linearGradient>
-                  </defs>
+                <BarChart data={revenueChartData} margin={{ top: 10, right: 10, left: -20, bottom: 0 }} barSize={20}>
                   <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#e2e8f0" />
                   <XAxis dataKey="date" axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} dy={10} />
                   <YAxis axisLine={false} tickLine={false} tick={{ fontSize: 12, fill: '#64748b' }} tickFormatter={(val) => `₫${(val/1000000).toFixed(1)}M`} />
@@ -322,8 +306,8 @@ export default function AdminOverviewPage() {
                     formatter={(value: any) => new Intl.NumberFormat('vi-VN', { style: 'currency', currency: 'VND' }).format(Number(value))}
                   />
                   <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '10px' }} />
-                  <Area type="monotone" dataKey="revenue" name="Doanh thu" stroke="#f97316" strokeWidth={3} fillOpacity={1} fill="url(#colorRevenue)" />
-                </AreaChart>
+                  <Bar dataKey="revenue" name="Doanh thu" fill="#f97316" radius={[4, 4, 0, 0]} />
+                </BarChart>
               </ResponsiveContainer>
             </div>
           </Card>
