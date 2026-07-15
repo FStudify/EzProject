@@ -135,17 +135,34 @@ export default function EditMeetingModal({ meeting, isOpen, onClose, onSave, mem
 
         {/* Duration */}
         <div>
-          <label className={labelClass}>{t('duration')}</label>
-          <select value={durationMinutes} onChange={(e) => setDurationMinutes(Number(e.target.value))} className={inputClass}>
-            <option value={15}>15 {t('minutes')}</option>
-            <option value={30}>30 {t('minutes')}</option>
-            <option value={45}>45 {t('minutes')}</option>
-            <option value={60}>60 {t('minutes')} (1h)</option>
-            <option value={90}>90 {t('minutes')} (1.5h)</option>
-            <option value={120}>120 {t('minutes')} (2h)</option>
-            <option value={180}>180 {t('minutes')} (3h)</option>
-            <option value={240}>240 {t('minutes')} (4h)</option>
-          </select>
+          <label className={labelClass}>{t('duration')} ({t('minutes')})</label>
+          <div className="flex gap-2">
+            <input 
+              type="number" 
+              min="1"
+              value={durationMinutes || ''} 
+              onChange={(e) => setDurationMinutes(Number(e.target.value))} 
+              className={inputClass}
+              placeholder="E.g. 60"
+            />
+            <select 
+              value={[15, 30, 45, 60, 90, 120, 180, 240].includes(durationMinutes) ? durationMinutes : 'custom'} 
+              onChange={(e) => {
+                if (e.target.value !== 'custom') setDurationMinutes(Number(e.target.value));
+              }} 
+              className={`${inputClass} w-40`}
+            >
+              <option value={15}>15 {t('minutes')}</option>
+              <option value={30}>30 {t('minutes')}</option>
+              <option value={45}>45 {t('minutes')}</option>
+              <option value={60}>60 {t('minutes')} (1h)</option>
+              <option value={90}>90 {t('minutes')} (1.5h)</option>
+              <option value={120}>120 {t('minutes')} (2h)</option>
+              <option value={180}>180 {t('minutes')} (3h)</option>
+              <option value={240}>240 {t('minutes')} (4h)</option>
+              <option value="custom" className="hidden">{t('custom') || 'Custom'}</option>
+            </select>
+          </div>
         </div>
 
         <div>

@@ -5,8 +5,8 @@
  * and admin actions. Clicking the card opens the detail modal; admin
  * buttons inside the card stop propagation to avoid double-trigger.
  */
-import { Calendar, MapPin, Link, Users, Pencil, Trash2, CheckCircle, XCircle, Lock } from 'lucide-react';
-import { classifyMeeting, isMeetingJoinable, type MeetingPhase } from '@/api/meeting.api';
+import { Calendar, MapPin, Link, Users, Pencil, Trash2, CheckCircle, XCircle } from 'lucide-react';
+import { classifyMeeting, type MeetingPhase } from '@/api/meeting.api';
 import { useLanguage } from '@/contexts/LanguageContext';
 import type { Meeting, ProjectMember } from '@/types';
 import { Button, ProjectMemberAvatar } from '@/components/ui';
@@ -47,7 +47,6 @@ export default function MeetingCard({
   const isInvited = meeting.attendees.some((a) => a.id === authUserId);
   const meetingStatus = (meeting.status in STATUS_VARIANTS ? meeting.status : 'SCHEDULED') as LocalMeetingStatus;
   const phase: MeetingPhase = classifyMeeting(meeting, now);
-  const joinable = isMeetingJoinable(meeting, now);
 
   return (
     <article
@@ -67,7 +66,7 @@ export default function MeetingCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex items-center gap-2">
-            <h3 className={`truncate font-semibold ${phase === 'ENDED' ? 'text-slate-600' : 'text-slate-900'}`}>
+            <h3 className={`truncate font-semibold ${phase === 'ENDED' ? 'text-slate-600 line-through' : 'text-slate-900'}`}>
               {meeting.title}
             </h3>
             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_VARIANTS[meetingStatus]}`}>
@@ -95,24 +94,21 @@ export default function MeetingCard({
               </span>
             )}
             {meeting.type === 'online' && meeting.meetingLink && (
-              joinable ? (
+              <div className="flex items-center gap-2">
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onJoin(meeting); }}
-                  className="flex items-center gap-1.5 text-primary hover:underline"
+                  className={`flex items-center gap-1.5 text-primary hover:underline ${phase === 'ENDED' ? 'line-through' : ''}`}
                   title={t('meeting_join_now')}
                 >
                   <Link className="h-4 w-4" />{t('meeting_link_label')}
                 </button>
-              ) : (
-                <span
-                  className="flex items-center gap-1.5 cursor-not-allowed text-slate-400"
-                  title={phase === 'ENDED' ? t('meeting_ended_cant_join') : t('meeting_not_started')}
-                >
-                  {phase === 'ENDED' ? <Lock className="h-4 w-4" /> : <Link className="h-4 w-4" />}
-                  {t('meeting_link_label')}
-                </span>
-              )
+                {phase === 'ENDED' && (
+                  <span className="text-xs font-medium text-slate-400 bg-slate-100 px-2 py-0.5 rounded-full">
+                    Meeting Ended
+                  </span>
+                )}
+              </div>
             )}
           </div>
           <div className="mt-3 flex items-center gap-2">
