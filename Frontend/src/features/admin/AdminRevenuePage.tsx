@@ -83,7 +83,7 @@ export default function AdminRevenuePage() {
   const loadSubscriptions = async (page = 1) => {
     setIsSubsLoading(true);
     try {
-      const res = await fetchAdminSubscriptions({ limit: 25, page });
+      const res = await fetchAdminSubscriptions({ limit: 10, page });
       setSubs(res.items);
       setSubPage(page);
       setSubTotalPages(res.totalPages || 1);
@@ -97,7 +97,7 @@ export default function AdminRevenuePage() {
   const loadPayments = async (page = 1) => {
     setIsPaymentsLoading(true);
     try {
-      const res = await fetchRevenuePayments({ limit: 25, page });
+      const res = await fetchRevenuePayments({ limit: 10, page });
       setPayments(res.items);
       setPaymentPage(page);
       setPaymentTotalPages(res.totalPages || 1);
