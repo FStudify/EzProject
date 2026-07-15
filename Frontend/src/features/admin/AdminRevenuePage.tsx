@@ -51,10 +51,14 @@ export default function AdminRevenuePage() {
   // Subscriptions Data
   const [subs, setSubs] = useState<AdminSubscriptionRow[]>([]);
   const [isSubsLoading, setIsSubsLoading] = useState(false);
+  const [subPage, setSubPage] = useState(1);
+  const [subTotalPages, setSubTotalPages] = useState(1);
 
   // Payments Data
   const [payments, setPayments] = useState<RevenuePaymentRow[]>([]);
   const [isPaymentsLoading, setIsPaymentsLoading] = useState(false);
+  const [paymentPage, setPaymentPage] = useState(1);
+  const [paymentTotalPages, setPaymentTotalPages] = useState(1);
 
   const loadOverview = async (r: string = range) => {
     try {
@@ -76,11 +80,13 @@ export default function AdminRevenuePage() {
     }
   };
 
-  const loadSubscriptions = async () => {
+  const loadSubscriptions = async (page = 1) => {
     setIsSubsLoading(true);
     try {
-      const res = await fetchAdminSubscriptions({ limit: 100 });
+      const res = await fetchAdminSubscriptions({ limit: 25, page });
       setSubs(res.items);
+      setSubPage(page);
+      setSubTotalPages(res.totalPages || 1);
     } catch (err: any) {
       toast(err.message, 'error');
     } finally {
@@ -88,11 +94,13 @@ export default function AdminRevenuePage() {
     }
   };
 
-  const loadPayments = async () => {
+  const loadPayments = async (page = 1) => {
     setIsPaymentsLoading(true);
     try {
-      const res = await fetchRevenuePayments({ limit: 100 });
+      const res = await fetchRevenuePayments({ limit: 25, page });
       setPayments(res.items);
+      setPaymentPage(page);
+      setPaymentTotalPages(res.totalPages || 1);
     } catch (err: any) {
       toast(err.message, 'error');
     } finally {
@@ -104,8 +112,8 @@ export default function AdminRevenuePage() {
     setIsLoading(true);
     await Promise.all([
       loadOverview(),
-      loadSubscriptions(),
-      loadPayments()
+      loadSubscriptions(1),
+      loadPayments(1)
     ]);
     setIsLoading(false);
   };
@@ -221,11 +229,33 @@ export default function AdminRevenuePage() {
         )}
 
         {activeTab === 'subscriptions' && (
-          <SubscriptionListTable data={subs} isLoading={isSubsLoading} />
+          <div className="space-y-4">
+            <SubscriptionListTable data={subs} isLoading={isSubsLoading} />
+            {subTotalPages > 1 && (
+              <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+                <span className="text-sm font-medium text-slate-500">Trang {subPage} / {subTotalPages}</span>
+                <div className="flex gap-2">
+                  <button disabled={subPage === 1} onClick={() => loadSubscriptions(subPage - 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Trước</button>
+                  <button disabled={subPage === subTotalPages} onClick={() => loadSubscriptions(subPage + 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Sau</button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {activeTab === 'payments' && (
-          <PaymentListTable data={payments} isLoading={isPaymentsLoading} />
+          <div className="space-y-4">
+            <PaymentListTable data={payments} isLoading={isPaymentsLoading} />
+            {paymentTotalPages > 1 && (
+              <div className="flex justify-between items-center bg-white p-4 rounded-xl border shadow-sm">
+                <span className="text-sm font-medium text-slate-500">Trang {paymentPage} / {paymentTotalPages}</span>
+                <div className="flex gap-2">
+                  <button disabled={paymentPage === 1} onClick={() => loadPayments(paymentPage - 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Trước</button>
+                  <button disabled={paymentPage === paymentTotalPages} onClick={() => loadPayments(paymentPage + 1)} className="px-3 py-1.5 text-sm font-medium border rounded-lg hover:bg-slate-50 disabled:opacity-50">Sau</button>
+                </div>
+              </div>
+            )}
+          </div>
         )}
 
         {isLoading && activeTab === 'overview' && !overview && (
