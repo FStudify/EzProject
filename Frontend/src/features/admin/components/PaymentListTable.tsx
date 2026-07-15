@@ -237,16 +237,7 @@ export function PaymentListTable({ data, isLoading, page, totalPages, onPageChan
               </div>
             </div>
 
-            {selectedPayment.rawPayload && (
-              <div className="space-y-4">
-                <h4 className="text-sm font-bold uppercase tracking-wider text-slate-400">Raw Payload</h4>
-                <div className="bg-slate-900 rounded-lg p-4 overflow-x-auto">
-                  <pre className="text-xs text-emerald-400 font-mono">
-                    {JSON.stringify(selectedPayment.rawPayload, null, 2)}
-                  </pre>
-                </div>
-              </div>
-            )}
+
           </div>
         )}
       </Drawer>
