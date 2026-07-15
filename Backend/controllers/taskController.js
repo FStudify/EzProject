@@ -159,7 +159,7 @@ function normalizeBulkDeadline(value, projectDeadline, index, total) {
   const projectEnd = toLocalIso(projectDeadline);
   const projectEndDate = projectEnd ? new Date(projectEnd) : null;
 
-  const fallback = buildAiFallbackDeadline(index || 0, total || 1, projectDeadline);
+  const fallback = buildFallbackDueDate(projectDeadline, index || 0, total || 1);
   let date = value ? new Date(value) : null;
   if (!date || Number.isNaN(date.valueOf())) return fallback;
 
@@ -350,12 +350,12 @@ function normalizeAiDrafts(rawTasks, projectDeadline, requestedCount) {
 
     let deadline = toLocalIso(raw?.deadline);
     if (!deadline) {
-      deadline = buildAiFallbackDeadline(index, requestedCount, projectDeadline);
+      deadline = buildFallbackDueDate(projectDeadline, index, requestedCount);
     }
 
     const dueDate = new Date(deadline);
     if (Number.isNaN(dueDate.valueOf())) {
-      deadline = buildAiFallbackDeadline(index, requestedCount, projectDeadline);
+      deadline = buildFallbackDueDate(projectDeadline, index, requestedCount);
     } else if (dueDate < tomorrow) {
       // AI returned a date that is today or earlier; bump to tomorrow.
       deadline = tomorrow.toISOString();
