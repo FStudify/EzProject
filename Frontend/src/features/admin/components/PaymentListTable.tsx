@@ -52,7 +52,7 @@ export function PaymentListTable({ data, isLoading, page, totalPages, onPageChan
   const [selectedPayment, setSelectedPayment] = useState<RevenuePaymentRow | null>(null);
 
   return (
-    <Card className="flex flex-col h-full border-none shadow-none">
+    <Card className="flex flex-col border-none shadow-none">
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-bold text-slate-800">Lịch sử giao dịch</h3>
         <a href={getExportCsvUrl({})} target="_blank" rel="noopener noreferrer">

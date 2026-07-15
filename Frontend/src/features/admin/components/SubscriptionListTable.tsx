@@ -30,7 +30,7 @@ export function SubscriptionListTable({ data, isLoading, page, totalPages, onPag
   const [selectedSub, setSelectedSub] = useState<AdminSubscriptionRow | null>(null);
 
   return (
-    <Card className="flex flex-col h-full border-none shadow-none">
+    <Card className="flex flex-col border-none shadow-none">
       <div className="flex items-center justify-between p-4 border-b">
         <h3 className="font-bold text-slate-800">Lịch sử đăng ký</h3>
       </div>
