@@ -125,7 +125,7 @@ export default function MeetingDetailModal({
                       .then(({ meetingLink }) => window.open(meetingLink, '_blank', 'noopener,noreferrer'))
                       .catch((err: { message?: string }) => toast(err?.message || t('meeting_ended_cant_join'), 'error'));
                   }}
-                  className="flex items-center gap-1.5 text-sm text-primary hover:underline"
+                  className={`flex items-center gap-1.5 text-sm hover:underline ${isEnded ? 'text-slate-400 line-through' : 'text-primary'}`}
                 >
                   <Link className="h-4 w-4 shrink-0" />
                   {meeting.meetingLink}

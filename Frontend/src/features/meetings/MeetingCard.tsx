@@ -66,7 +66,7 @@ export default function MeetingCard({
       <div className="flex items-start justify-between gap-4">
         <div className="min-w-0 flex-1">
           <div className="mb-2 flex items-center gap-2">
-            <h3 className={`truncate font-semibold ${phase === 'ENDED' ? 'text-slate-600 line-through' : 'text-slate-900'}`}>
+            <h3 className={`truncate font-semibold ${phase === 'ENDED' ? 'text-slate-600' : 'text-slate-900'}`}>
               {meeting.title}
             </h3>
             <span className={`shrink-0 rounded-full px-2.5 py-0.5 text-xs font-medium ${STATUS_VARIANTS[meetingStatus]}`}>
@@ -98,7 +98,7 @@ export default function MeetingCard({
                 <button
                   type="button"
                   onClick={(e) => { e.stopPropagation(); onJoin(meeting); }}
-                  className={`flex items-center gap-1.5 text-primary hover:underline ${phase === 'ENDED' ? 'line-through' : ''}`}
+                  className={`flex items-center gap-1.5 hover:underline ${phase === 'ENDED' ? 'text-slate-400 line-through' : 'text-primary'}`}
                   title={t('meeting_join_now')}
                 >
                   <Link className="h-4 w-4" />{t('meeting_link_label')}
