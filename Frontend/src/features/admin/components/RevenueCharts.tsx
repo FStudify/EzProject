@@ -39,7 +39,7 @@ function renderCustomizedLabel({ cx, cy, midAngle, innerRadius, outerRadius, val
   );
 }
 
-export function RevenueCharts({ trendData: initialTrendData, planData: initialPlanData, statusData, range: initialRange }: RevenueChartsProps) {
+export function RevenueCharts({ trendData: initialTrendData, planData: initialPlanData, statusData, actionData, range: initialRange }: RevenueChartsProps) {
   // Independent range states
   const [trendRange, setTrendRange] = useState(initialRange);
   const [planRange, setPlanRange] = useState(initialRange);
@@ -48,7 +48,7 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
 
   const [localTrendData, setLocalTrendData] = useState(initialTrendData);
   const [localPlanData, setLocalPlanData] = useState(initialPlanData);
-  const [localActionData, setLocalActionData] = useState(initialPlanData ? actionData : actionData); // using props
+  const [localActionData, setLocalActionData] = useState(actionData);
 
   const handleTrendRangeChange = useCallback(async (r: '7d' | '30d' | '90d' | '1y') => {
     setTrendRange(r);
