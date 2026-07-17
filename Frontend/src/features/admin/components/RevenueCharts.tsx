@@ -126,7 +126,7 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
 
   return (
     <div className="space-y-6">
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+      <div className="grid grid-cols-1 gap-6">
         {/* Revenue Trend (Bar) */}
         <Card className="p-6">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -148,7 +148,9 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
             </ResponsiveContainer>
           </div>
         </Card>
+      </div>
 
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
         {/* Revenue by Plan (Bar) */}
         <Card className="p-6">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -168,41 +170,6 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
                 />
                 <Bar dataKey="revenue" fill="#3b82f6" radius={[4, 4, 0, 0]} />
               </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Payment Status (Donut) */}
-        <Card className="p-6">
-          <h3 className="text-base font-bold text-slate-800 mb-6">Trạng thái thanh toán</h3>
-          <div className="h-[300px] w-full">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={statusChartData}
-                  cx="50%"
-                  cy="50%"
-                  innerRadius={70}
-                  outerRadius={110}
-                  paddingAngle={3}
-                  dataKey="value"
-                  label={renderCustomizedLabel}
-                  labelLine={false}
-                >
-                  <Label 
-                    value={totalStatusCount} 
-                    position="center" 
-                    className="text-3xl font-bold fill-slate-800" 
-                  />
-                  {statusChartData.map((_, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
-                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
-              </PieChart>
             </ResponsiveContainer>
           </div>
         </Card>
@@ -249,6 +216,39 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Payment Status (Donut) */}
+        <Card className="p-6">
+          <h3 className="text-base font-bold text-slate-800 mb-6">Trạng thái thanh toán</h3>
+          <div className="h-[300px] w-full">
+            <ResponsiveContainer width="100%" height="100%">
+              <PieChart>
+                <Pie
+                  data={statusChartData}
+                  cx="50%"
+                  cy="50%"
+                  innerRadius={70}
+                  outerRadius={110}
+                  paddingAngle={3}
+                  dataKey="value"
+                  label={renderCustomizedLabel}
+                  labelLine={false}
+                >
+                  <Label 
+                    value={totalStatusCount} 
+                    position="center" 
+                    className="text-3xl font-bold fill-slate-800" 
+                  />
+                  {statusChartData.map((_, index) => (
+                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                  ))}
+                </Pie>
+                <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+              </PieChart>
+            </ResponsiveContainer>
+          </div>
+        </Card>
+
         {/* Action Distribution (Donut) */}
         <Card className="p-6">
           <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">

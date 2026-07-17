@@ -593,8 +593,8 @@ exports.getTopCustomers = async (req, res, next) => {
   try {
     const topRevenueUsers = await Payment.aggregate([
       { $match: { status: 'PAID' } },
-      { $group: { _id: '$userId', totalSpent: { $sum: '$amount' }, paymentCount: { $sum: 1 } } },
-      { $sort: { totalSpent: -1 } },
+      { $group: { _id: '$userId', totalSpent: { $sum: '$amount' }, paymentCount: { $sum: 1 }, earliestPayment: { $min: '$paidAt' } } },
+      { $sort: { totalSpent: -1, earliestPayment: 1 } },
       { $limit: 10 }
     ]);
     
