@@ -10,6 +10,7 @@ import type {
   RevenuePaymentRow,
   RevenuePlanBreakdown,
   Subscription,
+  ActionDistribution,
 } from './types';
 
 /**
@@ -95,6 +96,12 @@ export interface StatusDistribution {
 
 export async function fetchRevenueStatus(): Promise<StatusDistribution> {
   const data = await api.get<{ distribution: StatusDistribution }>(Endpoints.ADMIN_REVENUE_STATUS);
+  return data.distribution;
+}
+
+export async function fetchActionDistribution(days?: number): Promise<ActionDistribution> {
+  const qs = days ? `?days=${days}` : '';
+  const data = await api.get<{ distribution: ActionDistribution }>(`${Endpoints.ADMIN_REVENUE_ACTIONS}${qs}`);
   return data.distribution;
 }
 

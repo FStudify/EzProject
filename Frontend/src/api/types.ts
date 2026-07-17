@@ -454,6 +454,13 @@ export interface RevenueOverview {
   lastUpdatedAt: string;
 }
 
+export interface ActionDistribution {
+  NEW: number;
+  RENEW: number;
+  UPGRADE: number;
+  DOWNGRADE: number;
+}
+
 export interface RevenueChartPoint {
   date: string;
   revenue: number;

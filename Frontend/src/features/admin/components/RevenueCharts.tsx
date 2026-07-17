@@ -7,14 +7,15 @@ import {
   PieChart, Pie, Cell, Label,
   XAxis, YAxis, CartesianGrid, Tooltip, Legend
 } from 'recharts';
-import type { RevenueChartPoint, RevenuePlanBreakdown } from '@/api/types';
+import type { RevenueChartPoint, RevenuePlanBreakdown, ActionDistribution } from '@/api/types';
 import type { StatusDistribution } from '@/api/payment.api';
-import { fetchRevenueChart, fetchRevenuePlans } from '@/api/payment.api';
+import { fetchRevenueChart, fetchRevenuePlans, fetchActionDistribution } from '@/api/payment.api';
 
 interface RevenueChartsProps {
   trendData: RevenueChartPoint[];
   planData: RevenuePlanBreakdown[];
   statusData: StatusDistribution;
+  actionData: ActionDistribution;
   range: '7d' | '30d' | '90d' | '1y';
   onRangeChange: (r: '7d' | '30d' | '90d' | '1y') => void;
 }
@@ -43,9 +44,11 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
   const [trendRange, setTrendRange] = useState(initialRange);
   const [planRange, setPlanRange] = useState(initialRange);
   const [subRange, setSubRange] = useState(initialRange);
+  const [actionRange, setActionRange] = useState(initialRange);
 
   const [localTrendData, setLocalTrendData] = useState(initialTrendData);
   const [localPlanData, setLocalPlanData] = useState(initialPlanData);
+  const [localActionData, setLocalActionData] = useState(initialPlanData ? actionData : actionData); // using props
 
   const handleTrendRangeChange = useCallback(async (r: '7d' | '30d' | '90d' | '1y') => {
     setTrendRange(r);
@@ -65,6 +68,15 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
     } catch { /* ignore */ }
   }, []);
 
+  const handleActionRangeChange = useCallback(async (r: '7d' | '30d' | '90d' | '1y') => {
+    setActionRange(r);
+    try {
+      const days = r === '1y' ? 365 : r === '90d' ? 90 : r === '7d' ? 7 : 30;
+      const res = await fetchActionDistribution(days);
+      setLocalActionData(res);
+    } catch { /* ignore */ }
+  }, []);
+
   const statusChartData = [
     { name: 'Thành công', value: statusData.PAID },
     { name: 'Đang xử lý', value: statusData.PENDING },
@@ -78,8 +90,15 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
     value: p.activeSubscribers
   })).filter(d => d.value > 0);
 
+  const actionChartData = [
+    { name: 'Mua mới', value: localActionData?.NEW ?? 0 },
+    { name: 'Gia hạn', value: localActionData?.RENEW ?? 0 },
+    { name: 'Nâng cấp', value: localActionData?.UPGRADE ?? 0 },
+  ].filter(d => d.value > 0);
+
   const totalStatusCount = statusChartData.reduce((sum, item) => sum + item.value, 0);
   const totalSubCount = subDistributionData.reduce((sum, item) => sum + item.value, 0);
+  const totalActionCount = actionChartData.reduce((sum, item) => sum + item.value, 0);
 
   const rangeLabel = (r: string) => r === '7d' ? '7 ngày' : r === '30d' ? '30 ngày' : r === '90d' ? '90 ngày' : '1 năm';
 
@@ -218,6 +237,48 @@ export function RevenueCharts({ trendData: initialTrendData, planData: initialPl
                     />
                     {subDistributionData.map((_, index) => (
                       <Cell key={`cell-${index}`} fill={['#64748b', '#3b82f6', '#f97316'][index % 3]} />
+                    ))}
+                  </Pie>
+                  <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: '12px', paddingTop: '20px' }} />
+                </PieChart>
+              </ResponsiveContainer>
+            )}
+          </div>
+        </Card>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        {/* Action Distribution (Donut) */}
+        <Card className="p-6">
+          <div className="mb-6 flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+            <h3 className="text-base font-bold text-slate-800">Hành vi mua gói (Pro & Ultra)</h3>
+            <RangeSelector value={actionRange} onChange={handleActionRangeChange} />
+          </div>
+          <div className="h-[300px] w-full flex items-center justify-center">
+            {actionChartData.length === 0 ? (
+              <div className="text-slate-400 font-medium">Chưa có giao dịch nào</div>
+            ) : (
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={actionChartData}
+                    cx="50%"
+                    cy="50%"
+                    innerRadius={70}
+                    outerRadius={110}
+                    paddingAngle={3}
+                    dataKey="value"
+                    label={renderCustomizedLabel}
+                    labelLine={false}
+                  >
+                    <Label 
+                      value={totalActionCount} 
+                      position="center" 
+                      className="text-3xl font-bold fill-slate-800" 
+                    />
+                    {actionChartData.map((_, index) => (
+                      <Cell key={`cell-${index}`} fill={['#a855f7', '#06b6d4', '#84cc16'][index % 3]} />
                     ))}
                   </Pie>
                   <Tooltip contentStyle={{ borderRadius: '8px', border: 'none', boxShadow: '0 4px 6px -1px rgb(0 0 0 / 0.1)' }} />

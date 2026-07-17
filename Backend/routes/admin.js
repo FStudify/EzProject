@@ -97,6 +97,10 @@ router.get(
   adminRevenueController.getStatusDistribution,
 );
 router.get(
+  '/revenue/actions',
+  adminRevenueController.getActionDistribution,
+);
+router.get(
   '/revenue/payments',
   validate(validators.revenueQuery, 'query'),
   adminRevenueController.listPayments,

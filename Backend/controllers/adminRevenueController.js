@@ -302,6 +302,43 @@ exports.getStatusDistribution = async (req, res, next) => {
 };
 
 /**
+ * Action distribution (for donut chart: Mới, Gia hạn, Nâng cấp, v.v)
+ * Only counts PAID transactions for 'pro' and 'ultra' plans.
+ */
+exports.getActionDistribution = async (req, res, next) => {
+  try {
+    const { days: daysStr } = req.query;
+    let matchStage = { status: 'PAID', planKey: { $in: ['pro', 'ultra'] } };
+    
+    if (daysStr) {
+      const days = parseInt(daysStr, 10) || 30;
+      const since = new Date();
+      since.setDate(since.getDate() - days);
+      matchStage.paidAt = { $gte: since };
+    }
+
+    const rows = await Payment.aggregate([
+      { $match: matchStage },
+      { $group: { _id: '$action', count: { $sum: 1 } } },
+    ]);
+
+    const distribution = {
+      NEW: 0,
+      RENEW: 0,
+      UPGRADE: 0,
+      DOWNGRADE: 0,
+    };
+    rows.forEach((row) => {
+      distribution[row._id] = row.count;
+    });
+
+    res.json({ success: true, data: { distribution } });
+  } catch (err) {
+    next(err);
+  }
+};
+
+/**
  * Bảng danh sách payment cho Admin (search, filter, pagination).
  */
 exports.listPayments = async (req, res, next) => {

@@ -151,6 +151,7 @@ export const Endpoints = {
   ADMIN_REVENUE_CHART: `${BASE}/admin/revenue/chart`,
   ADMIN_REVENUE_PLANS: `${BASE}/admin/revenue/plans`,
   ADMIN_REVENUE_STATUS: `${BASE}/admin/revenue/status`,
+  ADMIN_REVENUE_ACTIONS: `${BASE}/admin/revenue/actions`,
   ADMIN_REVENUE_PAYMENTS: `${BASE}/admin/revenue/payments`,
   ADMIN_REVENUE_EXPIRING: `${BASE}/admin/revenue/expiring`,
   ADMIN_REVENUE_EXPORT: `${BASE}/admin/revenue/export`,

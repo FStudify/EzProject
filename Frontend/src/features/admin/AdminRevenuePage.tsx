@@ -15,7 +15,8 @@ import {
   fetchRevenueStatus,
   fetchRevenuePayments,
   fetchAdminSubscriptions,
-  fetchAdminTopCustomers
+  fetchAdminTopCustomers,
+  fetchActionDistribution
 } from '@/api/payment.api';
 import type { StatusDistribution } from '@/api/payment.api';
 import type { 
@@ -24,7 +25,8 @@ import type {
   RevenuePlanBreakdown,
   RevenuePaymentRow,
   AdminSubscriptionRow,
-  AdminTopCustomer
+  AdminTopCustomer,
+  ActionDistribution
 } from '@/api/types';
 import AdminPageHeader from './components/AdminPageHeader';
 import { RevenueKPIWidgets } from './components/RevenueKPIWidgets';
@@ -46,6 +48,7 @@ export default function AdminRevenuePage() {
   const [chartData, setChartData] = useState<RevenueChartPoint[]>([]);
   const [planData, setPlanData] = useState<RevenuePlanBreakdown[]>([]);
   const [statusData, setStatusData] = useState<StatusDistribution | null>(null);
+  const [actionData, setActionData] = useState<ActionDistribution | null>(null);
   const [topCustomers, setTopCustomers] = useState<AdminTopCustomer[]>([]);
 
   // Subscriptions Data
@@ -63,18 +66,20 @@ export default function AdminRevenuePage() {
   const loadOverview = async (r: string = range) => {
     try {
       const days = r === '1y' ? 365 : r === '90d' ? 90 : r === '7d' ? 7 : 30;
-      const [ov, ch, pl, st, tc] = await Promise.all([
+      const [ov, ch, pl, st, tc, ac] = await Promise.all([
         fetchRevenueOverview(),
         fetchRevenueChart(days),
         fetchRevenuePlans(days),
         fetchRevenueStatus(),
-        fetchAdminTopCustomers()
+        fetchAdminTopCustomers(),
+        fetchActionDistribution(days)
       ]);
       setOverview(ov);
       setChartData(ch.series);
       setPlanData(pl.plans);
       setStatusData(st);
       setTopCustomers(tc);
+      setActionData(ac);
     } catch (err: any) {
       toast(err.message, 'error');
     }
@@ -186,11 +191,12 @@ export default function AdminRevenuePage() {
         {activeTab === 'overview' && overview && statusData && (
           <div className="space-y-6">
             {overview && <RevenueKPIWidgets data={overview} />}
-            {statusData && (
+            {statusData && actionData && (
               <RevenueCharts 
                 trendData={chartData} 
                 planData={planData} 
-                statusData={statusData} 
+                statusData={statusData}
+                actionData={actionData} 
                 range={range}
                 onRangeChange={handleRangeChange}
               />
